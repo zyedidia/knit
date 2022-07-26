@@ -28,8 +28,13 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 
+	target := rules[0].Targets[0].str
+	if len(args) > 0 {
+		target = args[0]
+	}
+
 	rs := newRuleSet(rules...)
-	g, err := newGraph(rs, args[0])
+	g, err := newGraph(rs, target)
 	if err != nil {
 		log.Fatalln(err)
 	}
