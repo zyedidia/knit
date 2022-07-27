@@ -42,6 +42,7 @@ func (e *Executor) ExecCommand(c Command) {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	fmt.Println(cmd)
 	err := cmd.Run()
 	if err != nil {
 		e.Error(fmt.Sprintf("%v\n", err))

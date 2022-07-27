@@ -9,14 +9,14 @@ import (
 
 var rules = []Rule{
 	{
-		Targets: []Pattern{{"step1", nil}},
+		Targets: []Pattern{{false, "step1", nil}},
 		Prereqs: []string{},
 		Recipe: []Command{
 			{"echo", []string{"step1"}},
 		},
 	},
 	{
-		Targets: []Pattern{{"step2", nil}},
+		Targets: []Pattern{{false, "step2", nil}},
 		Prereqs: []string{"step1"},
 		Recipe: []Command{
 			{"echo", []string{"step2"}},
@@ -25,7 +25,47 @@ var rules = []Rule{
 }
 
 func main() {
-	mainTcl()
+	mainMak()
+}
+
+func mainMak() {
+	m := NewMachine("rules")
+	target := flag.String("target", "all", "target to build")
+
+	flag.Parse()
+	args := flag.Args()
+	if len(args) == 0 {
+		log.Fatal("no input")
+	}
+
+	file := args[0]
+	data, err := os.ReadFile(file)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mak, err := m.Eval(string(data))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rs := parse(mak, "makfile", file, map[string][]string{}, ErrFns{
+		PrintErr: func(e string) {
+			fmt.Fprintln(os.Stderr, e)
+		},
+		Err: func(e string) {
+			fmt.Fprintln(os.Stderr, e)
+			os.Exit(1)
+		},
+	})
+	g, err := newGraph(rs, *target)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	e := NewExecutor(8, func(msg string) {
+		fmt.Fprint(os.Stderr, msg)
+	})
+	e.ExecNode(g.base)
 }
 
 func mainTcl() {

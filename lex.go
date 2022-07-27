@@ -27,10 +27,7 @@ const (
 	tokenError tokenType = iota
 	tokenNewline
 	tokenWord
-	tokenPipeInclude
-	tokenRedirInclude
 	tokenColon
-	tokenAssign
 	tokenRecipe
 	tokenEnd
 )
@@ -43,14 +40,8 @@ func (typ tokenType) String() string {
 		return "[Newline]"
 	case tokenWord:
 		return "[Word]"
-	case tokenPipeInclude:
-		return "[PipeInclude]"
-	case tokenRedirInclude:
-		return "[RedirInclude]"
 	case tokenColon:
 		return "[Colon]"
-	case tokenAssign:
-		return "[Assign]"
 	case tokenRecipe:
 		return "[Recipe]"
 	case tokenEnd:
@@ -305,12 +296,8 @@ func lexTopLevel(l *lexer) lexerStateFun {
 		return nil
 	case '#':
 		return lexComment
-	case '<':
-		return lexInclude
 	case ':':
 		return lexColon
-	case '=':
-		return lexAssign
 	case '"':
 		return lexDoubleQuotedWord
 	case '\'':
@@ -328,25 +315,9 @@ func lexColon(l *lexer) lexerStateFun {
 	return lexTopLevel
 }
 
-func lexAssign(l *lexer) lexerStateFun {
-	l.next() // '='
-	l.emit(tokenAssign)
-	return lexTopLevel
-}
-
 func lexComment(l *lexer) lexerStateFun {
 	l.skip() // '#'
 	l.skipUntil("\n")
-	return lexTopLevel
-}
-
-func lexInclude(l *lexer) lexerStateFun {
-	l.next() // '<'
-	if l.accept("|") {
-		l.emit(tokenPipeInclude)
-	} else {
-		l.emit(tokenRedirInclude)
-	}
 	return lexTopLevel
 }
 
