@@ -32,6 +32,7 @@ const (
 	tokenColon
 	tokenAssign
 	tokenRecipe
+	tokenEnd
 )
 
 func (typ tokenType) String() string {
@@ -82,6 +83,7 @@ type lexer struct {
 	errmsg    string     // set to an appropriate error message when necessary
 	indented  bool       // true if the only whitespace so far on this line
 	barewords bool       // lex only a sequence of words
+	state     lexerStateFun
 }
 
 // A lexerStateFun is simultaneously the the state of the lexer and the next
@@ -220,16 +222,16 @@ func (l *lexer) skipUntil(invalid string) {
 }
 
 // Start a new lexer to lex the given input.
-func lex(input string) (*lexer, chan token) {
+func lex(input string) *lexer {
 	l := &lexer{
 		input:    input,
-		output:   make(chan token),
+		output:   make(chan token, 2),
 		line:     1,
 		col:      0,
 		indented: true,
+		state:    lexTopLevel,
 	}
-	go l.run()
-	return l, l.output
+	return l
 }
 
 func lexWords(input string) (*lexer, chan token) {
@@ -240,9 +242,25 @@ func lexWords(input string) (*lexer, chan token) {
 		col:       0,
 		indented:  true,
 		barewords: true,
+		state:     lexTopLevel,
 	}
-	go l.run()
 	return l, l.output
+}
+
+func (l *lexer) nextToken() token {
+	for {
+		select {
+		case t := <-l.output:
+			return t
+		default:
+			state := l.state(l)
+			if state == nil {
+				l.emit(tokenEnd)
+			} else {
+				l.state = state
+			}
+		}
+	}
 }
 
 func (l *lexer) run() {
