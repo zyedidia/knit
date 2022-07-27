@@ -14,8 +14,13 @@ const eof rune = '\000'
 const nonBareRunes = " \t\n\r\\=:#'\"$"
 
 // Return true if the string contains no whitespace.
-func noWhitespace(s string) bool {
-	return strings.IndexAny(s, " \t\r\n") < 0
+func onlyWhitespace(s string) bool {
+	for _, r := range s {
+		if !strings.ContainsRune(" \t\r\n", r) {
+			return false
+		}
+	}
+	return true
 }
 
 const (
@@ -126,7 +131,7 @@ func (l *lexer) next() rune {
 		l.indented = true
 	} else {
 		l.col += 1
-		if strings.IndexRune(" \t", c) < 0 {
+		if !strings.ContainsRune(" \t", c) {
 			l.indented = false
 		}
 	}
@@ -149,7 +154,7 @@ func (l *lexer) emit(typ tokenType) {
 
 // Consume the next rune if it is in the given string.
 func (l *lexer) accept(valid string) bool {
-	if strings.IndexRune(valid, l.peek()) >= 0 {
+	if strings.ContainsRune(valid, l.peek()) {
 		l.next()
 		return true
 	}
@@ -159,7 +164,7 @@ func (l *lexer) accept(valid string) bool {
 // Skip the next rune if it is in the valid string. Return true if it was
 // skipped.
 func (l *lexer) ignore(valid string) bool {
-	if strings.IndexRune(valid, l.peek()) >= 0 {
+	if strings.ContainsRune(valid, l.peek()) {
 		l.skip()
 		return true
 	}
@@ -169,7 +174,7 @@ func (l *lexer) ignore(valid string) bool {
 // Consume characters from the valid string until the next is not.
 func (l *lexer) acceptRun(valid string) int {
 	prevpos := l.pos
-	for strings.IndexRune(valid, l.peek()) >= 0 {
+	for strings.ContainsRune(valid, l.peek()) {
 		l.next()
 	}
 	return l.pos - prevpos
@@ -177,7 +182,7 @@ func (l *lexer) acceptRun(valid string) int {
 
 // Accept until something from the given string is encountered.
 func (l *lexer) acceptUntil(invalid string) {
-	for l.pos < len(l.input) && strings.IndexRune(invalid, l.peek()) < 0 {
+	for l.pos < len(l.input) && !strings.ContainsRune(invalid, l.peek()) {
 		l.next()
 	}
 
@@ -189,7 +194,7 @@ func (l *lexer) acceptUntil(invalid string) {
 // Accept until something from the given string is encountered, or the end of
 // the file
 func (l *lexer) acceptUntilOrEof(invalid string) {
-	for l.pos < len(l.input) && strings.IndexRune(invalid, l.peek()) < 0 {
+	for l.pos < len(l.input) && !strings.ContainsRune(invalid, l.peek()) {
 		l.next()
 	}
 }
@@ -197,7 +202,7 @@ func (l *lexer) acceptUntilOrEof(invalid string) {
 // Skip characters from the valid string until the next is not.
 func (l *lexer) skipRun(valid string) int {
 	prevpos := l.pos
-	for strings.IndexRune(valid, l.peek()) >= 0 {
+	for strings.ContainsRune(valid, l.peek()) {
 		l.skip()
 	}
 	return l.pos - prevpos
@@ -205,7 +210,7 @@ func (l *lexer) skipRun(valid string) int {
 
 // Skip until something from the given string is encountered.
 func (l *lexer) skipUntil(invalid string) {
-	for l.pos < len(l.input) && strings.IndexRune(invalid, l.peek()) < 0 {
+	for l.pos < len(l.input) && !strings.ContainsRune(invalid, l.peek()) {
 		l.skip()
 	}
 
@@ -365,7 +370,7 @@ func lexRecipe(l *lexer) lexerStateFun {
 		}
 	}
 
-	if !noWhitespace(l.input[l.start:l.pos]) {
+	if !onlyWhitespace(l.input[l.start:l.pos]) {
 		l.emit(tokenRecipe)
 	}
 	return lexTopLevel
