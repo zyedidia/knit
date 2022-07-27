@@ -1,0 +1,13 @@
+set cc gcc
+set cflags "-O2 -Wall"
+set debug true
+
+rules {
+hello.o: hello.c
+    %cc %cflags -c %in -o %out
+}
+
+rules {
+hello: hello.o
+    %cc %cflags ${if {$debug} { return -g }} %in -o %out
+}

@@ -53,6 +53,8 @@ func (typ tokenType) String() string {
 		return "[Assign]"
 	case tokenRecipe:
 		return "[Recipe]"
+	case tokenEnd:
+		return "[End]"
 	}
 	return "[InvalidToken]"
 }
@@ -64,12 +66,12 @@ type token struct {
 	col  int       // column on which the token began
 }
 
-func (t *token) String() string {
+func (t token) String() string {
+	val := t.val
 	if t.typ == tokenNewline {
-		return "\\n"
+		val = "\\n"
 	}
-
-	return t.val
+	return fmt.Sprintf("%d:%d:%s: '%s'", t.line, t.col, t.typ, val)
 }
 
 type lexer struct {

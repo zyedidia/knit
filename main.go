@@ -25,6 +25,51 @@ var rules = []Rule{
 }
 
 func main() {
+	mainTcl()
+}
+
+func mainTcl() {
+	m := NewMachine("rules")
+
+	flag.Parse()
+	args := flag.Args()
+	if len(args) == 0 {
+		log.Fatal("no input")
+	}
+
+	file := args[0]
+	data, err := os.ReadFile(file)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rules, err := m.Eval(string(data))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Print(rules)
+}
+
+func mainLex() {
+	flag.Parse()
+	args := flag.Args()
+	if len(args) == 0 {
+		log.Fatal("no input")
+	}
+
+	file := args[0]
+	data, err := os.ReadFile(file)
+	if err != nil {
+		log.Fatal(err)
+	}
+	l := lex(string(data))
+
+	for t := l.nextToken(); t.typ != tokenEnd; t = l.nextToken() {
+		fmt.Println(t)
+	}
+}
+
+func mainRules() {
 	flag.Parse()
 	args := flag.Args()
 
