@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	viz := flag.Bool("v", false, "output a dot graph")
 	makfile := flag.String("f", "makfile", "makfile to use")
 	flag.Parse()
 
@@ -41,6 +42,14 @@ func main() {
 	g, err := newGraph(rs, target)
 	if err != nil {
 		log.Fatalln(err)
+	}
+	if *viz {
+		f, err := os.Create(fmt.Sprintf("%s.dot", *makfile))
+		if err != nil {
+			log.Fatal(err)
+		}
+		g.visualize(f)
+		f.Close()
 	}
 	e := NewExecutor(8, m, func(msg string) {
 		fmt.Fprint(os.Stderr, msg)

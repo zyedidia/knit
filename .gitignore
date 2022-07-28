@@ -1,4 +1,5 @@
 mak
 todo.txt
 *.o
+*.dot
 hello
