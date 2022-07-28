@@ -150,6 +150,10 @@ func checkAmbiguity(n *node) error {
 }
 
 func (n *node) outOfDate() bool {
+	if n.rule.Attrs.Virtual {
+		return true
+	}
+
 	for _, p := range n.prereqs {
 		if p.t.After(n.t) {
 			return true
