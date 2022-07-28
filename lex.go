@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -58,11 +59,7 @@ type token struct {
 }
 
 func (t token) String() string {
-	val := t.val
-	if t.typ == tokenNewline {
-		val = "\\n"
-	}
-	return fmt.Sprintf("%d:%d:%s: '%s'", t.line, t.col, t.typ, val)
+	return strconv.Quote(t.val)
 }
 
 type lexer struct {

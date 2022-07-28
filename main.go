@@ -5,15 +5,21 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 )
 
 func main() {
 	makfile := flag.String("f", "makfile", "makfile to use")
+	ncpu := flag.Int("j", runtime.NumCPU(), "number of cores to use")
 	flag.Parse()
 
 	args := flag.Args()
 	if len(args) == 0 {
 		log.Fatal("no target provided")
+	}
+
+	if *ncpu <= 0 {
+		log.Fatal("you must enable at least 1 core!")
 	}
 
 	target := args[0]
@@ -42,7 +48,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	e := NewExecutor(8, m, func(msg string) {
+	e := NewExecutor(*ncpu, m, func(msg string) {
 		fmt.Fprint(os.Stderr, msg)
 	})
 	e.ExecNode(g.base)
