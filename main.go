@@ -5,16 +5,22 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 )
 
 func main() {
 	viz := flag.Bool("v", false, "output a dot graph")
 	makfile := flag.String("f", "makfile", "makfile to use")
+	ncpu := flag.Int("j", runtime.NumCPU(), "number of cores to use")
 	flag.Parse()
 
 	args := flag.Args()
 	if len(args) == 0 {
 		log.Fatal("no target provided")
+	}
+
+	if *ncpu <= 0 {
+		log.Fatal("you must enable at least 1 core!")
 	}
 
 	target := args[0]
@@ -51,7 +57,7 @@ func main() {
 		g.visualize(f)
 		f.Close()
 	}
-	e := NewExecutor(8, m, func(msg string) {
+	e := NewExecutor(*ncpu, m, func(msg string) {
 		fmt.Fprint(os.Stderr, msg)
 	})
 	e.ExecNode(g.base)

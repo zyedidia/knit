@@ -25,7 +25,7 @@ type ErrFns struct {
 // Pretty errors.
 func (p *parser) parseError(context string, expected string, found token) {
 	p.PrintErr(fmt.Sprintf("%s:%d: syntax error: ", p.name, found.line))
-	p.PrintErr(fmt.Sprintf("while %s, expected %s but found '%s'.\n",
+	p.PrintErr(fmt.Sprintf("while %s, expected %s but found %s.\n",
 		context, expected, found.String()))
 	p.Err("")
 }
