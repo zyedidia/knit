@@ -74,12 +74,14 @@ func (e *Executor) ExecNode(n *node) {
 	}
 	e.mlock.Unlock()
 	for _, c := range commands {
-		e.ExecCommand(c)
+		e.ExecCommand(c, n.rule.Attrs.Quiet)
 	}
 }
 
-func (e *Executor) ExecCommand(c command) {
-	fmt.Println(c.recipe)
+func (e *Executor) ExecCommand(c command, quiet bool) {
+	if !quiet {
+		fmt.Println(c.recipe)
+	}
 	cmd := exec.Command(c.name, c.args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
