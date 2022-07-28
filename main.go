@@ -42,8 +42,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	// TODO: single-threaded
-	e := NewExecutor(1, m, func(msg string) {
+	e := NewExecutor(8, m, func(msg string) {
 		fmt.Fprint(os.Stderr, msg)
 	})
 	e.ExecNode(g.base)

@@ -25,6 +25,12 @@ func NewExecutor(max int, m *Machine, e func(msg string)) *Executor {
 	}
 }
 
+type command struct {
+	name   string
+	args   []string
+	recipe string
+}
+
 func (e *Executor) ExecNode(n *node) {
 	var wg sync.WaitGroup
 	for _, p := range n.prereqs {
@@ -38,32 +44,39 @@ func (e *Executor) ExecNode(n *node) {
 	}
 	wg.Wait()
 
-	// TODO: not thread safe
+	e.mlock.Lock()
 	e.m.itp.SetVarRaw("in", gotcl.FromList(n.rule.Prereqs))
 	targets := make([]string, 0, len(n.rule.Targets))
 	for _, t := range n.rule.Targets {
 		targets = append(targets, t.str)
 	}
 	e.m.itp.SetVarRaw("out", gotcl.FromList(targets))
+	commands := make([]command, 0, len(targets))
 	for _, c := range n.rule.Recipe {
+		rvar, rexpr := expandFuncs(e.m.itp)
+		output, err := expand.ExpandSpecial(c, rvar, rexpr, '%')
+		if err != nil {
+			e.errfn(fmt.Sprintf("%v", err))
+		}
+		commands = append(commands, command{
+			name:   "sh",
+			args:   []string{"-c", output},
+			recipe: output,
+		})
+	}
+	e.mlock.Unlock()
+	for _, c := range commands {
 		e.ExecCommand(c)
 	}
 }
 
-func (e *Executor) ExecCommand(c string) {
-	e.mlock.Lock()
-	rvar, rexpr := expandFuncs(e.m.itp)
-	output, err := expand.ExpandSpecial(c, rvar, rexpr, '%')
-	e.mlock.Unlock()
-	if err != nil {
-		e.errfn(fmt.Sprintf("%v", err))
-	}
-	fmt.Println(output)
-	cmd := exec.Command("sh", "-c", output)
+func (e *Executor) ExecCommand(c command) {
+	fmt.Println(c.recipe)
+	cmd := exec.Command(c.name, c.args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		e.errfn(fmt.Sprintf("%v", err))
 	}

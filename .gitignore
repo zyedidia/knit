@@ -1,2 +1,4 @@
 mak
 todo.txt
+*.o
+hello
