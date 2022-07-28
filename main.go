@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"runtime"
 )
 
@@ -56,6 +57,9 @@ func main() {
 		}
 		g.visualize(f)
 		f.Close()
+		exec.Command("dot", "-Tpdf", fmt.Sprintf("%s.dot", *makfile), "-o", fmt.Sprintf("%s.pdf", *makfile)).Run()
+		exec.Command("open", fmt.Sprintf("%s.pdf", *makfile)).Run()
+		os.Exit(0)
 	}
 	e := NewExecutor(*ncpu, m, func(msg string) {
 		fmt.Fprint(os.Stderr, msg)
