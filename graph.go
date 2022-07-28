@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
 )
@@ -29,19 +30,20 @@ type node struct {
 	visited bool
 }
 
-func (n *node) updateTimestamp() error {
+func (n *node) updateTimestamp() {
 	info, err := os.Stat(n.name)
 	if err == nil {
 		n.t = info.ModTime()
 		n.exists = true
-		return nil
+		return
 	}
-	var perr os.PathError
-	if errors.Is(err, &perr) {
+	var perr *os.PathError
+	if errors.As(err, &perr) {
 		n.t = time.Unix(0, 0)
 		n.exists = false
+		return
 	}
-	return err
+	log.Fatal(fmt.Errorf("update-timestamp: %w", err))
 }
 
 func newGraph(rs *RuleSet, target string) (g *graph, err error) {
@@ -63,6 +65,7 @@ func (g *graph) newNode(target string) *node {
 	n := &node{
 		name: target,
 	}
+	n.updateTimestamp()
 	g.nodes[target] = n
 	return n
 }
@@ -100,10 +103,20 @@ func (g *graph) resolveTarget(target string, visits []int) (*node, error) {
 			}
 		}
 		if n.rule == nil {
-			return nil, fmt.Errorf("could not find target: %s", target)
+			n.rule = &Rule{
+				Targets: []Pattern{{
+					str: target,
+				}},
+			}
+			return n, nil
 		}
 	} else {
-		return nil, fmt.Errorf("could not find target: %s", target)
+		n.rule = &Rule{
+			Targets: []Pattern{{
+				str: target,
+			}},
+		}
+		return n, nil
 	}
 
 	visits[ni]++
@@ -134,4 +147,18 @@ func checkCycles(n *node) error {
 
 func checkAmbiguity(n *node) error {
 	return nil
+}
+
+func (n *node) outOfDate() bool {
+	for _, p := range n.prereqs {
+		if p.t.After(n.t) {
+			return true
+		}
+	}
+	for _, p := range n.prereqs {
+		if p.outOfDate() {
+			return true
+		}
+	}
+	return false
 }

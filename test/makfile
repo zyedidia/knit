@@ -3,9 +3,9 @@ set cflags "-O2 -Wall"
 
 rules {
 
-other.o:
+other.o: other.c
     $cc $cflags -c other.c -o %out
-hello.o:
+hello.o: hello.c
     $cc $cflags -c hello.c -o %out
 hello: hello.o other.o
     $cc $cflags %in -o %out

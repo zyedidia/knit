@@ -32,6 +32,10 @@ type command struct {
 }
 
 func (e *Executor) ExecNode(n *node) {
+	if !n.outOfDate() {
+		return
+	}
+
 	var wg sync.WaitGroup
 	for _, p := range n.prereqs {
 		wg.Add(1)
@@ -43,6 +47,10 @@ func (e *Executor) ExecNode(n *node) {
 		}(p)
 	}
 	wg.Wait()
+
+	if len(n.rule.Recipe) == 0 {
+		return
+	}
 
 	e.mlock.Lock()
 	e.m.itp.SetVarRaw("in", gotcl.FromList(n.rule.Prereqs))
