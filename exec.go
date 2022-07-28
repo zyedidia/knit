@@ -5,16 +5,22 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+
+	"github.com/zyedidia/gotcl"
+	"github.com/zyedidia/mak/expand"
 )
 
 type Executor struct {
-	Error     func(msg string)
+	errfn     func(msg string)
 	throttler chan struct{}
+	m         *Machine
+	mlock     sync.Mutex
 }
 
-func NewExecutor(max int, e func(msg string)) *Executor {
+func NewExecutor(max int, m *Machine, e func(msg string)) *Executor {
 	return &Executor{
-		Error:     e,
+		m:         m,
+		errfn:     e,
 		throttler: make(chan struct{}, max),
 	}
 }
@@ -32,19 +38,33 @@ func (e *Executor) ExecNode(n *node) {
 	}
 	wg.Wait()
 
+	// TODO: not thread safe
+	e.m.itp.SetVarRaw("in", gotcl.FromList(n.rule.Prereqs))
+	targets := make([]string, 0, len(n.rule.Targets))
+	for _, t := range n.rule.Targets {
+		targets = append(targets, t.str)
+	}
+	e.m.itp.SetVarRaw("out", gotcl.FromList(targets))
 	for _, c := range n.rule.Recipe {
 		e.ExecCommand(c)
 	}
 }
 
-func (e *Executor) ExecCommand(c Command) {
-	cmd := exec.Command(c.Name, c.Args...)
+func (e *Executor) ExecCommand(c string) {
+	e.mlock.Lock()
+	rvar, rexpr := expandFuncs(e.m.itp)
+	output, err := expand.ExpandSpecial(c, rvar, rexpr, '%')
+	e.mlock.Unlock()
+	if err != nil {
+		e.errfn(fmt.Sprintf("%v", err))
+	}
+	fmt.Println(output)
+	cmd := exec.Command("sh", "-c", output)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	fmt.Println(cmd)
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
-		e.Error(fmt.Sprintf("%v\n", err))
+		e.errfn(fmt.Sprintf("%v", err))
 	}
 }

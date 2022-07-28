@@ -21,19 +21,8 @@ func NewMachine(dsl string) *Machine {
 		if len(args) != 1 {
 			return itp.FailStr(fmt.Sprintf("%s: expected 1 argument, got %d", dsl, len(args)))
 		}
-		output, err := expand.Expand(args[0].AsString(), func(name string) (string, error) {
-			v, err := itp.GetVarRaw(name)
-			if err != nil {
-				return "", err
-			}
-			return v.AsString(), nil
-		}, func(expr string) (string, error) {
-			v, err := itp.EvalString(expr)
-			if err != nil {
-				return "", err
-			}
-			return v.AsString(), nil
-		})
+		rvar, rexpr := expandFuncs(itp)
+		output, err := expand.Expand(args[0].AsString(), rvar, rexpr)
 		if err != nil {
 			return itp.FailStr(fmt.Sprintf("%s: %s", dsl, err.Error()))
 		}
@@ -49,4 +38,20 @@ func (m *Machine) Eval(s string) (string, error) {
 		return "", err
 	}
 	return m.mak.String(), nil
+}
+
+func expandFuncs(itp *tcl.Interp) (func(string) (string, error), func(string) (string, error)) {
+	return func(name string) (string, error) {
+			v, err := itp.GetVarRaw(name)
+			if err != nil {
+				return "", err
+			}
+			return v.AsString(), nil
+		}, func(expr string) (string, error) {
+			v, err := itp.EvalString(expr)
+			if err != nil {
+				return "", err
+			}
+			return v.AsString(), nil
+		}
 }

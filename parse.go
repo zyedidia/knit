@@ -110,7 +110,6 @@ func parseTopLevel(p *parser, t token) parserStateFun {
 
 // Consumed one bare string ot the beginning of the line.
 func parseTarget(p *parser, t token) parserStateFun {
-	p.push(t)
 	switch t.typ {
 	case tokenWord:
 		p.push(t)
@@ -269,18 +268,15 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	return parseTopLevel
 }
 
-func parseCommands(recipe string) []Command {
+func parseCommands(recipe string) []string {
 	// TODO:
 	parts := strings.Split(recipe, "\n")
-	commands := make([]Command, 0, len(parts))
+	commands := make([]string, 0, len(parts))
 	for _, p := range parts {
 		if len(strings.TrimSpace(p)) == 0 {
 			continue
 		}
-		commands = append(commands, Command{
-			Name: "sh",
-			Args: []string{"-c", p},
-		})
+		commands = append(commands, p)
 	}
 	return commands
 }

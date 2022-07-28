@@ -88,7 +88,8 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 		}
 		if inExpr || (inVar && varInner(b)) {
 			exprbuf.WriteByte(b)
-		} else if inVar && !varInner(b) {
+		}
+		if inVar && (!varInner(b) || r.Buffered() == 0) {
 			inVar = false
 			value, err := rvar(exprbuf.String())
 			if err != nil {
@@ -96,9 +97,11 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 			}
 			buf.WriteString(value)
 			exprbuf.Reset()
-			r.UnreadByte()
-			pos--
-		} else {
+			if r.Buffered() != 0 {
+				r.UnreadByte()
+				pos--
+			}
+		} else if !inExpr && !inVar {
 			buf.WriteByte(b)
 		}
 	}

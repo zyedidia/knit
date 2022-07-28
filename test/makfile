@@ -4,9 +4,9 @@ set cflags "-O2 -Wall"
 rules {
 
 hello.o:
-    $cc $cflags -c hello.c -o hello.o
+    $cc $cflags -c hello.c -o %out
 hello: hello.o
-    $cc $cflags hello.o -o hello
+    $cc $cflags %in -o %out
 clean:V:
     rm -f hello.o hello
 

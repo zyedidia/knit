@@ -11,7 +11,7 @@ type Rule struct {
 	Targets []Pattern
 	Prereqs []string
 	Attrs   AttrSet
-	Recipe  []Command
+	Recipe  []string
 	Meta    bool
 }
 
@@ -22,11 +22,6 @@ func (r *Rule) Match(target string) bool {
 		}
 	}
 	return false
-}
-
-type Command struct {
-	Name string
-	Args []string
 }
 
 type AttrSet struct {
