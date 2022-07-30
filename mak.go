@@ -41,6 +41,14 @@ func main() {
 		}
 	}
 
+	for _, e := range os.Environ() {
+		env := strings.SplitN(e, "=", 2)
+		vars = append(vars, assign{
+			name:  env[0],
+			value: env[1],
+		})
+	}
+
 	data, err := os.ReadFile(*makfile)
 	if err != nil {
 		log.Fatal(err)
