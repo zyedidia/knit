@@ -56,5 +56,9 @@ func main() {
 	e := newExecutor(*ncpu, vm, func(msg string) {
 		fmt.Fprint(os.Stderr, msg)
 	})
-	e.execNode(g.base)
+	if !g.base.outOfDate() {
+		fmt.Printf("'%s' is up to date\n", target)
+	} else {
+		e.execNode(g.base)
+	}
 }

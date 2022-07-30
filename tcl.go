@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tcl "github.com/zyedidia/gotcl"
+	"github.com/zyedidia/mak/tcllib"
 )
 
 type tclvm struct {
@@ -23,6 +24,7 @@ func newTclvm(dsl string) *tclvm {
 		m.rules.WriteString(args[0].AsString())
 		return 0
 	})
+	tcllib.RegisterAll(m.itp)
 	return m
 }
 

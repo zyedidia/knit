@@ -1,5 +1,13 @@
 set cc gcc
-set cflags "-O2 -Wall"
+set debug 0
+
+set cflags -Wall
+
+if { $debug } {
+    set cflags "$cflags -Og -g -fsanitize=address,undefined"
+} else {
+    set cflags "$cflags -O2"
+}
 
 rules {
 
