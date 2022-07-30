@@ -7,6 +7,8 @@ import (
 	"os"
 	"runtime"
 	"strings"
+
+	"github.com/zyedidia/gotcl"
 )
 
 type assign struct {
@@ -45,6 +47,11 @@ func main() {
 	}
 
 	vm := newTclvm("rules")
+
+	for _, v := range vars {
+		vm.itp.SetVarRaw(v.name, gotcl.FromStr(v.value))
+	}
+
 	mak, err := vm.Eval(string(data))
 	if err != nil {
 		log.Fatal(err)

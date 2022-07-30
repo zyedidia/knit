@@ -1,5 +1,5 @@
 set cc gcc
-set debug 0
+setdef debug 0
 set src [glob *.c]
 
 set cflags -Wall
@@ -19,6 +19,6 @@ hello: hello.o other.o
 clean:V:
     rm -f hello.o other.o hello
 echo-%:VQ:
-    echo $stem
+    echo ${expr "\$$stem"}
 
 }
