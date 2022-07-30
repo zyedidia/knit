@@ -6,7 +6,13 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strings"
 )
+
+type assign struct {
+	name  string
+	value string
+}
 
 func main() {
 	makfile := flag.String("f", "makfile", "makfile to use")
@@ -14,15 +20,24 @@ func main() {
 	flag.Parse()
 
 	args := flag.Args()
-	if len(args) == 0 {
-		log.Fatal("no target provided")
-	}
 
 	if *ncpu <= 0 {
 		log.Fatal("you must enable at least 1 core!")
 	}
 
-	target := args[0]
+	var vars []assign
+	var targets []string
+	for _, a := range args {
+		before, after, found := strings.Cut(a, "=")
+		if found {
+			vars = append(vars, assign{
+				name:  before,
+				value: after,
+			})
+		} else {
+			targets = append(targets, a)
+		}
+	}
 
 	data, err := os.ReadFile(*makfile)
 	if err != nil {
@@ -49,16 +64,30 @@ func main() {
 		rvar:  rvar,
 		rexpr: rexpr,
 	})
-	g, err := newGraph(rs, target)
+
+	if len(targets) == 0 {
+		if len(rs.directRules) == 0 {
+			log.Fatal("no target given")
+		}
+		targets = rs.directRules[0].targets
+	}
+
+	rs.add(directRule{
+		baseRule: baseRule{
+			prereqs: targets,
+			attrs: attrSet{
+				virtual: true,
+			},
+		},
+		targets: []string{"__all"},
+	})
+
+	g, err := newGraph(rs, "__all")
 	if err != nil {
 		log.Fatalln(err)
 	}
 	e := newExecutor(*ncpu, vm, func(msg string) {
-		fmt.Fprint(os.Stderr, msg)
+		fmt.Fprintln(os.Stderr, msg)
 	})
-	if !g.base.outOfDate() {
-		fmt.Printf("'%s' is up to date\n", target)
-	} else {
-		e.execNode(g.base)
-	}
+	e.execNode(g.base)
 }

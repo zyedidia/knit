@@ -167,6 +167,7 @@ func (g *graph) resolveTarget(target string) (*node, error) {
 					}
 				}
 				rule.targets = []string{target}
+				n.meta = true
 			}
 		}
 	}
