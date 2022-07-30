@@ -3,15 +3,13 @@ set cflags "-O2 -Wall"
 
 rules {
 
-echo:VQ:
-    echo hello!
-other.o: other.c
-    $cc $cflags -c %in -o %out
-hello.o: hello.c
-    $cc $cflags -c %in -o %out
+%.o: %.c
+    $cc $cflags -c $in -o $out
 hello: hello.o other.o
-    $cc $cflags %in -o %out
+    $cc $cflags $in -o $out
 clean:V:
     rm -f hello.o other.o hello
+echo:VQ:
+    echo hello!
 
 }

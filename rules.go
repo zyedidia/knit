@@ -1,4 +1,4 @@
-package mak
+package main
 
 import (
 	"regexp"
@@ -21,27 +21,18 @@ type directRule struct {
 	targets []string
 }
 
-func (r *directRule) Match(target string) bool {
-	for _, t := range r.targets {
-		if t == target {
-			return true
-		}
-	}
-	return false
-}
-
 type metaRule struct {
 	baseRule
 	targets []pattern
 }
 
-func (r *metaRule) Match(target string) bool {
+func (r *metaRule) Match(target string) ([][]int, *pattern) {
 	for _, t := range r.targets {
-		if t.Match(target) {
-			return true
+		if s := t.rgx.FindAllStringSubmatchIndex(target, -1); s != nil {
+			return s, &t
 		}
 	}
-	return false
+	return nil, nil
 }
 
 type attrSet struct {
@@ -53,10 +44,6 @@ type attrSet struct {
 type pattern struct {
 	suffix bool
 	rgx    *regexp.Regexp
-}
-
-func (p *pattern) Match(s string) bool {
-	return p.rgx.MatchString(s)
 }
 
 type ruleSet struct {
