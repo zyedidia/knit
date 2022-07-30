@@ -1,9 +1,8 @@
-package main
+package mak
 
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"time"
@@ -13,13 +12,13 @@ const maxVisits = 1
 
 type graph struct {
 	base  *node
-	rs    *RuleSet
+	rs    *ruleSet
 	nodes map[string]*node
 }
 
 type node struct {
 	name    string
-	rule    *Rule
+	rule    *directRule
 	prereqs []*node
 
 	// modification time
@@ -28,6 +27,10 @@ type node struct {
 
 	// for cycle checking
 	visited bool
+
+	// for meta rules
+	stem    string
+	matches []string
 }
 
 func (n *node) updateTimestamp() {
@@ -46,7 +49,7 @@ func (n *node) updateTimestamp() {
 	log.Fatal(fmt.Errorf("update-timestamp: %w", err))
 }
 
-func newGraph(rs *RuleSet, target string) (g *graph, err error) {
+func newGraph(rs *ruleSet, target string) (g *graph, err error) {
 	g = &graph{
 		rs:    rs,
 		nodes: make(map[string]*node),
@@ -70,19 +73,6 @@ func (g *graph) newNode(target string) *node {
 	return n
 }
 
-// Print a graph in graphviz format.
-func (g *graph) visualize(w io.Writer) {
-	fmt.Fprintln(w, "digraph mk {")
-	for t, n := range g.nodes {
-		for i := range n.prereqs {
-			if n.prereqs[i] != nil {
-				fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", t, n.prereqs[i].name)
-			}
-		}
-	}
-	fmt.Fprintln(w, "}")
-}
-
 func (g *graph) resolveTarget(target string, visits []int) (*node, error) {
 	n, ok := g.nodes[target]
 	if ok {
@@ -90,36 +80,35 @@ func (g *graph) resolveTarget(target string, visits []int) (*node, error) {
 	}
 	n = g.newNode(target)
 
-	// figure out which rule to use for this node
-	var ni int
-	ris, ok := g.rs.Targets[target]
-	if ok {
+	var rule directRule
+	// do we have a direct rule available?
+	ris, ok := g.rs.targets[target]
+	if ok && len(ris) > 0 {
+		var prereqs []string
+		var recipe []string
 		for _, ri := range ris {
-			r := &g.rs.Rules[ri]
-			if visits[ri] < maxVisits && !r.Meta {
-				ni = ri
-				n.rule = r
-				break
+			r := &g.rs.directRules[ri]
+			if len(r.recipe) != 0 {
+				if len(recipe) != 0 {
+					log.Printf("warning: multiple recipes for target %s\n", target)
+				}
+				recipe = rule.recipe
 			}
+			rule = *r
+			prereqs = append(prereqs, r.prereqs...)
 		}
-		if n.rule == nil {
-			n.rule = &Rule{
-				Targets: []Pattern{{
-					str: target,
-				}},
-			}
-			return n, nil
-		}
+		rule.recipe = recipe
+		rule.prereqs = prereqs
+	} else if ok {
+		log.Fatalf("error: found target with no rules")
 	} else {
-		n.rule = &Rule{
-			Targets: []Pattern{{
-				str: target,
-			}},
+		for _, mr := range g.rs.metaRules {
+			if mr.Match(target) {
+				rule.baseRule = mr.baseRule
+			}
 		}
-		return n, nil
 	}
 
-	visits[ni]++
 	for _, p := range n.rule.Prereqs {
 		pn, err := g.resolveTarget(p, visits)
 		if err != nil {
@@ -127,42 +116,5 @@ func (g *graph) resolveTarget(target string, visits []int) (*node, error) {
 		}
 		n.prereqs = append(n.prereqs, pn)
 	}
-	visits[ni]--
 	return n, nil
-}
-
-func checkCycles(n *node) error {
-	if n.visited && len(n.prereqs) > 0 {
-		return fmt.Errorf("cycle detected at target %s", n.name)
-	}
-	n.visited = true
-	for _, p := range n.prereqs {
-		if err := checkCycles(p); err != nil {
-			return err
-		}
-	}
-	n.visited = false
-	return nil
-}
-
-func checkAmbiguity(n *node) error {
-	return nil
-}
-
-func (n *node) outOfDate() bool {
-	if n.rule.Attrs.Virtual {
-		return true
-	}
-
-	for _, p := range n.prereqs {
-		if p.t.After(n.t) {
-			return true
-		}
-	}
-	for _, p := range n.prereqs {
-		if p.outOfDate() {
-			return true
-		}
-	}
-	return false
 }

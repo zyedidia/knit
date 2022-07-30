@@ -1,4 +1,4 @@
-package main
+package mak
 
 import (
 	"regexp"
@@ -7,16 +7,36 @@ import (
 	"github.com/zyedidia/gotcl"
 )
 
-type Rule struct {
-	Targets []Pattern
-	Prereqs []string
-	Attrs   AttrSet
-	Recipe  []string
-	Meta    bool
+type rule interface {
 }
 
-func (r *Rule) Match(target string) bool {
-	for _, t := range r.Targets {
+type baseRule struct {
+	prereqs []string
+	attrs   attrSet
+	recipe  []string
+}
+
+type directRule struct {
+	baseRule
+	targets []string
+}
+
+func (r *directRule) Match(target string) bool {
+	for _, t := range r.targets {
+		if t == target {
+			return true
+		}
+	}
+	return false
+}
+
+type metaRule struct {
+	baseRule
+	targets []pattern
+}
+
+func (r *metaRule) Match(target string) bool {
+	for _, t := range r.targets {
 		if t.Match(target) {
 			return true
 		}
@@ -24,63 +44,58 @@ func (r *Rule) Match(target string) bool {
 	return false
 }
 
-type AttrSet struct {
-	Regex   bool
-	Virtual bool
-	Quiet   bool
+type attrSet struct {
+	regex   bool
+	virtual bool
+	quiet   bool
 }
 
-type Pattern struct {
+type pattern struct {
 	suffix bool
-	str    string
 	rgx    *regexp.Regexp
 }
 
-func (p *Pattern) Match(s string) bool {
-	if p.rgx == nil {
-		return p.str == s
-	}
+func (p *pattern) Match(s string) bool {
 	return p.rgx.MatchString(s)
 }
 
-type RuleSet struct {
-	Vars  map[string]*gotcl.TclObj
-	Rules []Rule
-	// maps target names into Rules
+type ruleSet struct {
+	vars        map[string]*gotcl.TclObj
+	metaRules   []metaRule
+	directRules []directRule
+	// maps target names into directRules
 	// a target may have multiple rules implementing it
 	// a rule may have multiple targets pointing to it
-	Targets map[string][]int
+	targets map[string][]int
 }
 
-func newRuleSet(rules ...Rule) *RuleSet {
-	rs := &RuleSet{
-		Vars:    make(map[string]*gotcl.TclObj),
-		Rules:   make([]Rule, 0, len(rules)),
-		Targets: make(map[string][]int),
+func newRuleSet() *ruleSet {
+	return &ruleSet{
+		vars:        make(map[string]*gotcl.TclObj),
+		metaRules:   make([]metaRule, 0),
+		directRules: make([]directRule, 0),
+		targets:     make(map[string][]int),
 	}
-	for _, r := range rules {
-		rs.add(r)
-	}
-	return rs
 }
 
-func (rs *RuleSet) add(r Rule) {
-	rs.Rules = append(rs.Rules, r)
-	k := len(rs.Rules) - 1
-	for _, p := range r.Targets {
-		if p.rgx == nil {
-			rs.Targets[p.str] = append(rs.Targets[p.str], k)
+func (rs *ruleSet) add(r rule) {
+	switch r := r.(type) {
+	case directRule:
+		rs.directRules = append(rs.directRules, r)
+		k := len(rs.directRules) - 1
+		for _, t := range r.targets {
+			rs.targets[t] = append(rs.targets[t], k)
 		}
+	case metaRule:
+		rs.metaRules = append(rs.metaRules, r)
 	}
 }
 
-// Error parsing an attribute
 type attribError struct {
 	found rune
 }
 
-// Read attributes for an array of strings, updating the rule.
-func (r *Rule) parseAttribs(inputs []string) *attribError {
+func (r *baseRule) parseAttribs(inputs []string) *attribError {
 	for i := 0; i < len(inputs); i++ {
 		input := inputs[i]
 		pos := 0
@@ -88,11 +103,11 @@ func (r *Rule) parseAttribs(inputs []string) *attribError {
 			c, w := utf8.DecodeRuneInString(input[pos:])
 			switch c {
 			case 'Q':
-				r.Attrs.Quiet = true
+				r.attrs.quiet = true
 			case 'R':
-				r.Attrs.Regex = true
+				r.attrs.regex = true
 			case 'V':
-				r.Attrs.Virtual = true
+				r.attrs.virtual = true
 			default:
 				return &attribError{c}
 			}
