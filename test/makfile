@@ -1,9 +1,8 @@
 set src [glob *.c]
 set obj [extrepl $src .c .o]
 set prog hello
-set date [shell date]
 
-set cc gcc
+setdef cc gcc
 setdef debug 0
 set cflags -Wall
 
@@ -13,14 +12,16 @@ if { $debug } {
     set cflags "$cflags -O2"
 }
 
+set date [shell date]
+
 rules {
 
 %.o: %.c
     $cc $cflags -c $in -o $out
-$prog: other.o hello.o
+$prog: $obj
     $cc $cflags $in -o $out
 clean:V:
-    rm -f $obj hello
+    rm -f $obj $prog
 echo-%:VQ:
     echo ${expr "\$$stem"}
 

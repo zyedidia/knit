@@ -12,7 +12,7 @@ type tokenType int
 const eof rune = '\000'
 
 // Rune's that cannot be part of a bare (unquoted) string.
-const nonBareRunes = " \t\n\r\\=:#'\"$"
+const nonBareRunes = " \t\n\r\\:#'\"$"
 
 // Return true if the string contains no whitespace.
 func onlyWhitespace(s string) bool {

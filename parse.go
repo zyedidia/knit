@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -72,8 +74,38 @@ func parse(input string, path string, env map[string][]string, errfns errFns, ex
 	return rules
 }
 
+func expandInput(s string, expands expandFns) (string, error) {
+	s = strings.Replace(s, "\\\n", "", -1)
+	b := bufio.NewReader(strings.NewReader(s))
+	buf := &bytes.Buffer{}
+	remaining := len(s)
+	for remaining > 0 {
+		l, err := b.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return "", err
+		}
+		remaining -= len(l)
+		r, size := utf8.DecodeRuneInString(l)
+		if size == 0 || strings.ContainsRune(" \t\r\n", r) {
+			buf.WriteString(l)
+			continue
+		}
+		e, err := expand.Expand(l, expands.rvar, expands.rexpr)
+		if err != nil {
+			return "", err
+		}
+		buf.WriteString(e)
+	}
+	return buf.String(), nil
+}
+
 // Parse a mkfile inserting rules into a given ruleSet.
 func parseInto(input string, rules *ruleSet, path string, errfns errFns, expands expandFns) {
+	input, err := expandInput(input, expands)
+	if err != nil {
+		errfns.errFn(fmt.Sprintf("%v", err))
+		return
+	}
 	l := lex(input)
 	p := &parser{
 		l:        l,
@@ -201,19 +233,11 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	for ; j < len(p.tokenbuf) && p.tokenbuf[j].typ != tokenColon; j++ {
 	}
 
-	expd := func(s string) string {
-		e, err := expand.Expand(s, p.expands.rvar, p.expands.rexpr)
-		if err != nil {
-			p.errFn(fmt.Sprintf("error while expanding %s: %v", s, err))
-		}
-		return e
-	}
-
 	// rule has attributes
 	if j < len(p.tokenbuf) {
 		attribs := make([]string, 0)
 		for k := i + 1; k < j; k++ {
-			attribs = append(attribs, expd(p.tokenbuf[k].val))
+			attribs = append(attribs, p.tokenbuf[k].val)
 		}
 		err := base.parseAttribs(attribs)
 		if err != nil {
@@ -232,7 +256,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	direct := make([]string, 0)
 	if !meta {
 		for k := 0; k < i; k++ {
-			str := expd(p.tokenbuf[k].val)
+			str := p.tokenbuf[k].val
 			if strings.ContainsRune(str, '%') {
 				meta = true
 				break
@@ -245,7 +269,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	patterns := make([]pattern, 0)
 	if meta {
 		for k := 0; k < i; k++ {
-			str := expd(p.tokenbuf[k].val)
+			str := p.tokenbuf[k].val
 			if base.attrs.regex {
 				rpat, err := regexp.Compile("^" + str + "$")
 				if err != nil {
@@ -284,7 +308,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	// prereqs
 	base.prereqs = make([]string, 0)
 	for k := j + 1; k < len(p.tokenbuf); k++ {
-		base.prereqs = append(base.prereqs, expd(p.tokenbuf[k].val))
+		base.prereqs = append(base.prereqs, p.tokenbuf[k].val)
 	}
 
 	if t.typ == tokenRecipe {

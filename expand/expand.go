@@ -50,7 +50,9 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 				break
 			}
 			p, err := r.Peek(1)
-			if err != nil && err != io.EOF {
+			if err == io.EOF {
+				break
+			} else if err != nil {
 				return "", err
 			}
 			if p[0] == special {
@@ -88,18 +90,21 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 		}
 		if inExpr || (inVar && varInner(b)) {
 			exprbuf.WriteByte(b)
-		}
-		if inVar && (!varInner(b) || r.Buffered() == 0) {
-			inVar = false
-			value, err := rvar(exprbuf.String())
-			if err != nil {
-				return "", err
-			}
-			buf.WriteString(value)
-			exprbuf.Reset()
-			if r.Buffered() != 0 {
-				r.UnreadByte()
-				pos--
+
+			if inVar {
+				p, err := r.Peek(1)
+				if err != nil && err != io.EOF {
+					return "", err
+				}
+				if len(p) == 0 || !varInner(p[0]) {
+					inVar = false
+					value, err := rvar(exprbuf.String())
+					if err != nil {
+						return "", err
+					}
+					buf.WriteString(value)
+					exprbuf.Reset()
+				}
 			}
 		} else if !inExpr && !inVar {
 			buf.WriteByte(b)
