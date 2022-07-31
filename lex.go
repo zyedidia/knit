@@ -224,17 +224,17 @@ func lex(input string) *lexer {
 	return l
 }
 
-func lexWords(input string) (*lexer, chan token) {
+func lexWords(input string) *lexer {
 	l := &lexer{
 		input:     input,
-		output:    make(chan token),
+		output:    make(chan token, 2),
 		line:      1,
 		col:       0,
 		indented:  true,
 		barewords: true,
 		state:     lexTopLevel,
 	}
-	return l, l.output
+	return l
 }
 
 func (l *lexer) nextToken() token {

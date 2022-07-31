@@ -1,6 +1,7 @@
 package tcllib
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"unicode/utf8"
@@ -13,6 +14,74 @@ var errInterface reflect.Type
 func init() {
 	errInterface = reflect.TypeOf((*error)(nil)).Elem()
 }
+
+func makeSlice[T any](t reflect.Type, arg *tcl.TclObj) ([]T, error) {
+	args, err := arg.AsList()
+	vals := make([]T, len(args))
+	if err != nil {
+		return nil, err
+	}
+	elemt := t.Elem()
+	for i := 0; i < len(vals); i++ {
+		v, err := tclToGo(elemt, args[i])
+		if err != nil {
+			return nil, err
+		}
+		vals[i] = v.(T)
+	}
+	return vals, nil
+}
+
+func tclToGo(t reflect.Type, arg *tcl.TclObj) (any, error) {
+	switch t.Kind() {
+	case reflect.String:
+		return arg.AsString(), nil
+	case reflect.Int:
+		num, err := arg.AsInt()
+		if err != nil {
+			return nil, fmt.Errorf("could not parse int: %w", err)
+		}
+		return num, nil
+	case reflect.Int32: // rune
+		// ignore size
+		r, _ := utf8.DecodeRuneInString(arg.AsString())
+		return r, nil
+	case reflect.Slice:
+		switch t.Elem().Kind() {
+		case reflect.String:
+			return makeSlice[string](t, arg)
+		case reflect.Int:
+			return makeSlice[int](t, arg)
+		}
+	}
+	return nil, fmt.Errorf("type %v cannot be converted", t.Kind())
+}
+
+func goToTcl(v reflect.Value) (*tcl.TclObj, error) {
+	switch v.Kind() {
+	case reflect.Interface:
+		if v.Type().Implements(errInterface) {
+			if v.IsNil() {
+				return tcl.FromInt(0), nil
+			} else {
+				return nil, errors.New(fmt.Sprintf("%v", v))
+			}
+		}
+	case reflect.Int:
+		return tcl.FromInt(int(v.Int())), nil
+	case reflect.String:
+		return tcl.FromStr(v.String()), nil
+	case reflect.Slice:
+		switch v.Type().Elem().Kind() {
+		case reflect.Int:
+			return tcl.FromIntList(v.Interface().([]int)), nil
+		case reflect.String:
+			return tcl.FromList(v.Interface().([]string)), nil
+		}
+	}
+	return nil, fmt.Errorf("cannot convert %v to tcl", v.Kind())
+}
+
 func register(interp *tcl.Interp, name string, fn interface{}) {
 	v := reflect.ValueOf(fn)
 	t := v.Type()
@@ -25,64 +94,29 @@ func register(interp *tcl.Interp, name string, fn interface{}) {
 		argv := make([]reflect.Value, 0, len(args))
 
 		for i := range args {
-			switch t.In(i).Kind() {
-			case reflect.String:
-				argv = append(argv, reflect.ValueOf(args[i].AsString()))
-			case reflect.Int:
-				num, err := args[i].AsInt()
-				if err != nil {
-					return itp.Fail(fmt.Errorf("expected 'int' for argument %d (parse error %w)", i+1, err))
-				}
-				argv = append(argv, reflect.ValueOf(num))
-			case reflect.Int32: // rune
-				// ignore size
-				r, _ := utf8.DecodeRuneInString(args[i].AsString())
-				argv = append(argv, reflect.ValueOf(r))
+			val, err := tclToGo(t.In(i), args[i])
+			if err != nil {
+				return itp.Fail(err)
 			}
+			argv = append(argv, reflect.ValueOf(val))
 		}
 		ret := v.Call(argv)
 
-		if len(ret) == 0 {
+		switch len(ret) {
+		case 0:
 			return 0
-		} else if len(ret) == 1 {
-			switch ret[0].Kind() {
-			case reflect.Interface:
-				if ret[0].Type().Implements(errInterface) && !ret[0].IsNil() {
-					return itp.FailStr(fmt.Sprintf("%v", ret[0]))
-				}
-				return itp.Return(tcl.FromStr(""))
-			case reflect.Int:
-				return itp.Return(tcl.FromInt(int(ret[0].Int())))
-			case reflect.String:
-				return itp.Return(tcl.FromStr(ret[0].String()))
-			case reflect.Slice:
-				switch ret[0].Type().Elem().Kind() {
-				case reflect.Int:
-					return itp.Return(tcl.FromIntList(ret[0].Interface().([]int)))
-				case reflect.String:
-					return itp.Return(tcl.FromList(ret[0].Interface().([]string)))
-				}
+		case 2:
+			_, err := goToTcl(ret[1])
+			if err != nil {
+				return itp.Fail(err)
 			}
-		} else if len(ret) == 2 {
-			switch ret[1].Kind() {
-			case reflect.Interface:
-				if ret[1].Type().Implements(errInterface) && !ret[1].IsNil() {
-					return itp.FailStr(fmt.Sprintf("%v", ret[1]))
-				}
+			fallthrough
+		case 1:
+			val, err := goToTcl(ret[0])
+			if err != nil {
+				return itp.Fail(err)
 			}
-			switch ret[0].Kind() {
-			case reflect.Int:
-				return itp.Return(tcl.FromInt(int(ret[0].Int())))
-			case reflect.String:
-				return itp.Return(tcl.FromStr(ret[0].String()))
-			case reflect.Slice:
-				switch ret[0].Type().Elem().Kind() {
-				case reflect.Int:
-					return itp.Return(tcl.FromIntList(ret[0].Interface().([]int)))
-				case reflect.String:
-					return itp.Return(tcl.FromList(ret[0].Interface().([]string)))
-				}
-			}
+			return itp.Return(val)
 		}
 		return 0
 	}
