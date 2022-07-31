@@ -91,7 +91,8 @@ func newGraph(rs *ruleSet, target string) (g *graph, err error) {
 		rs:    rs,
 		nodes: make(map[string]*node),
 	}
-	g.base, err = g.resolveTarget(target)
+	visits := make([]int, len(rs.metaRules))
+	g.base, err = g.resolveTarget(target, visits)
 	if err != nil {
 		return g, err
 	}
@@ -108,7 +109,7 @@ func (g *graph) newNode(target string) *node {
 	return n
 }
 
-func (g *graph) resolveTarget(target string) (*node, error) {
+func (g *graph) resolveTarget(target string, visits []int) (*node, error) {
 	// do we have a node that builds target already
 	n, ok := g.nodes[target]
 	if ok {
@@ -121,6 +122,7 @@ func (g *graph) resolveTarget(target string) (*node, error) {
 	n = g.newNode(target)
 
 	var rule directRule
+	var ri = -1
 	// do we have a direct rule available?
 	ris, ok := g.rs.targets[target]
 	if ok && len(ris) > 0 {
@@ -142,8 +144,11 @@ func (g *graph) resolveTarget(target string) (*node, error) {
 	} else if ok {
 		log.Fatalf("error: found target with no rules")
 	}
-	if len(rule.recipe) == 0 {
-		for _, mr := range g.rs.metaRules {
+	if len(rule.recipe) == 0 && !rule.attrs.virtual {
+		for mi, mr := range g.rs.metaRules {
+			if visits[mi] >= maxVisits {
+				continue
+			}
 			if sub, pat := mr.Match(target); sub != nil {
 				rule.attrs = mr.attrs
 				rule.recipe = mr.recipe
@@ -168,6 +173,7 @@ func (g *graph) resolveTarget(target string) (*node, error) {
 				}
 				rule.targets = []string{target}
 				n.meta = true
+				ri = mi
 			}
 		}
 	}
@@ -182,12 +188,18 @@ func (g *graph) resolveTarget(target string) (*node, error) {
 		g.nodes[t] = n
 	}
 
+	if ri != -1 {
+		visits[ri]++
+	}
 	for _, p := range n.rule.prereqs {
-		pn, err := g.resolveTarget(p)
+		pn, err := g.resolveTarget(p, visits)
 		if err != nil {
 			return nil, err
 		}
 		n.prereqs = append(n.prereqs, pn)
+	}
+	if ri != -1 {
+		visits[ri]--
 	}
 	return n, nil
 }
