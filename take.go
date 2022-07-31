@@ -17,7 +17,7 @@ type assign struct {
 }
 
 func main() {
-	makfile := flag.String("f", "makfile", "makfile to use")
+	takefile := flag.String("f", "takefile", "takefile to use")
 	ncpu := flag.Int("j", runtime.NumCPU(), "number of cores to use")
 	flag.Parse()
 
@@ -49,9 +49,12 @@ func main() {
 		})
 	}
 
-	data, err := os.ReadFile(*makfile)
+	data, err := os.ReadFile(*takefile)
 	if err != nil {
-		log.Fatal(err)
+		data, err = os.ReadFile(strings.Title(*takefile))
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	vm := newTclvm("rules")
@@ -60,14 +63,14 @@ func main() {
 		vm.itp.SetVarRaw(v.name, gotcl.FromStr(v.value))
 	}
 
-	mak, err := vm.Eval(string(data))
+	take, err := vm.Eval(string(data))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	rvar, rexpr := expandFuncs(vm.itp)
 
-	rs := parse(mak, *makfile, map[string][]string{}, errFns{
+	rs := parse(take, *takefile, map[string][]string{}, errFns{
 		printErr: func(e string) {
 			fmt.Fprintln(os.Stderr, e)
 		},

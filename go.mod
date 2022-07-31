@@ -1,4 +1,4 @@
-module github.com/zyedidia/mak
+module github.com/zyedidia/take
 
 go 1.18
 

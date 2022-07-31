@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	tcl "github.com/zyedidia/gotcl"
-	"github.com/zyedidia/mak/tcllib"
+	"github.com/zyedidia/take/tcllib"
 )
 
 type tclvm struct {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/zyedidia/mak/expand"
+	"github.com/zyedidia/take/expand"
 )
 
 type parser struct {

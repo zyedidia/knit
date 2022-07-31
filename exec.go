@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/zyedidia/gotcl"
-	"github.com/zyedidia/mak/expand"
+	"github.com/zyedidia/take/expand"
 )
 
 type executor struct {
