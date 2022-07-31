@@ -39,6 +39,7 @@ type attrSet struct {
 	regex   bool
 	virtual bool
 	quiet   bool
+	noMeta  bool // rule cannot be matched by meta rules
 }
 
 type pattern struct {
@@ -95,6 +96,8 @@ func (r *baseRule) parseAttribs(inputs []string) *attribError {
 				r.attrs.regex = true
 			case 'V':
 				r.attrs.virtual = true
+			case 'M':
+				r.attrs.noMeta = true
 			default:
 				return &attribError{c}
 			}

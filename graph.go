@@ -144,7 +144,7 @@ func (g *graph) resolveTarget(target string, visits []int) (*node, error) {
 	} else if ok {
 		log.Fatalf("error: found target with no rules")
 	}
-	if len(rule.recipe) == 0 && !rule.attrs.virtual {
+	if len(rule.recipe) == 0 && !rule.attrs.noMeta {
 		for mi, mr := range g.rs.metaRules {
 			if visits[mi] >= maxVisits {
 				continue

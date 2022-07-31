@@ -92,6 +92,7 @@ func main() {
 			prereqs: targets,
 			attrs: attrSet{
 				virtual: true,
+				noMeta:  true,
 			},
 		},
 		targets: []string{"__all"},
