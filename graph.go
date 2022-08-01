@@ -8,6 +8,9 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/zyedidia/gotcl"
+	"github.com/zyedidia/take/expand"
 )
 
 const maxVisits = 1
@@ -37,6 +40,7 @@ type node struct {
 	outputs map[string]*file
 	rule    *directRule
 	prereqs []*node
+	recipe  []string
 
 	// for cycle checking
 	visited bool
@@ -45,9 +49,6 @@ type node struct {
 	meta    bool
 	stem    string
 	matches []string
-
-	memoized  bool
-	outofdate bool
 }
 
 type file struct {
@@ -228,30 +229,50 @@ func (n *node) time() time.Time {
 	return t
 }
 
-func (n *node) outOfDate() bool {
+func (n *node) outOfDate(d *db, itp *gotcl.Interp) bool {
+	if n.recipe == nil {
+		err := n.expandRecipe(itp)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	if n.rule.attrs.virtual {
 		return true
 	}
 
-	if n.memoized {
-		return n.outofdate
-	}
-
 	for _, p := range n.prereqs {
 		if p.time().After(n.time()) {
-			return n.setOutOfDate(true)
+			return true
 		}
 	}
+
+	if !d.has(n.rule.targets, n.recipe) {
+		return true
+	}
+
 	for _, p := range n.prereqs {
-		if p.outOfDate() {
-			return n.setOutOfDate(true)
+		if p.outOfDate(d, itp) {
+			return true
 		}
 	}
-	return n.setOutOfDate(false)
+	return false
 }
 
-func (n *node) setOutOfDate(b bool) bool {
-	n.outofdate = b
-	n.memoized = true
-	return b
+func (n *node) expandRecipe(itp *gotcl.Interp) error {
+	itp.SetVarRaw("in", gotcl.FromList(n.rule.prereqs))
+	itp.SetVarRaw("out", gotcl.FromList(n.rule.targets))
+	if n.meta {
+		itp.SetVarRaw("stem", gotcl.FromStr(n.stem))
+		itp.SetVarRaw("matches", gotcl.FromList(n.matches))
+	}
+	n.recipe = make([]string, 0, len(n.rule.recipe))
+	for _, c := range n.rule.recipe {
+		rvar, rexpr := expandFuncs(itp)
+		output, err := expand.Expand(c, rvar, rexpr)
+		if err != nil {
+			return err
+		}
+		n.recipe = append(n.recipe, output)
+	}
+	return nil
 }

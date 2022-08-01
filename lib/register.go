@@ -1,4 +1,4 @@
-package tcllib
+package lib
 
 import (
 	"errors"

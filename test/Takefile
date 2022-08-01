@@ -1,15 +1,21 @@
-set src [glob *.c]
-set obj [extrepl $src .c .o]
+set obj [extrepl [glob *.c] .c .o]
 set prog hello
 
 setdef cc gcc
 setdef debug 0
 set cflags -Wall
 
+setdef ldd 0
+set ldflags ""
+
 if { $debug } {
     set cflags "$cflags -Og -g -fsanitize=address,undefined"
 } else {
     set cflags "$cflags -O2"
+}
+
+if { $ldd } {
+    set ldflags "-fuse-ld=lld"
 }
 
 set date [shell date]
@@ -19,7 +25,7 @@ rules {
 %.o: %.c
     $cc $cflags -c $in -o $out
 $prog: $obj
-    $cc $cflags $in -o $out
+    $cc $ldflags $cflags $in -o $out
 clean:V:
     rm -f $obj $prog
 echo-%:VQ:

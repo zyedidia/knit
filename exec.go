@@ -5,9 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"sync"
-
-	"github.com/zyedidia/gotcl"
-	"github.com/zyedidia/take/expand"
 )
 
 type executor struct {
@@ -15,13 +12,26 @@ type executor struct {
 	throttler chan struct{}
 	vm        *tclvm
 	mlock     sync.Mutex
+	db        *db
 }
 
 func newExecutor(max int, vm *tclvm, e func(msg string)) *executor {
+	var d *db
+	f, err := os.Open(".take")
+	if err != nil {
+		d = newDb()
+	} else {
+		d, err = newDbFromReader(f)
+		if err != nil {
+			d = newDb()
+		}
+		f.Close()
+	}
 	return &executor{
 		vm:        vm,
 		errfn:     e,
 		throttler: make(chan struct{}, max),
+		db:        d,
 	}
 }
 
@@ -32,9 +42,13 @@ type command struct {
 }
 
 func (e *executor) execNode(n *node) {
-	if !n.outOfDate() {
+	e.mlock.Lock()
+	if !n.outOfDate(e.db, e.vm.itp) {
+		e.mlock.Unlock()
 		return
 	}
+	e.db.insert(n.rule.targets, n.recipe)
+	e.mlock.Unlock()
 
 	var wg sync.WaitGroup
 	for _, p := range n.prereqs {
@@ -52,27 +66,15 @@ func (e *executor) execNode(n *node) {
 		return
 	}
 
-	e.mlock.Lock()
-	e.vm.itp.SetVarRaw("in", gotcl.FromList(n.rule.prereqs))
-	e.vm.itp.SetVarRaw("out", gotcl.FromList(n.rule.targets))
-	if n.meta {
-		e.vm.itp.SetVarRaw("stem", gotcl.FromStr(n.stem))
-		e.vm.itp.SetVarRaw("matches", gotcl.FromList(n.matches))
-	}
-	commands := make([]command, 0, len(n.rule.recipe))
-	for _, c := range n.rule.recipe {
-		rvar, rexpr := expandFuncs(e.vm.itp)
-		output, err := expand.Expand(c, rvar, rexpr)
-		if err != nil {
-			e.errfn(fmt.Sprintf("%v", err))
-		}
+	commands := make([]command, 0, len(n.recipe))
+	for _, cmd := range n.recipe {
 		commands = append(commands, command{
 			name:   "sh",
-			args:   []string{"-c", output},
-			recipe: output,
+			args:   []string{"-c", cmd},
+			recipe: cmd,
 		})
 	}
-	e.mlock.Unlock()
+
 	for _, c := range commands {
 		e.execCmd(c, n.rule.attrs.quiet)
 	}
@@ -90,4 +92,13 @@ func (e *executor) execCmd(c command, quiet bool) {
 	if err != nil {
 		e.errfn(fmt.Sprintf("%v", err))
 	}
+}
+
+func (e *executor) saveDb() error {
+	f, err := os.Create(".take")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return e.db.ToWriter(f)
 }

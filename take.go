@@ -109,4 +109,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, msg)
 	})
 	e.execNode(g.base)
+	err = e.saveDb()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
