@@ -5,7 +5,7 @@ setdef cc gcc
 setdef debug 0
 set cflags -Wall
 
-setdef ldd 0
+setdef lld 0
 set ldflags ""
 
 if { $debug } {
@@ -14,7 +14,7 @@ if { $debug } {
     set cflags "$cflags -O2"
 }
 
-if { $ldd } {
+if { $lld } {
     set ldflags "-fuse-ld=lld"
 }
 
