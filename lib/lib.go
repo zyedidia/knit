@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	_ "embed"
 
@@ -19,6 +20,7 @@ func RegisterAll(interp *tcl.Interp) {
 	register(interp, "repl", ReplaceList)
 	register(interp, "extrepl", ExtReplace)
 	register(interp, "shell", Shell)
+	register(interp, "trim", strings.TrimSpace)
 
 	_, err := interp.EvalString(lib)
 	if err != nil {

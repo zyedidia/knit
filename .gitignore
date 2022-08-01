@@ -5,3 +5,5 @@ todo.txt
 hello
 *.pdf
 .take
+
+tools/version/version

@@ -17,12 +17,12 @@ because Take can see that the recipe depends on the variable.
   `$^`, `$@`, and `$*`.
 * Take tracks recipe changes, so if you update a variable (in the Takefile or
   at the command-line), any dependent rules will be automatically rebuilt.
-* Take uses Tcl for customizing, rather than the Make custom language.
+* Take uses Tcl for customization, rather than the Make custom language.
 * Make supports `%` meta-rules. Take supports `%` meta-rules and regular
   expression meta-rules.
 * Take builds using all cores by default.
 * Take's implementation is small: roughly 1,500 LOC (4,500 including the Tcl
-  interpreter).
+  interpreter). Take is written in Go and can be easily built for many systems.
 
 # Installation
 
@@ -59,3 +59,5 @@ clean:V:
 
 }
 ```
+
+See also this repository's Takefile for an example of regular expression rules.

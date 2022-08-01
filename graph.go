@@ -154,8 +154,8 @@ func (g *graph) resolveTarget(target string, visits []int) (*node, error) {
 				rule.attrs = mr.attrs
 				rule.recipe = mr.recipe
 
-				if pat.suffix && len(sub) == 1 {
-					n.stem = string(target[sub[0][2]:sub[0][3]])
+				if pat.suffix && len(sub) == 4 {
+					n.stem = string(target[sub[2]:sub[3]])
 					for _, p := range mr.prereqs {
 						idx := strings.IndexRune(p, '%')
 						if idx >= 0 {
@@ -164,11 +164,12 @@ func (g *graph) resolveTarget(target string, visits []int) (*node, error) {
 						rule.prereqs = append(rule.prereqs, p)
 					}
 				} else {
+					for i := 0; i < len(sub); i += 2 {
+						n.matches = append(n.matches, string(target[sub[i]:sub[i+1]]))
+					}
 					for _, p := range mr.prereqs {
 						expanded := []byte{}
-						for _, match := range sub {
-							expanded = pat.rgx.ExpandString(expanded, p, target, match)
-						}
+						expanded = pat.rgx.ExpandString(expanded, p, target, sub)
 						rule.prereqs = append(rule.prereqs, string(expanded))
 					}
 				}
@@ -263,7 +264,9 @@ func (n *node) expandRecipe(itp *gotcl.Interp) error {
 	itp.SetVarRaw("out", gotcl.FromList(n.rule.targets))
 	if n.meta {
 		itp.SetVarRaw("stem", gotcl.FromStr(n.stem))
-		itp.SetVarRaw("matches", gotcl.FromList(n.matches))
+		for i, m := range n.matches {
+			itp.SetVarRaw(fmt.Sprintf("stem%d", i), gotcl.FromStr(m))
+		}
 	}
 	n.recipe = make([]string, 0, len(n.rule.recipe))
 	for _, c := range n.rule.recipe {

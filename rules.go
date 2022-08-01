@@ -26,9 +26,9 @@ type metaRule struct {
 	targets []pattern
 }
 
-func (r *metaRule) Match(target string) ([][]int, *pattern) {
+func (r *metaRule) Match(target string) ([]int, *pattern) {
 	for _, t := range r.targets {
-		if s := t.rgx.FindAllStringSubmatchIndex(target, -1); s != nil {
+		if s := t.rgx.FindStringSubmatchIndex(target); s != nil {
 			return s, &t
 		}
 	}
