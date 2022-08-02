@@ -12,6 +12,7 @@ import (
 	pflag "github.com/spf13/pflag"
 
 	"github.com/zyedidia/gotcl"
+	"github.com/zyedidia/take/info"
 )
 
 type assign struct {
@@ -27,9 +28,15 @@ var rundir = pflag.StringP("directory", "C", "", "run command from directory")
 var always = pflag.BoolP("always-build", "B", false, "unconditionally build all targets")
 var script = pflag.StringP("script", "s", "", "output build script to file")
 var quiet = pflag.BoolP("quiet", "q", false, "don't print commands")
+var version = pflag.BoolP("version", "v", false, "show version information")
 
 func main() {
 	pflag.Parse()
+
+	if *version {
+		fmt.Println("take version", info.Version)
+		os.Exit(0)
+	}
 
 	if *rundir != "" {
 		os.Chdir(*rundir)

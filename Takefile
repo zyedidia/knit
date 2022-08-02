@@ -1,5 +1,5 @@
 set version [trim [shell "cd tools/version; go run version.go"]]
-set goflags "-trimpath -ldflags \"-s -w -X github.com/zyedidia/take/main.Version=$version\""
+set goflags "-trimpath -ldflags \"-s -w -X github.com/zyedidia/take/info.Version=$version\""
 
 rules {
 
