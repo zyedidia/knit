@@ -241,6 +241,12 @@ func (n *node) outOfDate(d *db, itp *gotcl.Interp) bool {
 		return true
 	}
 
+	for _, o := range n.outputs {
+		if !o.exists {
+			return true
+		}
+	}
+
 	for _, p := range n.prereqs {
 		if p.time().After(n.time()) {
 			return true

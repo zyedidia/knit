@@ -10,15 +10,15 @@ build:V: take
 install:V:
     go install $goflags
 
-all: take-$version-linux-amd64.tar.gz \
-     take-$version-linux-386.tar.gz \
-     take-$version-linux-arm.tar.gz \
-     take-$version-linux-arm64.tar.gz \
-     take-$version-darwin-amd64.tar.gz \
-     take-$version-darwin-arm64.tar.gz \
-     take-$version-openbsd-amd64.tar.gz \
-     take-$version-freebsd-amd64.tar.gz \
-     take-$version-windows-amd64.tar.gz
+all:V: take-$version-linux-amd64.tar.gz \
+       take-$version-linux-386.tar.gz \
+       take-$version-linux-arm.tar.gz \
+       take-$version-linux-arm64.tar.gz \
+       take-$version-darwin-amd64.tar.gz \
+       take-$version-darwin-arm64.tar.gz \
+       take-$version-openbsd-amd64.tar.gz \
+       take-$version-freebsd-amd64.tar.gz \
+       take-$version-windows-amd64.tar.gz
 
 (take-$version-(.*)-(.*)).tar.gz:R:
     mkdir -p $stem1
