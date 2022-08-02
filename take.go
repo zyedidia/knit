@@ -1,12 +1,13 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
 	"runtime"
 	"strings"
+
+	pflag "github.com/spf13/pflag"
 
 	"github.com/zyedidia/gotcl"
 )
@@ -17,11 +18,11 @@ type assign struct {
 }
 
 func main() {
-	takefile := flag.String("f", "takefile", "takefile to use")
-	ncpu := flag.Int("j", runtime.NumCPU(), "number of cores to use")
-	flag.Parse()
+	takefile := pflag.StringP("file", "f", "takefile", "takefile to use")
+	ncpu := pflag.IntP("threads", "j", runtime.NumCPU(), "number of cores to use")
+	pflag.Parse()
 
-	args := flag.Args()
+	args := pflag.Args()
 
 	if *ncpu <= 0 {
 		log.Fatal("you must enable at least 1 core!")

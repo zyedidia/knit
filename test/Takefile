@@ -8,13 +8,13 @@ set cflags -Wall
 setdef lld 0
 set ldflags ""
 
-if { $debug } {
+if {$debug} {
     set cflags "$cflags -Og -g -fsanitize=address,undefined"
 } else {
     set cflags "$cflags -O2"
 }
 
-if { $lld } {
+if {$lld} {
     set ldflags "-fuse-ld=lld"
 }
 

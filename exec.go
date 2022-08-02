@@ -53,12 +53,17 @@ func (e *executor) execNode(n *node) {
 	var wg sync.WaitGroup
 	for _, p := range n.prereqs {
 		wg.Add(1)
-		e.throttler <- struct{}{}
-		go func(pn *node) {
-			defer wg.Done()
-			e.execNode(pn)
-			<-e.throttler
-		}(p)
+		select {
+		case e.throttler <- struct{}{}:
+			go func(pn *node) {
+				defer wg.Done()
+				e.execNode(pn)
+				<-e.throttler
+			}(p)
+		default:
+			e.execNode(p)
+			wg.Done()
+		}
 	}
 	wg.Wait()
 
