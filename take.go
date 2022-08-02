@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -134,6 +135,7 @@ func main() {
 	}
 	var sfile io.Writer = io.Discard
 	if *script != "" {
+		os.MkdirAll(filepath.Dir(*script), os.ModePerm)
 		f, err := os.Create(*script)
 		if err != nil {
 			log.Fatal(err)
