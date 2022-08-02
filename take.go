@@ -17,10 +17,18 @@ type assign struct {
 	value string
 }
 
+var takefile = pflag.StringP("file", "f", "takefile", "takefile to use")
+var ncpu = pflag.IntP("threads", "j", runtime.NumCPU(), "number of cores to use")
+var viz = pflag.String("viz", "", "emit a graphiz file")
+var dryrun = pflag.BoolP("dry-run", "n", false, "print commands without actually executing")
+var rundir = pflag.StringP("directory", "C", "", "run command from directory")
+
 func main() {
-	takefile := pflag.StringP("file", "f", "takefile", "takefile to use")
-	ncpu := pflag.IntP("threads", "j", runtime.NumCPU(), "number of cores to use")
 	pflag.Parse()
+
+	if *rundir != "" {
+		os.Chdir(*rundir)
+	}
 
 	args := pflag.Args()
 
@@ -99,12 +107,20 @@ func main() {
 				noMeta:  true,
 			},
 		},
-		targets: []string{"__all"},
+		targets: []string{":all"},
 	})
 
-	g, err := newGraph(rs, "__all")
+	g, err := newGraph(rs, ":all")
 	if err != nil {
 		log.Fatalln(err)
+	}
+	if *viz != "" {
+		f, err := os.Create(*viz)
+		if err != nil {
+			log.Fatal(err)
+		}
+		g.visualize(f)
+		f.Close()
 	}
 	e := newExecutor(*ncpu, vm, func(msg string) {
 		fmt.Fprintln(os.Stderr, msg)

@@ -89,6 +89,9 @@ func (e *executor) execCmd(c command, quiet bool) {
 	if !quiet {
 		fmt.Println(c.recipe)
 	}
+	if *dryrun {
+		return
+	}
 	cmd := exec.Command(c.name, c.args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

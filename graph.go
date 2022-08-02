@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -284,4 +285,17 @@ func (n *node) expandRecipe(itp *gotcl.Interp) error {
 		n.recipe = append(n.recipe, output)
 	}
 	return nil
+}
+
+func (g *graph) visualize(w io.Writer) {
+	fmt.Fprintln(w, "digraph take {")
+	g.base.visualize(w)
+	fmt.Fprintln(w, "}")
+}
+
+func (n *node) visualize(w io.Writer) {
+	for _, p := range n.prereqs {
+		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", strings.Join(n.rule.targets, ", "), strings.Join(p.rule.targets, ", "))
+		p.visualize(w)
+	}
 }
