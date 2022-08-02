@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"sync"
@@ -41,7 +42,7 @@ type command struct {
 	recipe string
 }
 
-func (e *executor) execNode(n *node) {
+func (e *executor) execNode(n *node, sfile io.Writer) {
 	e.mlock.Lock()
 	if !n.outOfDate(e.db, e.vm.itp) {
 		e.mlock.Unlock()
@@ -57,11 +58,11 @@ func (e *executor) execNode(n *node) {
 		case e.throttler <- struct{}{}:
 			go func(pn *node) {
 				defer wg.Done()
-				e.execNode(pn)
+				e.execNode(pn, sfile)
 				<-e.throttler
 			}(p)
 		default:
-			e.execNode(p)
+			e.execNode(p, sfile)
 			wg.Done()
 		}
 	}
@@ -78,10 +79,11 @@ func (e *executor) execNode(n *node) {
 			args:   []string{"-c", cmd},
 			recipe: cmd,
 		})
+		fmt.Fprintln(sfile, cmd)
 	}
 
 	for _, c := range commands {
-		e.execCmd(c, n.rule.attrs.quiet)
+		e.execCmd(c, n.rule.attrs.quiet || *quiet)
 	}
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"runtime"
@@ -22,12 +23,21 @@ var ncpu = pflag.IntP("threads", "j", runtime.NumCPU(), "number of cores to use"
 var viz = pflag.String("viz", "", "emit a graphiz file")
 var dryrun = pflag.BoolP("dry-run", "n", false, "print commands without actually executing")
 var rundir = pflag.StringP("directory", "C", "", "run command from directory")
+var always = pflag.BoolP("always-build", "B", false, "unconditionally build all targets")
+var script = pflag.StringP("script", "s", "", "output build script to file")
+var quiet = pflag.BoolP("quiet", "q", false, "don't print commands")
 
 func main() {
 	pflag.Parse()
 
 	if *rundir != "" {
 		os.Chdir(*rundir)
+	}
+
+	if *script != "" {
+		*quiet = true
+		*always = true
+		*dryrun = true
 	}
 
 	args := pflag.Args()
@@ -122,10 +132,23 @@ func main() {
 		g.visualize(f)
 		f.Close()
 	}
+	var sfile io.Writer = io.Discard
+	if *script != "" {
+		f, err := os.Create(*script)
+		if err != nil {
+			log.Fatal(err)
+		}
+		os.Chmod(*script, os.ModePerm)
+		defer f.Close()
+		sfile = f
+	}
+	fmt.Fprintln(sfile, "#!/bin/sh")
+	fmt.Fprintln(sfile, "set -x")
+
 	e := newExecutor(*ncpu, vm, func(msg string) {
 		fmt.Fprintln(os.Stderr, msg)
 	})
-	e.execNode(g.base)
+	e.execNode(g.base, sfile)
 	err = e.saveDb()
 	if err != nil {
 		log.Fatal(err)

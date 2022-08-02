@@ -238,6 +238,9 @@ func (n *node) outOfDate(d *db, itp *gotcl.Interp) bool {
 			log.Fatal(err)
 		}
 	}
+	if *always {
+		return true
+	}
 	if n.rule.attrs.virtual {
 		return true
 	}
