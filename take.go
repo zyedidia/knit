@@ -99,7 +99,7 @@ func main() {
 
 	rvar, rexpr := expandFuncs(vm.itp)
 
-	rs := parse(take, *takefile, map[string][]string{}, errFns{
+	rs := parse(take, "<rules>", map[string][]string{}, errFns{
 		printErr: func(e string) {
 			fmt.Fprintln(os.Stderr, e)
 		},
