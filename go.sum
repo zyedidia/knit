@@ -4,3 +4,5 @@ github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/zyedidia/gotcl v0.0.0-20220106002048-904af91335d3 h1:pBv3wErI3GXwxKBng1Atq5jjyha7Uy3/HG8hnwb0Q7g=
 github.com/zyedidia/gotcl v0.0.0-20220106002048-904af91335d3/go.mod h1:4Hhqh6e8X8FRGVQwM0eb2YZVcJ7W4zgTOCOQmpFGPKM=
+github.com/zyedidia/gotcl v0.0.0-20220803231532-29cf42c22821 h1:ugHBfIkq2NZioIr40dvxDiW1NDyZCVzkkJQ8zrC5vp4=
+github.com/zyedidia/gotcl v0.0.0-20220803231532-29cf42c22821/go.mod h1:4Hhqh6e8X8FRGVQwM0eb2YZVcJ7W4zgTOCOQmpFGPKM=

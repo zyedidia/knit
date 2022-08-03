@@ -76,15 +76,17 @@ func main() {
 		})
 	}
 
-	data, err := os.ReadFile(*takefile)
+	fname := *takefile
+	data, err := os.ReadFile(fname)
 	if err != nil {
-		data, err = os.ReadFile(strings.Title(*takefile))
+		fname = strings.Title(fname)
+		data, err = os.ReadFile(fname)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	vm := newTclvm("rules")
+	vm := newTclvm("rules", fname)
 
 	for _, v := range vars {
 		vm.itp.SetVarRaw(v.name, gotcl.FromStr(v.value))

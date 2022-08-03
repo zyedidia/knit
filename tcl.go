@@ -13,10 +13,11 @@ type tclvm struct {
 	rules bytes.Buffer
 }
 
-func newTclvm(dsl string) *tclvm {
+func newTclvm(dsl string, file string) *tclvm {
 	m := &tclvm{
 		itp: tcl.NewInterp(),
 	}
+	m.itp.SetSource(file)
 	m.itp.SetCmd(dsl, func(itp *tcl.Interp, args []*tcl.TclObj) tcl.TclStatus {
 		if len(args) != 1 {
 			return itp.FailStr(fmt.Sprintf("%s: expected 1 argument, got %d", dsl, len(args)))
