@@ -6,5 +6,6 @@ hello
 *.pdf
 .take
 build.sh
+knit
 
 tools/version/version

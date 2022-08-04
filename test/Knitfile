@@ -1,0 +1,14 @@
+knit = import("knit")
+fmt = import("fmt")
+
+cc = "gcc"
+cflags = "-Wall"
+src = {"hello.c", "other.c"}
+obj = knit.ExtRepl(src, ".c", ".o")
+
+function hello()
+    return "-Wall"
+end
+
+# %.o: %.c
+    $cc $cflags -c $src -o $obj

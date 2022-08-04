@@ -1,8 +1,8 @@
-github.com/segmentio/fasthash v1.0.3 h1:EI9+KE1EwvMLBWwjpRDc+fEM+prwxDYbslddQGtrmhM=
-github.com/segmentio/fasthash v1.0.3/go.mod h1:waKX8l2N8yckOgmSsXJi7x1ZfdKZ4x7KRMzBtS3oedY=
-github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
-github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
-github.com/zyedidia/gotcl v0.0.0-20220106002048-904af91335d3 h1:pBv3wErI3GXwxKBng1Atq5jjyha7Uy3/HG8hnwb0Q7g=
-github.com/zyedidia/gotcl v0.0.0-20220106002048-904af91335d3/go.mod h1:4Hhqh6e8X8FRGVQwM0eb2YZVcJ7W4zgTOCOQmpFGPKM=
-github.com/zyedidia/gotcl v0.0.0-20220803231532-29cf42c22821 h1:ugHBfIkq2NZioIr40dvxDiW1NDyZCVzkkJQ8zrC5vp4=
-github.com/zyedidia/gotcl v0.0.0-20220803231532-29cf42c22821/go.mod h1:4Hhqh6e8X8FRGVQwM0eb2YZVcJ7W4zgTOCOQmpFGPKM=
+github.com/chzyer/logex v1.2.1 h1:XHDu3E6q+gdHgsdTPH6ImJMIp436vR6MPtH8gP05QzM=
+github.com/chzyer/logex v1.2.1/go.mod h1:JLbx6lG2kDbNRFnfkgvh4eRJRPX1QCoOIWomwysCBrQ=
+github.com/chzyer/readline v1.5.1 h1:upd/6fQk4src78LMRzh5vItIt361/o4uq553V8B5sGI=
+github.com/chzyer/readline v1.5.1/go.mod h1:Eh+b79XXUwfKfcPLepksvw2tcLE/Ct21YObkaSkeBlk=
+github.com/chzyer/test v1.0.0 h1:p3BQDXSxOhOG0P9z6/hGnII4LGiEPOYBhs8asl/fC04=
+github.com/chzyer/test v1.0.0/go.mod h1:2JlltgoNkt4TW/z9V/IzDdFaMTM2JPIi26O1pF38GC8=
+golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 h1:y/woIyUBFbpQGKS0u1aHF/40WUDnek3fPOyD08H5Vng=
+golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

@@ -1,10 +1,7 @@
-module github.com/zyedidia/take
+module github.com/zyedidia/knit
 
 go 1.18
 
-require (
-	github.com/segmentio/fasthash v1.0.3
-	github.com/spf13/pflag v1.0.5
-)
+require github.com/chzyer/readline v1.5.1
 
-require github.com/zyedidia/gotcl v0.0.0-20220803231532-29cf42c22821 // indirect
+require golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 // indirect

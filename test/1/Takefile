@@ -1,4 +1,0 @@
-rules {
-%: %.z
-    cp $in $out
-}
