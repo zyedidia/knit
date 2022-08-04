@@ -11,4 +11,4 @@ function hello()
 end
 
 # %.o: %.c
-    $cc $cflags -c $src -o $obj
+    $cc $cflags -c $src -o $ob

@@ -14,7 +14,13 @@ import (
 
 type LuaVM struct {
 	L     *lua.LState
-	rules []string
+	rules []LRule
+}
+
+type LRule struct {
+	Contents string
+	File     string
+	Line     int
 }
 
 func NewLuaVM() *LuaVM {
@@ -27,8 +33,12 @@ func NewLuaVM() *LuaVM {
 	L.SetGlobal("import", luar.New(L, func(pkg string) *lua.LTable {
 		return lib.Import(L, pkg)
 	}))
-	L.SetGlobal("_rule", luar.New(L, func(rule string) {
-		vm.rules = append(vm.rules, rule)
+	L.SetGlobal("_rule", luar.New(L, func(rule string, file string, line int) {
+		vm.rules = append(vm.rules, LRule{
+			Contents: rule,
+			File:     file,
+			Line:     line,
+		})
 	}))
 	L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
 		return LToString(v)

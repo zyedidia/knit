@@ -3,12 +3,33 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
-	"strings"
 
 	"github.com/zyedidia/knit/expand"
 )
+
+func fatalf(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, args...)
+	fmt.Fprintln(os.Stderr)
+	os.Exit(1)
+}
+
+func fatal(s string) {
+	fmt.Fprintln(os.Stderr, s)
+	os.Exit(1)
+}
+
+func must(err error) {
+	if err != nil {
+		fatalf("%v", err)
+	}
+}
+
+func assert(b bool) {
+	if !b {
+		panic("assertion failed")
+	}
+}
 
 func main() {
 	vm := NewLuaVM()
@@ -17,27 +38,21 @@ func main() {
 	args := flag.Args()
 
 	if len(args) == 0 {
-		log.Fatal("no args")
+		fatal("no arguments")
 	}
 
 	f, err := os.Open(args[0])
-	if err != nil {
-		log.Fatal(err)
-	}
+	must(err)
 
 	_, err = vm.Eval(f, f.Name())
-	if err != nil {
-		log.Fatal(err)
-	}
+	must(err)
 
 	rvar, rexpr := vm.ExpandFuncs()
-	for i, r := range vm.rules {
-		s, err := expand.Expand(r, rvar, rexpr)
+	for _, r := range vm.rules {
+		s, err := expand.Expand(r.Contents, rvar, rexpr)
 		if err != nil {
-			log.Fatal(err)
+			fatalf("%s:%d: in rule: %v", r.File, r.Line, err)
 		}
-		vm.rules[i] = s
+		fmt.Println(s)
 	}
-
-	fmt.Println(strings.Join(vm.rules, "\n"))
 }

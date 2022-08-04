@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 
 	"github.com/zyedidia/knit/ktlua/ast"
 )
@@ -495,10 +496,16 @@ func compileBlock(context *funcContext, chunk []ast.Stmt) { // {{{
 func compileStmt(context *funcContext, stmt ast.Stmt) { // {{{
 	switch st := stmt.(type) {
 	case *ast.RuleStmt:
-		compileFuncCallExpr(context, context.RegTop(), &ast.FuncCallExpr{
+		expr := &ast.FuncCallExpr{
 			Func: &ast.IdentExpr{Value: "_rule"},
-			Args: []ast.Expr{&ast.StringExpr{Value: st.Contents}},
-		}, ecnone(-1))
+			Args: []ast.Expr{
+				&ast.StringExpr{Value: st.Contents},
+				&ast.StringExpr{Value: context.Proto.SourceName},
+				&ast.NumberExpr{Value: strconv.Itoa(st.Line())},
+			},
+		}
+		expr.SetLine(st.Line())
+		compileFuncCallExpr(context, context.RegTop(), expr, ecnone(-1))
 	case *ast.AssignStmt:
 		compileAssignStmt(context, st)
 	case *ast.LocalAssignStmt:
