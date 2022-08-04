@@ -43,6 +43,10 @@ func NewLuaVM() *LuaVM {
 	L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
 		return LToString(v)
 	}))
+	L.SetGlobal("eval", luar.New(L, func(s string) lua.LValue {
+		v, _ := vm.Eval(strings.NewReader("return "+s), "<eval>")
+		return v
+	}))
 
 	return vm
 }
@@ -118,4 +122,8 @@ func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (stri
 			}
 			return LToString(v), nil
 		}
+}
+
+func (vm *LuaVM) SetVar(name string, val interface{}) {
+	vm.L.SetGlobal(name, luar.New(vm.L, val))
 }

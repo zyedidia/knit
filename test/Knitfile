@@ -1,9 +1,10 @@
 knit = import("knit")
 fmt = import("fmt")
+filepath = import("path/filepath")
 
-cc = "gcc"
+cc = cc or "gcc"
 cflags = "-Wall"
-src = {"hello.c", "other.c"}
+src = filepath.Glob("*.c")
 obj = knit.ExtRepl(src, ".c", ".o")
 
 function hello()
