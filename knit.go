@@ -2,21 +2,25 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strings"
 
 	"github.com/spf13/pflag"
 	"github.com/zyedidia/knit/info"
+	"github.com/zyedidia/knit/rules"
 )
 
 func fatalf(format string, args ...interface{}) {
+	fmt.Fprint(os.Stderr, "knit: ")
 	fmt.Fprintf(os.Stderr, format, args...)
 	fmt.Fprintln(os.Stderr)
 	os.Exit(1)
 }
 
 func fatal(s string) {
+	fmt.Fprint(os.Stderr, "knit: ")
 	fmt.Fprintln(os.Stderr, s)
 	os.Exit(1)
 }
@@ -89,7 +93,7 @@ func main() {
 	}
 
 	if *flags.rundir != "" {
-		os.Chdir(*flags.rundir)
+		must(os.Chdir(*flags.rundir))
 	}
 
 	if *flags.ncpu <= 0 {
@@ -117,16 +121,69 @@ func main() {
 	_, err = vm.Eval(f, f.Name())
 	must(err)
 
-	f.Close()
+	must(f.Close())
 
-	fmt.Println(targets)
+	rs := rules.NewRuleSet()
 
-	// rvar, rexpr := vm.ExpandFuncs()
-	// for _, r := range vm.rules {
-	// 	s, err := expand.Expand(r.Contents, rvar, rexpr)
-	// 	if err != nil {
-	// 		fatalf("%s:%d: in rule: %v", r.File, r.Line, err)
-	// 	}
-	// 	fmt.Println(s)
-	// }
+	errs := rules.ErrFns{
+		PrintErr: func(e string) {
+			fmt.Fprint(os.Stderr, e)
+		},
+		Err: func(e string) {
+			fatalf(e)
+		},
+	}
+
+	rvar, rexpr := vm.ExpandFuncs()
+	expands := rules.ExpandFns{
+		Rvar:  rvar,
+		Rexpr: rexpr,
+	}
+
+	for _, r := range vm.rules {
+		rules.ParseInto(r.Contents, rs, fmt.Sprintf("%s:%d:<rule>", r.File, r.Line), errs, expands)
+	}
+
+	if len(targets) == 0 {
+		targets = rs.MainTargets()
+	}
+
+	if len(targets) == 0 {
+		fatal("no targets")
+	}
+
+	rs.Add(rules.NewDirectRule([]string{":all"}, targets, nil, rules.AttrSet{
+		Virtual: true,
+		NoMeta:  true,
+	}))
+
+	g, err := rules.NewGraph(rs, ":all")
+	must(err)
+
+	err = g.ExpandRecipes(vm)
+	must(err)
+
+	if *flags.viz != "" {
+		f, err := os.Create(*flags.viz)
+		must(err)
+		g.Visualize(f)
+		must(f.Close())
+	}
+
+	var out io.Writer
+	if *flags.quiet {
+		out = io.Discard
+	} else {
+		out = os.Stdout
+	}
+
+	e := rules.NewExecutor(*flags.ncpu, out, rules.Options{
+		NoExec:       *flags.dryrun,
+		Shell:        "sh",
+		AbortOnError: true,
+	}, func(msg string) {
+		fmt.Fprintln(os.Stderr, msg)
+	})
+
+	e.Exec(g)
 }

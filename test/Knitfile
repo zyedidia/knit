@@ -12,4 +12,5 @@ function hello()
 end
 
 # %.o: %.c
-    $cc $cflags -c $src -o $ob
+    $cc $cflags -c $in -o $out
+# all:V: hello.o
