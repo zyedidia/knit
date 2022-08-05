@@ -141,7 +141,7 @@ func main() {
 	}
 
 	for _, r := range vm.rules {
-		rules.ParseInto(r.Contents, rs, fmt.Sprintf("%s:%d:<rule>", r.File, r.Line), errs, expands)
+		must(rules.ParseInto(r.Contents, rs, fmt.Sprintf("%s:%d:<rule>", r.File, r.Line), errs, expands))
 	}
 
 	if len(targets) == 0 {
@@ -160,8 +160,7 @@ func main() {
 	g, err := rules.NewGraph(rs, ":all")
 	must(err)
 
-	err = g.ExpandRecipes(vm)
-	must(err)
+	must(g.ExpandRecipes(vm))
 
 	if *flags.viz != "" {
 		f, err := os.Create(*flags.viz)

@@ -66,7 +66,6 @@ func (p *parser) clear() {
 type parserStateFun func(*parser, token) parserStateFun
 
 func expandInput(s string, expands ExpandFns) (string, error) {
-	s = strings.Replace(s, "\\\n", "", -1)
 	b := bufio.NewReader(strings.NewReader(s))
 	buf := &bytes.Buffer{}
 	remaining := len(s)
@@ -90,8 +89,13 @@ func expandInput(s string, expands ExpandFns) (string, error) {
 	return buf.String(), nil
 }
 
-func ParseInto(input string, rules *RuleSet, path string, errfns ErrFns, expands ExpandFns) {
+func ParseInto(input string, rules *RuleSet, path string, errfns ErrFns, expands ExpandFns) (err error) {
 	input = strings.Replace(input, "\\\n", "", -1)
+	input = stripIndentation(input, 2)
+	input, err = expandInput(input, expands)
+	if err != nil {
+		return fmt.Errorf("expand: %w", err)
+	}
 	l := lex(input)
 	p := &parser{
 		l:        l,
@@ -115,6 +119,8 @@ func ParseInto(input string, rules *RuleSet, path string, errfns ErrFns, expands
 	// insert a dummy newline to allow parsing of any assignments or recipeless
 	// rules to finish.
 	state = state(p, token{tokenNewline, "\n", l.line, l.col})
+
+	return nil
 
 	// TODO: Error when state != parseTopLevel
 }

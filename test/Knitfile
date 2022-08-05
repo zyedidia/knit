@@ -1,19 +1,37 @@
 knit = import("knit")
 
 cc = cc or "gcc"
+debug = debug or false
+lld = lld or false
 cflags = "-Wall"
+
+if debug then
+    cflags = cflags .. " -Og -g -fsanitize=address,undefined"
+else
+    cflags = cflags .. " -O2"
+end
+
+ldflags = ""
+if lld then
+    ldflags = "-fuse-ld=lld"
+end
+
 src = knit.Glob("*.c")
 obj = knit.ExtRepl(src, ".c", ".o")
+prog = "hello"
 
 date = knit.Shell("date")
 
-$ all:V: hello.o
+$ all:V: $prog
 
-$ clean:V:
-    rm -f hello.o
+$ $prog: $obj
+    $cc $cflags $ldflags $in -o $out
 
 $ %.o: %.c
     $cc $cflags -c $in -o $out
+
+$ clean:V:
+    rm -f $obj $prog
 
 $ echo-%:VQ:
     echo ${eval(stem)}
