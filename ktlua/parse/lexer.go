@@ -440,12 +440,12 @@ redo:
 				tok.Type = '.'
 			}
 			tok.Str = buf.String()
-		case '#':
+		case '$':
 			if lexer.start {
 				lexer.inRule = lexer.whitespace
 			}
 			fallthrough
-		case '+', '*', '/', '%', '^', '(', ')', '{', '}', ']', ';', ',', ':':
+		case '+', '*', '/', '%', '^', '(', ')', '{', '}', ']', ';', ',', ':', '#':
 			tok.Type = ch
 			tok.Str = string(rune(ch))
 		default:

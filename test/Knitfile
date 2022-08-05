@@ -5,13 +5,15 @@ cflags = "-Wall"
 src = knit.Glob("*.c")
 obj = knit.ExtRepl(src, ".c", ".o")
 
-# all:V: hello.o
+date = knit.Shell("date")
 
-# clean:V:
+$ all:V: hello.o
+
+$ clean:V:
     rm -f hello.o
 
-# %.o: %.c
+$ %.o: %.c
     $cc $cflags -c $in -o $out
 
-# echo-%:VQ:
+$ echo-%:VQ:
     echo ${eval(stem)}

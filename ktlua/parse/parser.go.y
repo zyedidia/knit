@@ -106,7 +106,7 @@ block:
         }
 
 stat:
-        '#' TRule {
+        '$' TRule {
             $$ = &ast.RuleStmt{Contents: $2.Str}
             $$.SetLine($2.Pos.Line)
         } |

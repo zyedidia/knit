@@ -118,7 +118,7 @@ func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (stri
 			if err != nil {
 				return "", fmt.Errorf("expand: %w", err)
 			} else if v == nil || v.Type() == lua.LTNil {
-				return "", fmt.Errorf("expand: %s did not return a value", strconv.Quote(expr))
+				return "", fmt.Errorf("expand: '%s' did not return a value", expr)
 			}
 			return LToString(v), nil
 		}

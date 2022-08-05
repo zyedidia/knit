@@ -42,8 +42,11 @@ func Repl(in []string, patstr, repl string) ([]string, error) {
 	return outs, nil
 }
 
-func Shell(shcmd string) (string, error) {
+func Shell(shcmd string) string {
 	cmd := exec.Command("sh", "-c", shcmd)
 	b, err := cmd.Output()
-	return string(b), err
+	if err != nil {
+		return fmt.Sprintf("%v", err)
+	}
+	return string(b)
 }
