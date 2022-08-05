@@ -2,6 +2,8 @@ package liblua
 
 import (
 	"fmt"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 
 	lua "github.com/zyedidia/knit/ktlua"
@@ -13,6 +15,8 @@ func importKnit(L *lua.LState) *lua.LTable {
 
 	L.SetField(pkg, "Repl", luar.New(L, Repl))
 	L.SetField(pkg, "ExtRepl", luar.New(L, ExtRepl))
+	L.SetField(pkg, "Glob", luar.New(L, filepath.Glob))
+	L.SetField(pkg, "Shell", luar.New(L, Shell))
 
 	return pkg
 }
@@ -36,4 +40,10 @@ func Repl(in []string, patstr, repl string) ([]string, error) {
 		outs[i] = rgx.ReplaceAllString(v, repl)
 	}
 	return outs, nil
+}
+
+func Shell(shcmd string) (string, error) {
+	cmd := exec.Command("sh", "-c", shcmd)
+	b, err := cmd.Output()
+	return string(b), err
 }

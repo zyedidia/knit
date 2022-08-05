@@ -19,26 +19,26 @@ func FromLibs(libs ...Lib) Lib {
 	return newl
 }
 
-var Go = Lib{
-	"fmt":           importFmt,
-	"io":            importIo,
-	"io/ioutil":     importIoIoutil,
-	"net":           importNet,
-	"math":          importMath,
-	"math/rand":     importMathRand,
-	"os":            importOs,
-	"os/exec":       importOsExec,
-	"runtime":       importRuntime,
-	"path":          importPath,
-	"path/filepath": importPathFilepath,
-	"strings":       importStrings,
-	"regexp":        importRegexp,
-	"errors":        importErrors,
-	"time":          importTime,
-	"unicode/utf8":  importUnicodeUtf8,
-	"net/http":      importNetHttp,
-	"archive/zip":   importArchiveZip,
-}
+// var Go = Lib{
+// 	"fmt":           importFmt,
+// 	"io":            importIo,
+// 	"io/ioutil":     importIoIoutil,
+// 	"net":           importNet,
+// 	"math":          importMath,
+// 	"math/rand":     importMathRand,
+// 	"os":            importOs,
+// 	"os/exec":       importOsExec,
+// 	"runtime":       importRuntime,
+// 	"path":          importPath,
+// 	"path/filepath": importPathFilepath,
+// 	"strings":       importStrings,
+// 	"regexp":        importRegexp,
+// 	"errors":        importErrors,
+// 	"time":          importTime,
+// 	"unicode/utf8":  importUnicodeUtf8,
+// 	"net/http":      importNetHttp,
+// 	"archive/zip":   importArchiveZip,
+// }
 
 var Knit = Lib{
 	"knit": importKnit,

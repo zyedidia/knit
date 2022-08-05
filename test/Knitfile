@@ -1,16 +1,17 @@
 knit = import("knit")
-fmt = import("fmt")
-filepath = import("path/filepath")
 
 cc = cc or "gcc"
 cflags = "-Wall"
-src = filepath.Glob("*.c")
+src = knit.Glob("*.c")
 obj = knit.ExtRepl(src, ".c", ".o")
+
+# all:V: hello.o
+
+# clean:V:
+    rm -f hello.o
 
 # %.o: %.c
     $cc $cflags -c $in -o $out
-# all:V: hello.o
-# clean:V:
-    rm -f hello.o
+
 # echo-%:VQ:
     echo ${eval(stem)}

@@ -29,7 +29,7 @@ func NewLuaVM() *LuaVM {
 		L: L,
 	}
 
-	lib := liblua.FromLibs(liblua.Go, liblua.Knit)
+	lib := liblua.FromLibs(liblua.Knit)
 	L.SetGlobal("import", luar.New(L, func(pkg string) *lua.LTable {
 		return lib.Import(L, pkg)
 	}))
