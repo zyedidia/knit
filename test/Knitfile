@@ -7,10 +7,10 @@ cflags = "-Wall"
 src = filepath.Glob("*.c")
 obj = knit.ExtRepl(src, ".c", ".o")
 
-function hello()
-    return "-Wall"
-end
-
 # %.o: %.c
     $cc $cflags -c $in -o $out
 # all:V: hello.o
+# clean:V:
+    rm -f hello.o
+# echo-%:VQ:
+    echo ${eval(stem)}

@@ -81,7 +81,9 @@ func (e *Executor) execNode(n *node) {
 		} else if c.recipe == "" {
 			continue
 		}
-		fmt.Fprintln(e.w, c.recipe)
+		if !n.rule.attrs.Quiet {
+			fmt.Fprintln(e.w, c.recipe)
+		}
 		if !e.opts.NoExec {
 			err := e.execCmd(c)
 			if err != nil {
