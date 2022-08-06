@@ -64,10 +64,13 @@ func (r *MetaRule) Match(target string) ([]int, *Pattern) {
 }
 
 type AttrSet struct {
-	Regex   bool
-	Virtual bool
-	Quiet   bool
-	NoMeta  bool // rule cannot be matched by meta rules
+	Regex     bool
+	Virtual   bool
+	Quiet     bool
+	NoMeta    bool // rule cannot be matched by meta rules
+	Exclusive bool
+	NonStop   bool
+	DelFailed bool
 }
 
 type Pattern struct {
@@ -134,6 +137,12 @@ func ParseAttribs(input string) (AttrSet, error) {
 			attrs.Virtual = true
 		case 'M':
 			attrs.NoMeta = true
+		case 'X':
+			attrs.Exclusive = true
+		case 'E':
+			attrs.NonStop = true
+		case 'D':
+			attrs.DelFailed = true
 		default:
 			return attrs, attrError{c}
 		}

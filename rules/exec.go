@@ -77,15 +77,18 @@ func (e *Executor) execNode(n *node) {
 		return
 	}
 
+	if n.rule.attrs.Exclusive {
+		e.lock.Lock()
+		defer e.lock.Unlock()
+	}
+
+	failed := false
 	for _, cmd := range n.recipe {
 		c, err := e.getCmd(cmd)
 		if err != nil {
 			e.errf(fmt.Sprintf("error while evaluating '%s': %v", cmd, err))
-			if e.opts.AbortOnError {
-				break
-			} else {
-				continue
-			}
+			failed = true
+			break
 		} else if c.recipe == "" {
 			continue
 		}
@@ -96,9 +99,19 @@ func (e *Executor) execNode(n *node) {
 			err := e.execCmd(c)
 			if err != nil {
 				e.errf(fmt.Sprintf("error while executing '%s': %v", c.name, err))
-				if e.opts.AbortOnError {
+				if e.opts.AbortOnError && !n.rule.attrs.NonStop {
+					failed = true
 					break
 				}
+			}
+		}
+	}
+
+	if failed && n.rule.attrs.DelFailed {
+		for _, t := range n.rule.targets {
+			err := os.RemoveAll(t)
+			if err != nil {
+				e.errf(fmt.Sprintf("error while removing failed targets: %v", err))
 			}
 		}
 	}
