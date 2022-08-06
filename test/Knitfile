@@ -1,11 +1,12 @@
 knit = import("knit")
 
-cc = cc or "gcc"
-dbg = dbg or 0
-lld = lld or 0
+cc = cli.cc or "gcc"
+debug = cli.debug or 0
+lld = cli.lld or 0
+
 cflags = "-Wall"
 
-if dbg ~= 0 then
+if debug ~= 0 then
     cflags = cflags .. " -Og -g -fsanitize=address,undefined"
 else
     cflags = cflags .. " -O2"

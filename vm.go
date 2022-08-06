@@ -15,6 +15,8 @@ import (
 type LuaVM struct {
 	L     *lua.LState
 	rules []LRule
+
+	vars map[string]*lua.LTable
 }
 
 type LRule struct {
@@ -26,7 +28,8 @@ type LRule struct {
 func NewLuaVM() *LuaVM {
 	L := lua.NewState()
 	vm := &LuaVM{
-		L: L,
+		L:    L,
+		vars: make(map[string]*lua.LTable),
 	}
 
 	lib := liblua.FromLibs(liblua.Knit)
@@ -134,11 +137,18 @@ func (vm *LuaVM) SetVar(name string, val interface{}) {
 	vm.L.SetGlobal(name, luar.New(vm.L, val))
 }
 
-func (vm *LuaVM) SetVarFromString(name, val string) {
+func fromString(val string) interface{} {
 	i, err := strconv.Atoi(val)
 	if err == nil {
-		vm.SetVar(name, i)
-	} else {
-		vm.SetVar(name, val)
+		return i
 	}
+	return val
+}
+
+func (vm *LuaVM) AddVar(tbl, name, val string) {
+	if _, ok := vm.vars[tbl]; !ok {
+		vm.vars[tbl] = vm.L.NewTable()
+		vm.L.SetGlobal(tbl, vm.vars[tbl])
+	}
+	vm.L.SetField(vm.vars[tbl], name, luar.New(vm.L, fromString(val)))
 }

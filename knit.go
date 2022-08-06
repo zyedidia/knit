@@ -106,16 +106,19 @@ func main() {
 
 	args := pflag.Args()
 
-	env := os.Environ()
-	assigns, targets := makeAssigns(append(args, env...))
-
 	f, err := os.Open(*flags.knitfile)
 	must(err)
 
 	vm := NewLuaVM()
 
-	for _, v := range assigns {
-		vm.SetVarFromString(v.name, v.value)
+	cliAssigns, targets := makeAssigns(args)
+	envAssigns, _ := makeAssigns(os.Environ())
+
+	for _, v := range cliAssigns {
+		vm.AddVar("cli", v.name, v.value)
+	}
+	for _, v := range envAssigns {
+		vm.AddVar("env", v.name, v.value)
 	}
 
 	_, err = vm.Eval(f, f.Name())
