@@ -114,9 +114,11 @@ func main() {
 	cliAssigns, targets := makeAssigns(args)
 	envAssigns, _ := makeAssigns(os.Environ())
 
+	vm.MakeTable("cli")
 	for _, v := range cliAssigns {
 		vm.AddVar("cli", v.name, v.value)
 	}
+	vm.MakeTable("env")
 	for _, v := range envAssigns {
 		vm.AddVar("env", v.name, v.value)
 	}
@@ -189,6 +191,7 @@ func main() {
 		NoExec:       *flags.dryrun,
 		Shell:        "sh",
 		AbortOnError: true,
+		BuildAll:     *flags.always,
 	}, func(msg string) {
 		fmt.Fprintln(os.Stderr, msg)
 	})

@@ -145,10 +145,15 @@ func fromString(val string) interface{} {
 	return val
 }
 
+func (vm *LuaVM) MakeTable(tbl string) {
+	t := vm.L.NewTable()
+	vm.L.SetGlobal(tbl, t)
+	vm.vars[tbl] = t
+}
+
 func (vm *LuaVM) AddVar(tbl, name, val string) {
 	if _, ok := vm.vars[tbl]; !ok {
-		vm.vars[tbl] = vm.L.NewTable()
-		vm.L.SetGlobal(tbl, vm.vars[tbl])
+		vm.MakeTable(tbl)
 	}
 	vm.L.SetField(vm.vars[tbl], name, luar.New(vm.L, fromString(val)))
 }

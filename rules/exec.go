@@ -24,6 +24,7 @@ type Options struct {
 	NoExec       bool
 	Shell        string
 	AbortOnError bool
+	BuildAll     bool
 }
 
 func NewExecutor(db *Database, threads int, w io.Writer, opts Options, errf func(msg string)) *Executor {
@@ -48,7 +49,7 @@ func (e *Executor) Exec(g *Graph) {
 
 func (e *Executor) execNode(n *node) {
 	e.lock.Lock()
-	if !n.outOfDate(e.db) {
+	if !e.opts.BuildAll && !n.outOfDate(e.db) {
 		e.lock.Unlock()
 		return
 	}
