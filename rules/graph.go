@@ -81,6 +81,10 @@ func (g *Graph) newNode(target string) *node {
 	return n
 }
 
+func (g *Graph) Size() int {
+	return len(g.nodes)
+}
+
 type VM interface {
 	ExpandFuncs() (func(string) (string, error), func(string) (string, error))
 	SetVar(name string, val interface{})
@@ -242,7 +246,7 @@ func (n *node) expandRecipe(vm VM) error {
 // checks the graph for cycles starting at node n
 func checkCycles(n *node) error {
 	if n.visited && len(n.prereqs) > 0 {
-		return fmt.Errorf("cycle detected at target %v", n.outputs)
+		return fmt.Errorf("cycle detected at rule %v", n.rule)
 	}
 	n.visited = true
 	for _, p := range n.prereqs {
@@ -266,7 +270,7 @@ func (n *node) time() time.Time {
 }
 
 // returns true if this node should be rebuilt during the build
-func (n *node) outOfDate() bool {
+func (n *node) outOfDate(db *Database) bool {
 	// virtual rules are always out of date
 	if n.rule.attrs.Virtual {
 		return true
@@ -285,9 +289,14 @@ func (n *node) outOfDate() bool {
 		}
 	}
 
+	// database doesn't have an entry for this recipe
+	if !db.HasRecipe(n.rule.targets, n.recipe) {
+		return true
+	}
+
 	// if a prereq is out of date, this rule is out of date
 	for _, p := range n.prereqs {
-		if p.outOfDate() {
+		if p.outOfDate(db) {
 			return true
 		}
 	}

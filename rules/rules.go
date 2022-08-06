@@ -34,6 +34,10 @@ func NewDirectRule(targets, prereqs, recipe []string, attrs AttrSet) DirectRule 
 	}
 }
 
+func (r *DirectRule) String() string {
+	return fmt.Sprintf("%s: %s", r.targets, r.prereqs)
+}
+
 type MetaRule struct {
 	baseRule
 	targets []Pattern

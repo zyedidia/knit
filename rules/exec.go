@@ -14,6 +14,8 @@ type Executor struct {
 	errf      func(msg string)
 	throttler chan struct{}
 	w         io.Writer
+	db        *Database
+	lock      sync.Mutex
 
 	opts Options
 }
@@ -24,8 +26,9 @@ type Options struct {
 	AbortOnError bool
 }
 
-func NewExecutor(threads int, w io.Writer, opts Options, errf func(msg string)) *Executor {
+func NewExecutor(db *Database, threads int, w io.Writer, opts Options, errf func(msg string)) *Executor {
 	return &Executor{
+		db:        db,
 		errf:      errf,
 		throttler: make(chan struct{}, threads),
 		w:         w,
@@ -44,9 +47,13 @@ func (e *Executor) Exec(g *Graph) {
 }
 
 func (e *Executor) execNode(n *node) {
-	if !n.outOfDate() {
+	e.lock.Lock()
+	if !n.outOfDate(e.db) {
+		e.lock.Unlock()
 		return
 	}
+	e.db.InsertRecipe(n.rule.targets, n.recipe)
+	e.lock.Unlock()
 
 	var wg sync.WaitGroup
 	for _, p := range n.prereqs {

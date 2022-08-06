@@ -115,7 +115,7 @@ func main() {
 	vm := NewLuaVM()
 
 	for _, v := range assigns {
-		vm.SetVar(v.name, v.value)
+		vm.SetVarFromString(v.name, v.value)
 	}
 
 	_, err = vm.Eval(f, f.Name())
@@ -160,6 +160,10 @@ func main() {
 	g, err := rules.NewGraph(rs, ":all")
 	must(err)
 
+	if g.Size() == 1 {
+		fatalf("target not found: %s", targets)
+	}
+
 	must(g.ExpandRecipes(vm))
 
 	if *flags.viz != "" {
@@ -176,7 +180,9 @@ func main() {
 		out = os.Stdout
 	}
 
-	e := rules.NewExecutor(*flags.ncpu, out, rules.Options{
+	db := rules.NewDatabase(".take")
+
+	e := rules.NewExecutor(db, *flags.ncpu, out, rules.Options{
 		NoExec:       *flags.dryrun,
 		Shell:        "sh",
 		AbortOnError: true,
@@ -185,4 +191,6 @@ func main() {
 	})
 
 	e.Exec(g)
+
+	must(db.Save())
 }

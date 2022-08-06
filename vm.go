@@ -40,6 +40,12 @@ func NewLuaVM() *LuaVM {
 			Line:     line,
 		})
 	}))
+	L.SetGlobal("rule", luar.New(L, func(rule string) {
+		vm.rules = append(vm.rules, LRule{
+			Contents: rule,
+			File:     "<rule>",
+		})
+	}))
 	L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
 		return LToString(v)
 	}))
@@ -114,7 +120,7 @@ func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (stri
 			}
 			return LToString(v), nil
 		}, func(expr string) (string, error) {
-			v, err := vm.Eval(strings.NewReader("return "+expr), fmt.Sprintf("%s", strconv.Quote(expr)))
+			v, err := vm.Eval(strings.NewReader("return "+expr), strconv.Quote(expr))
 			if err != nil {
 				return "", fmt.Errorf("expand: %w", err)
 			} else if v == nil || v.Type() == lua.LTNil {
@@ -126,4 +132,13 @@ func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (stri
 
 func (vm *LuaVM) SetVar(name string, val interface{}) {
 	vm.L.SetGlobal(name, luar.New(vm.L, val))
+}
+
+func (vm *LuaVM) SetVarFromString(name, val string) {
+	i, err := strconv.Atoi(val)
+	if err == nil {
+		vm.SetVar(name, i)
+	} else {
+		vm.SetVar(name, val)
+	}
 }
