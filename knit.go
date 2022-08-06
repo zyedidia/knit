@@ -185,7 +185,7 @@ func main() {
 		out = os.Stdout
 	}
 
-	db := rules.NewDatabase(".take")
+	db := rules.NewDatabase(".knit")
 
 	e := rules.NewExecutor(db, *flags.ncpu, out, rules.Options{
 		NoExec:       *flags.dryrun,

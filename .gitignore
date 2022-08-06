@@ -5,6 +5,7 @@ todo.txt
 hello
 *.pdf
 .take
+.knit
 build.sh
 knit
 

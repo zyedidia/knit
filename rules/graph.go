@@ -177,9 +177,14 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 		}
 	}
 
-	// if len(rule.targets) == 0 {
-	// 	rule.targets = []string{target}
-	// }
+	if len(rule.targets) == 0 {
+		for o, f := range n.outputs {
+			if !f.exists {
+				return nil, fmt.Errorf("no rule to make target '%s'", o)
+			}
+		}
+		rule.targets = []string{target}
+	}
 
 	n.rule = &rule
 
