@@ -35,4 +35,4 @@ $ clean:V:
     rm -f $obj $prog
 
 $ echo-%:VQ:
-    echo $(eval(stem))
+    echo $(eval(match))

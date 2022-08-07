@@ -31,7 +31,7 @@ type node struct {
 
 	// for meta rules
 	meta    bool
-	stem    string
+	match   string
 	matches []string
 }
 
@@ -153,11 +153,11 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 				rule.recipe = mr.recipe
 
 				if pat.Suffix && len(sub) == 4 {
-					// %-rule -- the stem is the submatch and all %s in the
+					// %-rule -- the match is the submatch and all %s in the
 					// prereqs get expanded to the submatch
-					n.stem = string(target[sub[2]:sub[3]])
+					n.match = string(target[sub[2]:sub[3]])
 					for _, p := range mr.prereqs {
-						p = strings.ReplaceAll(p, "%", n.stem)
+						p = strings.ReplaceAll(p, "%", n.match)
 						rule.prereqs = append(rule.prereqs, p)
 					}
 				} else {
@@ -230,11 +230,11 @@ func (n *node) expandRecipe(vm VM) error {
 	vm.SetVar("in", n.rule.prereqs)
 	vm.SetVar("out", n.rule.targets)
 	if n.meta {
-		vm.SetVar("stem", n.stem)
+		vm.SetVar("match", n.match)
 		for i, m := range n.matches {
-			vm.SetVar(fmt.Sprintf("stem%d", i), m)
+			vm.SetVar(fmt.Sprintf("match%d", i), m)
 		}
-		vm.SetVar("stems", n.matches)
+		vm.SetVar("matches", n.matches)
 	}
 	n.recipe = make([]string, 0, len(n.rule.recipe))
 	for _, c := range n.rule.recipe {
