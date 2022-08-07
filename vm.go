@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
+	"github.com/zyedidia/knit/expand"
 	lua "github.com/zyedidia/knit/ktlua"
 	luar "github.com/zyedidia/knit/ktluar"
 	"github.com/zyedidia/knit/liblua"
@@ -57,7 +59,38 @@ func NewLuaVM() *LuaVM {
 		return v
 	}))
 
+	fn := func(name string) (string, error) {
+		v := getVar(L, name)
+		if v == nil {
+			return "", fmt.Errorf("f: variable '%s' does not exist", name)
+		}
+		return LToString(v), nil
+	}
+	L.SetGlobal("f", luar.New(L, func(s string) string {
+		s, err := expand.Expand(s, fn, fn)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+		}
+		return s
+	}))
+
 	return vm
+}
+
+func getVar(L *lua.LState, v string) lua.LValue {
+	i := 0
+	for dbg, ok := L.GetStack(i); ok; dbg, ok = L.GetStack(i) {
+		for j := 0; ; j++ {
+			name, val := L.GetLocal(dbg, j)
+			if val == nil || val.Type() == lua.LTNil {
+				break
+			} else if name == v {
+				return val
+			}
+		}
+		i++
+	}
+	return L.GetGlobal(v)
 }
 
 func (vm *LuaVM) Eval(r io.Reader, file string) (lua.LValue, error) {

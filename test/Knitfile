@@ -7,9 +7,9 @@ lld = cli.lld or 0
 cflags = "-Wall"
 
 if debug ~= 0 then
-    cflags = cflags .. " -Og -g -fsanitize=address,undefined"
+    cflags = f"$cflags -Og -g -fsanitize=address,undefined"
 else
-    cflags = cflags .. " -O2"
+    cflags = f"$cflags -O2"
 end
 
 ldflags = ""
@@ -35,4 +35,4 @@ $ clean:V:
     rm -f $obj $prog
 
 $ echo-%:VQ:
-    echo ${eval(stem)}
+    echo $(eval(stem))

@@ -60,7 +60,7 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 				pos++
 				buf.WriteByte(special)
 				continue
-			} else if p[0] == '{' {
+			} else if p[0] == '(' {
 				r.ReadByte()
 				pos++
 				inExpr = true
@@ -70,11 +70,11 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 				inVar = true
 				continue
 			}
-		case '{':
+		case '(':
 			if inExpr {
 				braceLevel++
 			}
-		case '}':
+		case ')':
 			if inExpr && braceLevel == 0 {
 				inExpr = false
 				value, err := rexpr(exprbuf.String())
