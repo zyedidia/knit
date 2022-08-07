@@ -13,10 +13,10 @@ import (
 func importKnit(L *lua.LState) *lua.LTable {
 	pkg := L.NewTable()
 
-	L.SetField(pkg, "Repl", luar.New(L, Repl))
-	L.SetField(pkg, "ExtRepl", luar.New(L, ExtRepl))
-	L.SetField(pkg, "Glob", luar.New(L, filepath.Glob))
-	L.SetField(pkg, "Shell", luar.New(L, Shell))
+	L.SetField(pkg, "repl", luar.New(L, Repl))
+	L.SetField(pkg, "extrepl", luar.New(L, ExtRepl))
+	L.SetField(pkg, "glob", luar.New(L, filepath.Glob))
+	L.SetField(pkg, "shell", luar.New(L, Shell))
 
 	return pkg
 }

@@ -1,14 +1,11 @@
-package main
+package knit
 
 import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
 	"strings"
 
-	"github.com/spf13/pflag"
-	"github.com/zyedidia/knit/info"
 	"github.com/zyedidia/knit/rules"
 )
 
@@ -37,24 +34,13 @@ func assert(b bool) {
 	}
 }
 
-var flags = struct {
-	knitfile *string
-	ncpu     *int
-	viz      *string
-	dryrun   *bool
-	rundir   *string
-	always   *bool
-	quiet    *bool
-	version  *bool
-}{
-	knitfile: pflag.StringP("file", "f", "Knitfile", "Knitfile to use"),
-	ncpu:     pflag.IntP("threads", "j", runtime.NumCPU(), "number of cores to use"),
-	viz:      pflag.String("viz", "", "emit a graphiz file"),
-	dryrun:   pflag.BoolP("dry-run", "n", false, "print commands without actually executing"),
-	rundir:   pflag.StringP("directory", "C", "", "run command from directory"),
-	always:   pflag.BoolP("always-build", "B", false, "unconditionally build all targets"),
-	quiet:    pflag.BoolP("quiet", "q", false, "don't print commands"),
-	version:  pflag.BoolP("version", "v", false, "show version information"),
+type Flags struct {
+	Knitfile string
+	Ncpu     int
+	Viz      string
+	DryRun   bool
+	RunDir   string
+	Always   bool
 }
 
 type assign struct {
@@ -84,29 +70,20 @@ func exists(path string) bool {
 	return err == nil
 }
 
-func main() {
-	pflag.Parse()
-
-	if *flags.version {
-		fmt.Println("knit version", info.Version)
-		os.Exit(0)
+func Run(out io.Writer, args []string, flags Flags) {
+	if flags.RunDir != "" {
+		must(os.Chdir(flags.RunDir))
 	}
 
-	if *flags.rundir != "" {
-		must(os.Chdir(*flags.rundir))
-	}
-
-	if *flags.ncpu <= 0 {
+	if flags.Ncpu <= 0 {
 		fatal("you must enable at least 1 core")
 	}
 
-	if exists(strings.Title(*flags.knitfile)) {
-		*flags.knitfile = strings.Title(*flags.knitfile)
+	if exists(strings.Title(flags.Knitfile)) {
+		flags.Knitfile = strings.Title(flags.Knitfile)
 	}
 
-	args := pflag.Args()
-
-	f, err := os.Open(*flags.knitfile)
+	f, err := os.Open(flags.Knitfile)
 	must(err)
 
 	vm := NewLuaVM()
@@ -171,27 +148,20 @@ func main() {
 
 	must(g.ExpandRecipes(vm))
 
-	if *flags.viz != "" {
-		f, err := os.Create(*flags.viz)
+	if flags.Viz != "" {
+		f, err := os.Create(flags.Viz)
 		must(err)
 		g.Visualize(f)
 		must(f.Close())
 	}
 
-	var out io.Writer
-	if *flags.quiet {
-		out = io.Discard
-	} else {
-		out = os.Stdout
-	}
-
 	db := rules.NewDatabase(".knit")
 
-	e := rules.NewExecutor(db, *flags.ncpu, out, rules.Options{
-		NoExec:       *flags.dryrun,
+	e := rules.NewExecutor(db, flags.Ncpu, out, rules.Options{
+		NoExec:       flags.DryRun,
 		Shell:        "sh",
 		AbortOnError: true,
-		BuildAll:     *flags.always,
+		BuildAll:     flags.Always,
 	}, func(msg string) {
 		fmt.Fprintln(os.Stderr, msg)
 	})

@@ -2,37 +2,24 @@ knit = import("knit")
 
 cc = cli.cc or "gcc"
 debug = cli.debug or 0
-lld = cli.lld or 0
 
 cflags = "-Wall"
 
 if debug ~= 0 then
-    cflags = f"$cflags -Og -g -fsanitize=address,undefined"
+    cflags = f"$cflags -Og -g"
 else
     cflags = f"$cflags -O2"
-end
-
-ldflags = ""
-if lld ~= 0 then
-    ldflags = "-fuse-ld=lld"
 end
 
 src = knit.glob("*.c")
 obj = knit.extrepl(src, ".c", ".o")
 prog = "hello"
 
-date = knit.shell("date")
-
-$ all:V: $prog
-
 $ $prog: $obj
-    $cc $cflags $ldflags $in -o $out
+    $cc $cflags $in -o $out
 
 $ %.o: %.c
     $cc $cflags -c $in -o $out
 
 $ clean:V:
     rm -f $obj $prog
-
-$ echo-%:VQ:
-    echo $(eval(match))
