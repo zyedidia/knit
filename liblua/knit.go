@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	lua "github.com/zyedidia/knit/ktlua"
 	luar "github.com/zyedidia/knit/ktluar"
@@ -17,6 +18,7 @@ func importKnit(L *lua.LState) *lua.LTable {
 	L.SetField(pkg, "extrepl", luar.New(L, ExtRepl))
 	L.SetField(pkg, "glob", luar.New(L, filepath.Glob))
 	L.SetField(pkg, "shell", luar.New(L, Shell))
+	L.SetField(pkg, "trim", luar.New(L, strings.TrimSpace))
 
 	return pkg
 }

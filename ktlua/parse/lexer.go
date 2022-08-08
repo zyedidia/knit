@@ -13,9 +13,9 @@ import (
 )
 
 const EOF = -1
-const whitespace1 = 1<<'\t' | 1<<' '
-const whitespace2 = 1<<'\t' | 1<<'\n' | 1<<'\r' | 1<<' '
-const whitespace3 = 1<<'\n' | 1<<'\r'
+const whitespace1 int64 = 1<<'\t' | 1<<' '
+const whitespace2 int64 = 1<<'\t' | 1<<'\n' | 1<<'\r' | 1<<' '
+const whitespace3 int64 = 1<<'\n' | 1<<'\r'
 
 type Error struct {
 	Pos     ast.Position

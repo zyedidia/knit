@@ -8,5 +8,6 @@ hello
 .knit
 build.sh
 knit
+knit-*
 
 tools/version/version

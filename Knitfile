@@ -1,0 +1,33 @@
+knit = import("knit")
+
+version = knit.trim(knit.shell("cd tools/version; go run version.go"))
+goflags = f"-trimpath -ldflags \"-s -w -X github.com/zyedidia/knit/info.Version=$version\""
+
+$ knit:
+    go build $goflags ./cmd/knit
+$ build:V: knit
+
+$ install:V:
+    go install $goflags ./cmd/knit
+
+$ all:V: knit-$version-linux-amd64.tar.gz \
+         knit-$version-linux-386.tar.gz \
+         knit-$version-linux-arm.tar.gz \
+         knit-$version-linux-arm64.tar.gz \
+         knit-$version-darwin-amd64.tar.gz \
+         knit-$version-darwin-arm64.tar.gz \
+         knit-$version-openbsd-amd64.tar.gz \
+         knit-$version-freebsd-amd64.tar.gz \
+         knit-$version-windows-amd64.tar.gz
+
+$ (knit-$version-(.*)-(.*)).tar.gz:R:
+    mkdir -p $match1
+    GOOS=$match2 GOARCH=$match3 go build $goflags -o $match1/knit ./cmd/knit
+    cp LICENSE* $match1
+    cp README.md $match1
+    tar czf $out $match1
+    rm -rf $match1
+
+$ clean:V:
+    rm -f *.tar.gz
+    rm -f knit
