@@ -83,6 +83,11 @@ func Run(out io.Writer, args []string, flags Flags) {
 		flags.Knitfile = strings.Title(flags.Knitfile)
 	}
 
+	def := DefaultBuildFile()
+	if !exists(flags.Knitfile) && exists(def) {
+		flags.Knitfile = def
+	}
+
 	f, err := os.Open(flags.Knitfile)
 	must(err)
 
