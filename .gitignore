@@ -9,5 +9,6 @@ hello
 build.sh
 knit
 knit-*
+!/cmd/knit
 
 tools/version/version
