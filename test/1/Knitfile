@@ -16,10 +16,10 @@ obj = knit.extrepl(src, ".c", ".o")
 prog = "hello"
 
 $ $prog: $obj
-    $cc $cflags $in -o $out
+    $cc $cflags $input -o $output
 
 $ %.o: %.c
-    $cc $cflags -c $in -o $out
+    $cc $cflags -c $input -o $output
 
 $ clean:V:
     rm -f $obj $prog

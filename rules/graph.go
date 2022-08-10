@@ -227,8 +227,10 @@ func (g *Graph) ExpandRecipes(vm VM) error {
 // function will assign the appropriate variables in the Lua VM and then
 // evaluate the variables and expressions that must be expanded.
 func (n *node) expandRecipe(vm VM) error {
-	vm.SetVar("in", n.rule.prereqs)
-	vm.SetVar("out", n.rule.targets)
+	vm.SetVar("inputs", n.rule.prereqs)
+	vm.SetVar("input", strings.Join(n.rule.prereqs, " "))
+	vm.SetVar("outputs", n.rule.targets)
+	vm.SetVar("output", strings.Join(n.rule.targets, " "))
 	if n.meta {
 		vm.SetVar("match", n.match)
 		for i, m := range n.matches {

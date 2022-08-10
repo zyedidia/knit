@@ -1,0 +1,4 @@
+$ hello.o:
+    echo "hi" > $output
+    sleep 2
+    echo "hello" > $output

@@ -26,10 +26,10 @@ date = knit.shell("date")
 $ all:V: $prog
 
 $ $prog: $obj
-    $cc $cflags $ldflags $in -o $out
+    $cc $cflags $ldflags $input -o $output
 
 $ %.o: %.c
-    $cc $cflags -c $in -o $out
+    $cc $cflags -c $input -o $output
 
 $ clean:V:
     rm -f $obj $prog

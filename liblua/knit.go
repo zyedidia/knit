@@ -19,8 +19,17 @@ func importKnit(L *lua.LState) *lua.LTable {
 	L.SetField(pkg, "glob", luar.New(L, filepath.Glob))
 	L.SetField(pkg, "shell", luar.New(L, Shell))
 	L.SetField(pkg, "trim", luar.New(L, strings.TrimSpace))
+	L.SetField(pkg, "abs", luar.New(L, Abs))
 
 	return pkg
+}
+
+func Abs(path string) string {
+	p, err := filepath.Abs(path)
+	if err != nil {
+		return err.Error()
+	}
+	return p
 }
 
 func ExtRepl(in []string, ext, repl string) []string {
