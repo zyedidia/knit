@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/zyedidia/knit/expand"
 	lua "github.com/zyedidia/gopher-lua"
 	luar "github.com/zyedidia/gopher-luar"
+	"github.com/zyedidia/knit/expand"
 	"github.com/zyedidia/knit/liblua"
 )
 
@@ -46,9 +46,18 @@ func NewLuaVM() *LuaVM {
 		})
 	}))
 	L.SetGlobal("rule", luar.New(L, func(rule string) {
+		dbg, ok := L.GetStack(1)
+		file := "<rule>"
+		line := 0
+		if ok {
+			L.GetInfo("nSl", dbg, nil)
+			file = dbg.Source
+			line = dbg.CurrentLine
+		}
 		vm.rules = append(vm.rules, LRule{
 			Contents: rule,
-			File:     "<rule>",
+			File:     file,
+			Line:     line,
 		})
 	}))
 	L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
@@ -65,13 +74,12 @@ func NewLuaVM() *LuaVM {
 			switch v {
 			case "false", "FALSE", "off", "OFF", "0":
 				return lua.LFalse
-			default:
-				return lua.LTrue
 			}
-		default:
-			// anything else is false
-			return lua.LFalse
+		case lua.LBool:
+			return v
 		}
+		// anything else is true
+		return lua.LTrue
 	}))
 	L.SetGlobal("eval", luar.New(L, func(s string) lua.LValue {
 		v, _ := vm.Eval(strings.NewReader("return "+s), "<eval>")
