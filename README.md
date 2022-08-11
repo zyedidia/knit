@@ -9,19 +9,18 @@ recipe depends on the variable.
 
 # Improvements over Make
 
+* Knit uses Lua for customization, rather than the Make custom language.
+* Knit tracks recipe changes, so if you update a variable (in the Knitfile or
+  at the command-line), any dependent rules will be automatically rebuilt.
+* Knit supports `%` meta-rules and regular expression meta-rules. Make only
+  supports `%` meta-rules.
 * Make requires tab characters for indentation, Knit does not.
 * Make uses special targets such as `.SECONDARY` to indicate special
   processing. Knit uses rule attributes.
 * Knit supports virtual attributes that are independent of the file system.
 * Knit uses sane variable names like `$input`, `$output`, and `$match` instead
   of `$^`, `$@`, and `$*`.
-* Knit tracks recipe changes, so if you update a variable (in the Knitfile or
-  at the command-line), any dependent rules will be automatically rebuilt.
-* Knit uses Lua for customization, rather than the Make custom language.
-* Make supports `%` meta-rules. Knit supports `%` meta-rules and regular
-  expression meta-rules.
 * Knit builds using all cores by default.
-* Knit's implementation is small and can be easily built for many systems.
 
 # Installation
 
