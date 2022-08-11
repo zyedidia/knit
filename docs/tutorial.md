@@ -3,6 +3,8 @@
 This tutorial is adapted from the Make tutorial ["Practical Makefiles, by
 example"](http://nuclear.mutantstargoat.com/articles/make/) by John Tsiombikas.
 
+Coming soon!
+
 ## Building C programs
 
 ## A simple Knitfile

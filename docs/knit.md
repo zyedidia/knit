@@ -125,6 +125,8 @@ error.
 
 * `rule(rule string)`: define a rule. The `$` syntax is shorthand for this function.
 
+* `include(file string)`: include a rule from a file if it exists.
+
 * `tostring(value) string`: convert an arbitrary value to a string.
 
 * `tobool(value)` bool: convert an arbitrary value to a boolean. A nil value

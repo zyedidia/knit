@@ -81,6 +81,17 @@ func NewLuaVM() *LuaVM {
 		// anything else is true
 		return lua.LTrue
 	}))
+	L.SetGlobal("include", luar.New(L, func(f string) {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			return
+		}
+		vm.rules = append(vm.rules, LRule{
+			Contents: string(b),
+			File:     f,
+			Line:     0,
+		})
+	}))
 	L.SetGlobal("eval", luar.New(L, func(s string) lua.LValue {
 		v, _ := vm.Eval(strings.NewReader("return "+s), "<eval>")
 		return v
