@@ -54,6 +54,25 @@ func NewLuaVM() *LuaVM {
 	L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
 		return LToString(v)
 	}))
+	L.SetGlobal("tobool", luar.New(L, func(b lua.LValue) lua.LValue {
+		// nil returns nil
+		if b == nil || b.Type() == lua.LTNil {
+			return b
+		}
+		switch v := b.(type) {
+		case lua.LString:
+			// a string becomes false if it is falsy, otherwise true
+			switch v {
+			case "false", "FALSE", "off", "OFF", "0":
+				return lua.LFalse
+			default:
+				return lua.LTrue
+			}
+		default:
+			// anything else is false
+			return lua.LFalse
+		}
+	}))
 	L.SetGlobal("eval", luar.New(L, func(s string) lua.LValue {
 		v, _ := vm.Eval(strings.NewReader("return "+s), "<eval>")
 		return v
@@ -170,14 +189,6 @@ func (vm *LuaVM) SetVar(name string, val interface{}) {
 	vm.L.SetGlobal(name, luar.New(vm.L, val))
 }
 
-func fromString(val string) interface{} {
-	i, err := strconv.Atoi(val)
-	if err == nil {
-		return i
-	}
-	return val
-}
-
 func (vm *LuaVM) MakeTable(tbl string) {
 	t := vm.L.NewTable()
 	vm.L.SetGlobal(tbl, t)
@@ -188,5 +199,5 @@ func (vm *LuaVM) AddVar(tbl, name, val string) {
 	if _, ok := vm.vars[tbl]; !ok {
 		vm.MakeTable(tbl)
 	}
-	vm.L.SetField(vm.vars[tbl], name, luar.New(vm.L, fromString(val)))
+	vm.L.SetField(vm.vars[tbl], name, luar.New(vm.L, val))
 }

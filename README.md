@@ -31,17 +31,17 @@ go install github.com/zyedidia/knit@latest
 
 # Example Knitfile
 
-Here is an example Takefile used for building a simple C project.
+Here is an example Knitfile used for building a simple C project.
 
 ```tcl
 knit = import("knit")
 
 cc = cli.cc or "gcc"
-debug = cli.debug or 0
+debug = tobool(cli.debug) or false
 
 cflags = "-Wall"
 
-if debug ~= 0 then
+if debug then
     cflags = f"$cflags -Og -g -fsanitize=address"
 else
     cflags = f"$cflags -O2"
@@ -62,4 +62,3 @@ $ clean:V:
 ```
 
 See this repository's Knitfile and the tests for more examples.
-

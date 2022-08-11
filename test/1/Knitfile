@@ -1,11 +1,11 @@
 knit = import("knit")
 
 cc = cli.cc or "gcc"
-debug = cli.debug or 0
+debug = tobool(cli.debug) or false
 
 cflags = "-Wall"
 
-if debug ~= 0 then
+if debug then
     cflags = f"$cflags -Og -g"
 else
     cflags = f"$cflags -O2"
