@@ -48,13 +48,6 @@ type command struct {
 func (e *Executor) Exec(g *Graph) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
-	go func() {
-		<-sig
-		e.lock.Lock()
-		e.stopped = true
-		fmt.Println("stopped")
-		e.lock.Unlock()
-	}()
 	e.execNode(g.base)
 }
 
@@ -94,7 +87,6 @@ func (e *Executor) execNode(n *node) {
 
 	if n.rule.attrs.Exclusive {
 		e.lock.Lock()
-		defer e.lock.Unlock()
 	}
 
 	failed := false
@@ -122,13 +114,20 @@ func (e *Executor) execNode(n *node) {
 		}
 	}
 
+	if n.rule.attrs.Exclusive {
+		e.lock.Unlock()
+	}
+
 	if failed {
+		e.lock.Lock()
 		for _, t := range n.rule.targets {
 			err := os.RemoveAll(t)
 			if err != nil {
 				e.errf(fmt.Sprintf("error while removing failed targets: %v", err))
 			}
 		}
+		e.stopped = true
+		e.lock.Unlock()
 	}
 }
 

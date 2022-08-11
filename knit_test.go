@@ -2,6 +2,7 @@ package knit_test
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,8 +18,14 @@ type Test struct {
 }
 
 type Build struct {
-	Args   []string
-	Output string
+	Args     []string
+	Output   string
+	Notbuilt []string
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func loadTest(dir string, t *testing.T) *Test {
@@ -37,7 +44,13 @@ func loadTest(dir string, t *testing.T) *Test {
 func runTest(dir string, t *testing.T) {
 	test := loadTest(dir, t)
 
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	os.Chdir(dir)
+	defer os.Chdir(wd)
 	for _, b := range test.Builds {
 		buf := &bytes.Buffer{}
 		knit.Run(buf, b.Args, test.Flags)
@@ -48,10 +61,28 @@ func runTest(dir string, t *testing.T) {
 		if expected != got {
 			t.Fatalf("expected %s, got %s", expected, got)
 		}
+
+		for _, f := range b.Notbuilt {
+			if exists(f) {
+				t.Fatalf("expected %s not to exist, but it does", f)
+			}
+		}
 	}
-	os.RemoveAll(filepath.Join(dir, ".knit"))
+	os.RemoveAll(".knit")
 }
 
-func Test1(t *testing.T) {
-	runTest("test/1", t)
+func TestAll(t *testing.T) {
+	knit.Stderr = io.Discard
+
+	tests := []string{
+		"test/1",
+		"test/2",
+		"test/3",
+	}
+
+	for _, tt := range tests {
+		t.Run(tt, func(t *testing.T) {
+			runTest(tt, t)
+		})
+	}
 }

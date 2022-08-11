@@ -25,9 +25,19 @@ $ (knit-$version-(.*)-(.*)).tar.gz:R:
     GOOS=$match2 GOARCH=$match3 go build $goflags -o $match1/knit ./cmd/knit
     cp LICENSE* $match1
     cp README.md $match1
-    tar czf $out $match1
+    tar czf $output $match1
     rm -rf $match1
 
 $ clean:V:
-    rm -f *.tar.gz
-    rm -f knit
+    rm -f *.tar.gz knit cover.out
+
+pkgs = ".,./rules,./expand"
+
+$ cover.out:
+    go test -coverpkg=$pkgs -coverprofile cover.out .
+
+$ cover:V:
+    go test -coverpkg=$pkgs -cover .
+
+$ cover-html:V: cover.out
+    go tool cover -html=cover.out

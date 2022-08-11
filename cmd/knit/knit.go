@@ -20,7 +20,7 @@ func main() {
 	always := pflag.BoolP("always-build", "B", false, "unconditionally build all targets")
 	quiet := pflag.BoolP("quiet", "q", false, "don't print commands")
 	version := pflag.BoolP("version", "v", false, "show version information")
-	help := pflag.BoolP("help", "h", false, "")
+	help := pflag.BoolP("help", "h", false, "show this help message")
 
 	pflag.Parse()
 

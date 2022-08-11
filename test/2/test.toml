@@ -1,0 +1,13 @@
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+
+[[builds]]
+
+args = ["test1.txt"]
+output = """\
+echo "hi" > test.txt
+false
+"""
+notbuilt = ["test1.txt", "test.txt"]

@@ -9,16 +9,18 @@ import (
 	"github.com/zyedidia/knit/rules"
 )
 
+var Stderr io.Writer = os.Stderr
+
 func fatalf(format string, args ...interface{}) {
-	fmt.Fprint(os.Stderr, "knit: ")
-	fmt.Fprintf(os.Stderr, format, args...)
-	fmt.Fprintln(os.Stderr)
+	fmt.Fprint(Stderr, "knit: ")
+	fmt.Fprintf(Stderr, format, args...)
+	fmt.Fprintln(Stderr)
 	os.Exit(1)
 }
 
 func fatal(s string) {
-	fmt.Fprint(os.Stderr, "knit: ")
-	fmt.Fprintln(os.Stderr, s)
+	fmt.Fprint(Stderr, "knit: ")
+	fmt.Fprintln(Stderr, s)
 	os.Exit(1)
 }
 
@@ -114,7 +116,7 @@ func Run(out io.Writer, args []string, flags Flags) {
 
 	errs := rules.ErrFns{
 		PrintErr: func(e string) {
-			fmt.Fprint(os.Stderr, e)
+			fmt.Fprint(Stderr, e)
 		},
 		Err: func(e string) {
 			fatalf(e)
@@ -168,7 +170,7 @@ func Run(out io.Writer, args []string, flags Flags) {
 		AbortOnError: true,
 		BuildAll:     flags.Always,
 	}, func(msg string) {
-		fmt.Fprintln(os.Stderr, msg)
+		fmt.Fprintln(Stderr, msg)
 	})
 
 	e.Exec(g)

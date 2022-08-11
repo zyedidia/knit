@@ -1,8 +1,6 @@
-$ hello.o:
+$ test.txt:
     echo "hi" > $output
-    sleep 2
-    echo "hello" > $output
+    false
 
-$ hello1.o: hello.o
-    sleep 2
+$ test1.txt: test.txt
     echo "hello1" > $output
