@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	lua "github.com/zyedidia/gopher-lua"
@@ -20,6 +21,8 @@ func importKnit(L *lua.LState) *lua.LTable {
 	L.SetField(pkg, "shell", luar.New(L, Shell))
 	L.SetField(pkg, "trim", luar.New(L, strings.TrimSpace))
 	L.SetField(pkg, "abs", luar.New(L, Abs))
+	L.SetField(pkg, "os", luar.New(L, runtime.GOOS))
+	L.SetField(pkg, "arch", luar.New(L, runtime.GOARCH))
 
 	return pkg
 }
