@@ -7,6 +7,9 @@ recipes that are executed across builds, so changing a variable (even at the
 command-line) can cause a rule to be rebuilt because Knit can see that the
 recipe depends on the variable.
 
+Knit is very much in-progress and there may be bugs. I am still in the process
+of adding enough features so that I can convert my projects to Knit.
+
 # Improvements over Make
 
 * Knit uses Lua for customization, rather than the Make custom language.
@@ -23,6 +26,14 @@ recipe depends on the variable.
 * Knit builds using all cores by default.
 
 # Installation
+
+Prebuilt binary:
+
+```
+eget zyedidia/knit
+```
+
+From source:
 
 ```
 go install github.com/zyedidia/knit@latest
