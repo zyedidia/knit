@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -74,10 +75,18 @@ func runTest(dir string, t *testing.T) {
 func TestAll(t *testing.T) {
 	knit.Stderr = io.Discard
 
-	tests := []string{
-		"test/1",
-		"test/2",
-		"test/3",
+	files, err := os.ReadDir("./test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []string{}
+
+	for _, f := range files {
+		_, err := strconv.Atoi(f.Name())
+		if f.IsDir() && err == nil {
+			tests = append(tests, filepath.Join("test", f.Name()))
+		}
 	}
 
 	for _, tt := range tests {

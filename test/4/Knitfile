@@ -1,0 +1,11 @@
+clean = {"hello.o", "hello"}
+
+dofile("add/Knitfile")
+
+$ all:V: hello
+
+$ hello: hello.o add/add.o
+    gcc $input -o $output
+
+$ clean:V:
+    rm -f $clean
