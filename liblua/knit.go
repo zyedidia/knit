@@ -2,6 +2,7 @@ package liblua
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -23,6 +24,7 @@ func importKnit(L *lua.LState) *lua.LTable {
 	L.SetField(pkg, "abs", luar.New(L, Abs))
 	L.SetField(pkg, "os", luar.New(L, runtime.GOOS))
 	L.SetField(pkg, "arch", luar.New(L, runtime.GOARCH))
+	L.SetField(pkg, "readfile", luar.New(L, ReadFile))
 
 	return pkg
 }
@@ -63,4 +65,12 @@ func Shell(shcmd string) string {
 		return fmt.Sprintf("%v", err)
 	}
 	return string(b)
+}
+
+func ReadFile(f string) lua.LValue {
+	b, err := os.ReadFile(f)
+	if err != nil {
+		return lua.LNil
+	}
+	return lua.LString(string(b))
 }
