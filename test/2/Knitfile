@@ -2,3 +2,7 @@ $ hello.o:
     echo "hi" > $output
     sleep 2
     echo "hello" > $output
+
+$ hello1.o: hello.o
+    sleep 2
+    echo "hello1" > $output

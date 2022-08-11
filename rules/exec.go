@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"sync"
 
 	"github.com/kballard/go-shellquote"
@@ -16,6 +17,7 @@ type Executor struct {
 	w         io.Writer
 	db        *Database
 	lock      sync.Mutex
+	stopped   bool
 
 	opts Options
 }
@@ -44,6 +46,15 @@ type command struct {
 }
 
 func (e *Executor) Exec(g *Graph) {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+	go func() {
+		<-sig
+		e.lock.Lock()
+		e.stopped = true
+		fmt.Println("stopped")
+		e.lock.Unlock()
+	}()
 	e.execNode(g.base)
 }
 
@@ -77,6 +88,10 @@ func (e *Executor) execNode(n *node) {
 		return
 	}
 
+	if e.isStopped() {
+		return
+	}
+
 	if n.rule.attrs.Exclusive {
 		e.lock.Lock()
 		defer e.lock.Unlock()
@@ -107,7 +122,7 @@ func (e *Executor) execNode(n *node) {
 		}
 	}
 
-	if failed && n.rule.attrs.DelFailed {
+	if failed {
 		for _, t := range n.rule.targets {
 			err := os.RemoveAll(t)
 			if err != nil {
@@ -134,6 +149,12 @@ func (e *Executor) getCmd(cmd string) (command, error) {
 		args:   words[1:],
 		recipe: cmd,
 	}, nil
+}
+
+func (e *Executor) isStopped() bool {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+	return e.stopped
 }
 
 func (e *Executor) execCmd(c command) error {
