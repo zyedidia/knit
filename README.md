@@ -71,4 +71,6 @@ $ clean:V:
     rm -f $obj $prog
 ```
 
+See the [docs](./docs/knit.md) for more information.
+
 See this repository's Knitfile and the tests for more examples.
