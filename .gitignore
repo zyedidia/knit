@@ -10,5 +10,7 @@ build.sh
 knit
 knit-*
 !/cmd/knit
+*.out
+*.cov
 
 tools/version/version
