@@ -2,6 +2,7 @@ package knit_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -47,7 +48,7 @@ func runTest(dir string, t *testing.T) {
 
 	wd, err := os.Getwd()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(fmt.Errorf("could not get wd: %w", err))
 	}
 
 	os.Chdir(dir)
@@ -77,7 +78,7 @@ func TestAll(t *testing.T) {
 
 	files, err := os.ReadDir("./test")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(fmt.Errorf("open test dir: %w", err))
 	}
 
 	tests := []string{}

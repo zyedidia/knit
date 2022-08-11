@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/zyedidia/knit/expand"
-	lua "github.com/zyedidia/knit/ktlua"
-	luar "github.com/zyedidia/knit/ktluar"
+	lua "github.com/zyedidia/gopher-lua"
+	luar "github.com/zyedidia/gopher-luar"
 	"github.com/zyedidia/knit/liblua"
 )
 

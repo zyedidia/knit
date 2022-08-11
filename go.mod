@@ -11,4 +11,8 @@ require (
 	github.com/spf13/pflag v1.0.5
 )
 
-require golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 // indirect
+require (
+	github.com/zyedidia/gopher-lua v0.0.0-20220811182220-44d3c0155041 // indirect
+	github.com/zyedidia/gopher-luar v0.0.0-20220811182431-9d2fc6a3867f // indirect
+	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 // indirect
+)

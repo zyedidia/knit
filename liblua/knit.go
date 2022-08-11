@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	lua "github.com/zyedidia/knit/ktlua"
-	luar "github.com/zyedidia/knit/ktluar"
+	lua "github.com/zyedidia/gopher-lua"
+	luar "github.com/zyedidia/gopher-luar"
 )
 
 func importKnit(L *lua.LState) *lua.LTable {

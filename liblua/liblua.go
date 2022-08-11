@@ -1,7 +1,7 @@
 package liblua
 
 import (
-	lua "github.com/zyedidia/knit/ktlua"
+	lua "github.com/zyedidia/gopher-lua"
 )
 
 type Importer func(*lua.LState) *lua.LTable

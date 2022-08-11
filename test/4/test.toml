@@ -6,7 +6,7 @@ dryrun = true
 
 [[builds]]
 
-args = [""]
+args = []
 output = """\
 gcc -c hello.c -o hello.o
 gcc -c add/add.c -o add/add.o
