@@ -1,5 +1,10 @@
 # Knit 🧶
 
+![Test Workflow](https://github.com/zyedidia/knit/actions/workflows/test.yaml/badge.svg)
+[![Go Reference](https://pkg.go.dev/badge/github.com/zyedidia/knit.svg)](https://pkg.go.dev/github.com/zyedidia/knit)
+[![Go Report Card](https://goreportcard.com/badge/github.com/zyedidia/knit)](https://goreportcard.com/report/github.com/zyedidia/knit)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/zyedidia/knit/blob/master/LICENSE)
+
 Knit is a build tool inspired by Make and Plan9 mk. You define rules with a
 Make-like syntax within a Lua program. Knit also tracks more of your build to
 give you better incremental builds. For example, Knit automatically tracks
