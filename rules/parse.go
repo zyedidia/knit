@@ -118,7 +118,7 @@ func ParseInto(input string, rules *RuleSet, path string, errfns ErrFns, expands
 
 	// insert a dummy newline to allow parsing of any assignments or recipeless
 	// rules to finish.
-	state = state(p, token{tokenNewline, "\n", l.line, l.col})
+	state(p, token{tokenNewline, "\n", l.line, l.col})
 
 	return nil
 

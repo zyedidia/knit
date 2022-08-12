@@ -60,14 +60,14 @@ func (db *Database) Save() error {
 		return err
 	}
 	defer f.Close()
-	return db.recipes.WriteTo(f)
+	return db.recipes.WriteBytesTo(f)
 }
 
 type recipes struct {
 	Hashes map[uint64]uint64
 }
 
-func (r *recipes) WriteTo(w io.Writer) error {
+func (r *recipes) WriteBytesTo(w io.Writer) error {
 	fz := gzip.NewWriter(w)
 	enc := gob.NewEncoder(fz)
 	err := enc.Encode(r)
