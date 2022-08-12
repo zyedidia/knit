@@ -1,12 +1,15 @@
 package rules
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"os/signal"
 	"sync"
+
+	"sync/atomic"
 
 	"github.com/kballard/go-shellquote"
 )
@@ -17,7 +20,7 @@ type Executor struct {
 	w         io.Writer
 	db        *Database
 	lock      sync.Mutex
-	stopped   bool
+	stopped   atomic.Bool
 
 	opts Options
 }
@@ -45,21 +48,27 @@ type command struct {
 	recipe string
 }
 
-func (e *Executor) Exec(g *Graph) {
+var ErrNothingToDo = errors.New("nothing to be done")
+
+func (e *Executor) Exec(g *Graph) error {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
-	e.execNode(g.base)
+	if !e.execNode(g.base) {
+		return ErrNothingToDo
+	}
+	return nil
 }
 
-func (e *Executor) execNode(n *node) {
+func (e *Executor) execNode(n *node) bool {
 	e.lock.Lock()
 	if !e.opts.BuildAll && !n.outOfDate(e.db) {
 		e.lock.Unlock()
-		return
+		return false
 	}
 	e.db.InsertRecipe(n.rule.targets, n.recipe)
 	e.lock.Unlock()
 
+	var rebuilt atomic.Bool
 	var wg sync.WaitGroup
 	for _, p := range n.prereqs {
 		wg.Add(1)
@@ -67,26 +76,28 @@ func (e *Executor) execNode(n *node) {
 		case e.throttler <- struct{}{}:
 			go func(pn *node) {
 				defer wg.Done()
-				e.execNode(pn)
+				r := e.execNode(pn)
+				rebuilt.Store(rebuilt.Load() || r)
 				<-e.throttler
 			}(p)
 		default:
-			e.execNode(p)
+			rebuilt.Store(e.execNode(p))
 			wg.Done()
 		}
 	}
 	wg.Wait()
 
 	if len(n.rule.recipe) == 0 {
-		return
+		return rebuilt.Load()
 	}
 
-	if e.isStopped() {
-		return
+	if e.stopped.Load() {
+		return rebuilt.Load()
 	}
 
 	if n.rule.attrs.Exclusive {
 		e.lock.Lock()
+		defer e.lock.Unlock()
 	}
 
 	failed := false
@@ -114,21 +125,16 @@ func (e *Executor) execNode(n *node) {
 		}
 	}
 
-	if n.rule.attrs.Exclusive {
-		e.lock.Unlock()
-	}
-
 	if failed {
-		e.lock.Lock()
 		for _, t := range n.rule.targets {
 			err := os.RemoveAll(t)
 			if err != nil {
 				e.errf(fmt.Sprintf("error while removing failed targets: %v", err))
 			}
 		}
-		e.stopped = true
-		e.lock.Unlock()
+		e.stopped.Store(true)
 	}
+	return true
 }
 
 func (e *Executor) getCmd(cmd string) (command, error) {
@@ -148,12 +154,6 @@ func (e *Executor) getCmd(cmd string) (command, error) {
 		args:   words[1:],
 		recipe: cmd,
 	}, nil
-}
-
-func (e *Executor) isStopped() bool {
-	e.lock.Lock()
-	defer e.lock.Unlock()
-	return e.stopped
 }
 
 func (e *Executor) execCmd(c command) error {

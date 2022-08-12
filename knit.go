@@ -170,7 +170,10 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		fmt.Fprintln(Stderr, msg)
 	})
 
-	e.Exec(g)
+	err = e.Exec(g)
+	if err != nil {
+		return fmt.Errorf("'%s': %w", strings.Join(targets, " "), err)
+	}
 
 	return db.Save()
 }

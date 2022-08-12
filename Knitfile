@@ -31,6 +31,11 @@ $ (knit-$version-(.*)-(.*)).tar.gz:R:
 $ clean:V:
     rm -f *.tar.gz knit cover.out
 
+race = tobool(cli.race) and "-race" or ""
+
+$ test:V:
+    go test $race
+
 pkgs = ".,./rules,./expand"
 
 $ cover.out:

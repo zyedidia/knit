@@ -4,8 +4,6 @@ cc = cli.cc or "gcc"
 debug = tobool(cli.debug) or false
 lld = tobool(cli.lld) or false
 
-rule("hello")
-
 cflags = "-Wall"
 
 if debug then

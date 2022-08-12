@@ -16,6 +16,7 @@ gcc -Wall -O2 hello.o other.o -o hello
 
 args = ["hello"]
 output = ""
+error = "'hello': nothing to be done"
 
 [[builds]]
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/zyedidia/knit"
 	"github.com/zyedidia/knit/info"
+	"github.com/zyedidia/knit/rules"
 )
 
 func main() {
@@ -51,5 +53,8 @@ func main() {
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "knit: %s\n", err)
+		if !errors.Is(err, rules.ErrNothingToDo) {
+			os.Exit(1)
+		}
 	}
 }
