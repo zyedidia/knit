@@ -41,7 +41,7 @@ func main() {
 		out = os.Stdout
 	}
 
-	knit.Run(out, pflag.Args(), knit.Flags{
+	err := knit.Run(out, pflag.Args(), knit.Flags{
 		Knitfile: *knitfile,
 		Ncpu:     *ncpu,
 		Viz:      *viz,
@@ -49,4 +49,7 @@ func main() {
 		RunDir:   *rundir,
 		Always:   *always,
 	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "knit: %s\n", err)
+	}
 }

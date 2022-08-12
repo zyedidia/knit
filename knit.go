@@ -1,6 +1,7 @@
 package knit
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,25 +11,6 @@ import (
 )
 
 var Stderr io.Writer = os.Stderr
-
-func fatalf(format string, args ...interface{}) {
-	fmt.Fprint(Stderr, "knit: ")
-	fmt.Fprintf(Stderr, format, args...)
-	fmt.Fprintln(Stderr)
-	os.Exit(1)
-}
-
-func fatal(s string) {
-	fmt.Fprint(Stderr, "knit: ")
-	fmt.Fprintln(Stderr, s)
-	os.Exit(1)
-}
-
-func must(err error) {
-	if err != nil {
-		fatalf("%v", err)
-	}
-}
 
 func assert(b bool) {
 	if !b {
@@ -72,13 +54,13 @@ func exists(path string) bool {
 	return err == nil
 }
 
-func Run(out io.Writer, args []string, flags Flags) {
+func Run(out io.Writer, args []string, flags Flags) error {
 	if flags.RunDir != "" {
-		must(os.Chdir(flags.RunDir))
+		os.Chdir(flags.RunDir)
 	}
 
 	if flags.Ncpu <= 0 {
-		fatal("you must enable at least 1 core")
+		return errors.New("you must enable at least 1 core")
 	}
 
 	if exists(strings.Title(flags.Knitfile)) {
@@ -91,7 +73,9 @@ func Run(out io.Writer, args []string, flags Flags) {
 	}
 
 	f, err := os.Open(flags.Knitfile)
-	must(err)
+	if err != nil {
+		return err
+	}
 
 	vm := NewLuaVM()
 
@@ -108,9 +92,11 @@ func Run(out io.Writer, args []string, flags Flags) {
 	}
 
 	_, err = vm.Eval(f, f.Name())
-	must(err)
+	if err != nil {
+		return err
+	}
 
-	must(f.Close())
+	f.Close()
 
 	rs := rules.NewRuleSet()
 
@@ -119,7 +105,8 @@ func Run(out io.Writer, args []string, flags Flags) {
 			fmt.Fprint(Stderr, e)
 		},
 		Err: func(e string) {
-			fatalf(e)
+			fmt.Fprintln(Stderr, e)
+			os.Exit(1)
 		},
 	}
 
@@ -130,7 +117,10 @@ func Run(out io.Writer, args []string, flags Flags) {
 	}
 
 	for _, r := range vm.rules {
-		must(rules.ParseInto(r.Contents, rs, fmt.Sprintf("%s:%d:<rule>", r.File, r.Line), errs, expands))
+		err := rules.ParseInto(r.Contents, rs, fmt.Sprintf("%s:%d:<rule>", r.File, r.Line), errs, expands)
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(targets) == 0 {
@@ -138,7 +128,7 @@ func Run(out io.Writer, args []string, flags Flags) {
 	}
 
 	if len(targets) == 0 {
-		fatal("no targets")
+		return errors.New("no targets")
 	}
 
 	rs.Add(rules.NewDirectRule([]string{":all"}, targets, nil, rules.AttrSet{
@@ -147,19 +137,26 @@ func Run(out io.Writer, args []string, flags Flags) {
 	}))
 
 	g, err := rules.NewGraph(rs, ":all")
-	must(err)
-
-	if g.Size() == 1 {
-		fatalf("target not found: %s", targets)
+	if err != nil {
+		return err
 	}
 
-	must(g.ExpandRecipes(vm))
+	if g.Size() == 1 {
+		return fmt.Errorf("target not found: %s", targets)
+	}
+
+	err = g.ExpandRecipes(vm)
+	if err != nil {
+		return err
+	}
 
 	if flags.Viz != "" {
 		f, err := os.Create(flags.Viz)
-		must(err)
+		if err != nil {
+			return err
+		}
 		g.Visualize(f)
-		must(f.Close())
+		f.Close()
 	}
 
 	db := rules.NewDatabase(".knit")
@@ -175,5 +172,5 @@ func Run(out io.Writer, args []string, flags Flags) {
 
 	e.Exec(g)
 
-	must(db.Save())
+	return db.Save()
 }

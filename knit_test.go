@@ -23,6 +23,7 @@ type Build struct {
 	Args     []string
 	Output   string
 	Notbuilt []string
+	Error    string
 }
 
 func exists(path string) bool {
@@ -55,7 +56,13 @@ func runTest(dir string, t *testing.T) {
 	defer os.Chdir(wd)
 	for _, b := range test.Builds {
 		buf := &bytes.Buffer{}
-		knit.Run(buf, b.Args, test.Flags)
+		err := knit.Run(buf, b.Args, test.Flags)
+		if err != nil {
+			if err.Error() == b.Error {
+				continue
+			}
+			t.Fatal(err)
+		}
 
 		expected := strings.TrimSpace(b.Output)
 		got := strings.TrimSpace(buf.String())
