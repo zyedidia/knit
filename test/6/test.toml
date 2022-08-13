@@ -1,0 +1,19 @@
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = ["foo.o"]
+output = """\
+gcc foo.c -c -o foo.o
+"""
+
+[[builds]]
+
+args = ["bar.o"]
+output = """\
+as bar.s -c -o bar.o
+"""

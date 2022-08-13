@@ -91,7 +91,7 @@ func NewLuaVM() *LuaVM {
 		// anything else is true
 		return lua.LTrue
 	}))
-	L.SetGlobal("include", luar.New(L, func(f string) {
+	L.SetGlobal("rulefile", luar.New(L, func(f string) {
 		b, err := os.ReadFile(f)
 		if err != nil {
 			return
