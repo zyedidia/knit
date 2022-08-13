@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func DefaultConfigDir() string {
@@ -26,5 +25,5 @@ func DefaultBuildFile() string {
 	if exists(filepath.Join(dir, defaultFile)) {
 		return filepath.Join(dir, defaultFile)
 	}
-	return filepath.Join(DefaultConfigDir(), strings.Title("knitfile.def"))
+	return filepath.Join(DefaultConfigDir(), title(defaultFile))
 }

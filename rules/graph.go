@@ -66,12 +66,6 @@ func (f *file) updateTimestamp() {
 	log.Fatalf("update-timestamp: %v\n", err)
 }
 
-func (n *node) updateTimestamps() {
-	for i := range n.outputs {
-		n.outputs[i].updateTimestamp()
-	}
-}
-
 func (g *Graph) newNode(target string) *node {
 	n := &node{
 		outputs: map[string]*file{

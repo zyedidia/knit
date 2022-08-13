@@ -6,17 +6,18 @@ import (
 	"io"
 	"os"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/zyedidia/knit/rules"
 )
 
-var Stderr io.Writer = os.Stderr
-
-func assert(b bool) {
-	if !b {
-		panic("assertion failed")
-	}
+func title(s string) string {
+	r, size := utf8.DecodeRuneInString(s)
+	return string(unicode.ToTitle(r)) + s[size:]
 }
+
+var Stderr io.Writer = os.Stderr
 
 type Flags struct {
 	Knitfile string
@@ -63,8 +64,8 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		return errors.New("you must enable at least 1 core")
 	}
 
-	if exists(strings.Title(flags.Knitfile)) {
-		flags.Knitfile = strings.Title(flags.Knitfile)
+	if exists(title(flags.Knitfile)) {
+		flags.Knitfile = title(flags.Knitfile)
 	}
 
 	def := DefaultBuildFile()
