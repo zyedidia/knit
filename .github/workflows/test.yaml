@@ -12,17 +12,21 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
     - uses: actions/checkout@v3
+
     - name: format
       run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
       if: matrix.os == 'ubuntu-latest'
+
     - name: vet
       run: "go vet ./..."
+
     - name: staticcheck
-	  uses: dominikh/staticcheck-action@v1.2.0
-	  with:
-		version: "2022.1.1"
-		install-go: false
-		cache-key: ${{ matrix.go-version }}
+      uses: dominikh/staticcheck-action@v1.2.0
+      with:
+        version: "2022.1.1"
+        install-go: false
+        cache-key: ${{ matrix.go-version }}
+
     - name: test
       run: |
         go build -o knit ./cmd/knit
