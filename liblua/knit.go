@@ -20,7 +20,7 @@ func importKnit(L *lua.LState) *lua.LTable {
 
 	L.SetField(pkg, "repl", luar.New(L, Repl))
 	L.SetField(pkg, "extrepl", luar.New(L, ExtRepl))
-	L.SetField(pkg, "glob", luar.New(L, filepath.Glob))
+	L.SetField(pkg, "glob", luar.New(L, Glob))
 	L.SetField(pkg, "shell", luar.New(L, Shell))
 	L.SetField(pkg, "trim", luar.New(L, strings.TrimSpace))
 	L.SetField(pkg, "abs", luar.New(L, Abs))
@@ -39,10 +39,19 @@ func Join(a, b []string) []string {
 	return append(c, b...)
 }
 
+func Glob(pattern string) []string {
+	f, err := filepath.Glob(pattern)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "glob: %s\n", err)
+		return nil
+	}
+	return f
+}
+
 func Rglob(path string, pattern string) []string {
 	g, err := glob.Compile(pattern)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "glob: %s\n", err)
+		fmt.Fprintf(os.Stderr, "rglob: %s\n", err)
 		return nil
 	}
 	var files []string

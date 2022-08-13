@@ -63,6 +63,16 @@ func NewLuaVM() *LuaVM {
 	L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
 		return LToString(v)
 	}))
+	L.SetGlobal("toarray", luar.New(L, func(v lua.LValue) lua.LValue {
+		if v == nil || v.Type() == lua.LTNil {
+			return v
+		}
+		switch v := v.(type) {
+		case lua.LString:
+			return luar.New(L, strings.Split(string(v), " "))
+		}
+		return v
+	}))
 	L.SetGlobal("tobool", luar.New(L, func(b lua.LValue) lua.LValue {
 		// nil returns nil
 		if b == nil || b.Type() == lua.LTNil {
@@ -97,39 +107,42 @@ func NewLuaVM() *LuaVM {
 		return v
 	}))
 
-	fn := func(name string) (string, error) {
-		v := getVar(L, name)
-		if v == nil {
-			return "", fmt.Errorf("f: variable '%s' does not exist", name)
-		}
-		return LToString(v), nil
-	}
-	L.SetGlobal("f", luar.New(L, func(s string) string {
-		s, err := expand.Expand(s, fn, fn)
+	rvar, rexpr := vm.ExpandFuncs()
+	// fn := func(name string) (string, error) {
+	// 	v := getVar(L, name)
+	// 	if v == nil {
+	// 		return "", fmt.Errorf("f: variable '%s' does not exist", name)
+	// 	}
+	// 	return LToString(v), nil
+	// }
+	format := func(s string) string {
+		s, err := expand.Expand(s, rvar, rexpr)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: %v\n", err)
 		}
 		return s
-	}))
+	}
+	L.SetGlobal("f", luar.New(L, format))
+	L.SetGlobal("_format", luar.New(L, format))
 
 	return vm
 }
 
-func getVar(L *lua.LState, v string) lua.LValue {
-	i := 0
-	for dbg, ok := L.GetStack(i); ok; dbg, ok = L.GetStack(i) {
-		for j := 0; ; j++ {
-			name, val := L.GetLocal(dbg, j)
-			if val == nil || val.Type() == lua.LTNil {
-				break
-			} else if name == v {
-				return val
-			}
-		}
-		i++
-	}
-	return L.GetGlobal(v)
-}
+// func getVar(L *lua.LState, v string) lua.LValue {
+// 	i := 0
+// 	for dbg, ok := L.GetStack(i); ok; dbg, ok = L.GetStack(i) {
+// 		for j := 0; ; j++ {
+// 			name, val := L.GetLocal(dbg, j)
+// 			if val == nil || val.Type() == lua.LTNil {
+// 				break
+// 			} else if name == v {
+// 				return val
+// 			}
+// 		}
+// 		i++
+// 	}
+// 	return L.GetGlobal(v)
+// }
 
 func (vm *LuaVM) Eval(r io.Reader, file string) (lua.LValue, error) {
 	if fn, err := vm.L.Load(r, file); err != nil {
@@ -198,7 +211,7 @@ func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (stri
 			if err != nil {
 				return "", fmt.Errorf("expand: %w", err)
 			} else if v == nil || v.Type() == lua.LTNil {
-				return "", fmt.Errorf("expand: '%s' did not return a value", expr)
+				return "nil", nil
 			}
 			return LToString(v), nil
 		}
