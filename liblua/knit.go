@@ -2,6 +2,7 @@ package liblua
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/gobwas/glob"
 	lua "github.com/zyedidia/gopher-lua"
 	luar "github.com/zyedidia/gopher-luar"
 )
@@ -25,8 +27,38 @@ func importKnit(L *lua.LState) *lua.LTable {
 	L.SetField(pkg, "os", luar.New(L, runtime.GOOS))
 	L.SetField(pkg, "arch", luar.New(L, runtime.GOARCH))
 	L.SetField(pkg, "readfile", luar.New(L, ReadFile))
+	L.SetField(pkg, "join", luar.New(L, Join))
+	L.SetField(pkg, "rglob", luar.New(L, Rglob))
 
 	return pkg
+}
+
+func Join(a, b []string) []string {
+	c := make([]string, 0, len(a)+len(b))
+	c = append(c, a...)
+	return append(c, b...)
+}
+
+func Rglob(path string, pattern string) []string {
+	g, err := glob.Compile(pattern)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "glob: %s\n", err)
+		return nil
+	}
+	var files []string
+	err = filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if g.Match(info.Name()) {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil
+	}
+	return files
 }
 
 func Abs(path string) string {
