@@ -36,6 +36,12 @@ race = tobool(cli.race) and "-race" or ""
 $ test:V:
     go test $race
 
+$ check:V:
+    if [ "$$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
+    go vet ./...
+    staticcheck ./...
+    go test $race
+
 pkgs = ".,./rules,./expand"
 
 $ cover.out:
