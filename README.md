@@ -48,23 +48,23 @@ go install github.com/zyedidia/knit@latest
 
 Here is an example Knitfile used for building a simple C project.
 
-```tcl
+```lua
 knit = import("knit")
 
 cc = cli.cc or "gcc"
 debug = tobool(cli.debug) or false
 
-cflags = "-Wall"
+cflags := -Wall
 
 if debug then
-    cflags = f"$cflags -Og -g -fsanitize=address"
+    cflags := $cflags -Og -g
 else
-    cflags = f"$cflags -O2"
+    cflags := $cflags -O2
 end
 
 src = knit.glob("*.c")
 obj = knit.extrepl(src, ".c", ".o")
-prog = "hello"
+prog := hello
 
 $ $prog: $obj
     $cc $cflags $input -o $output
