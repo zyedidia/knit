@@ -194,7 +194,7 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 		}
 	}
 
-	if len(rule.targets) == 0 {
+	if len(rule.targets) == 0 && !rule.attrs.Virtual {
 		for o, f := range n.outputs {
 			if !f.exists {
 				return nil, fmt.Errorf("no rule to make target '%s'", o)
@@ -296,7 +296,7 @@ func (n *node) time() time.Time {
 // returns true if this node should be rebuilt during the build
 func (n *node) outOfDate(db *Database) bool {
 	// virtual rules are always out of date
-	if n.rule.attrs.Virtual {
+	if n.rule.attrs.Virtual || n.rule.attrs.Rebuild {
 		return true
 	}
 	// if an output does not exist, it is out of date

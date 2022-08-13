@@ -71,6 +71,7 @@ type AttrSet struct {
 	Exclusive bool
 	NonStop   bool
 	DelFailed bool
+	Rebuild   bool
 }
 
 type Pattern struct {
@@ -143,6 +144,8 @@ func ParseAttribs(input string) (AttrSet, error) {
 			attrs.NonStop = true
 		case 'D':
 			attrs.DelFailed = true
+		case 'B':
+			attrs.Rebuild = true
 		default:
 			return attrs, attrError{c}
 		}
