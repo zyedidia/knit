@@ -143,16 +143,17 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 				continue
 			}
 			if sub, pat := mr.Match(target); sub != nil {
-				rule.attrs = mr.attrs
-				rule.recipe = mr.recipe
+				var metarule DirectRule
+				metarule.attrs = mr.attrs
+				metarule.recipe = mr.recipe
 
 				if pat.Suffix && len(sub) == 4 {
-					// %-rule -- the match is the submatch and all %s in the
+					// %-metarule -- the match is the submatch and all %s in the
 					// prereqs get expanded to the submatch
 					n.match = string(target[sub[2]:sub[3]])
 					for _, p := range mr.prereqs {
 						p = strings.ReplaceAll(p, "%", n.match)
-						rule.prereqs = append(rule.prereqs, p)
+						metarule.prereqs = append(metarule.prereqs, p)
 					}
 				} else {
 					// regex match, accumulate all the matches and expand them in the prereqs
@@ -161,12 +162,34 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 					}
 					for _, p := range mr.prereqs {
 						expanded := pat.Rgx.ExpandString([]byte{}, p, target, sub)
-						rule.prereqs = append(rule.prereqs, string(expanded))
+						metarule.prereqs = append(metarule.prereqs, string(expanded))
 					}
 				}
+
+				failed := false
+				visits[mi]++
+				// TODO: measure the performance impact of this, and optimize if necessary
+				for _, p := range metarule.prereqs {
+					_, err := g.resolveTarget(p, visits)
+					if err != nil {
+						failed = true
+						break
+					}
+				}
+				visits[mi]--
+
+				if failed {
+					continue
+				}
+
+				rule.prereqs = append(rule.prereqs, metarule.prereqs...)
+				rule.attrs = metarule.attrs
+				rule.recipe = metarule.recipe
+
 				rule.targets = []string{target}
 				n.meta = true
 				ri = mi // for visit tracking
+				break
 			}
 		}
 	}

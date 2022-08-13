@@ -1,6 +1,7 @@
 package liblua
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -105,7 +106,7 @@ func Shell(shcmd string) string {
 	if err != nil {
 		return fmt.Sprintf("%v", err)
 	}
-	return string(b)
+	return string(bytes.TrimSpace(b))
 }
 
 func ReadFile(f string) lua.LValue {
