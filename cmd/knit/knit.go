@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"runtime"
 
@@ -16,7 +15,7 @@ import (
 func main() {
 	knitfile := pflag.StringP("file", "f", "knitfile", "knitfile to use")
 	ncpu := pflag.IntP("threads", "j", runtime.NumCPU(), "number of cores to use")
-	viz := pflag.String("viz", "", "emit a graphiz file")
+	graph := pflag.String("graph", "", "emit the dependency graph to a file")
 	dryrun := pflag.BoolP("dry-run", "n", false, "print commands without actually executing")
 	rundir := pflag.StringP("directory", "C", "", "run command from directory")
 	always := pflag.BoolP("always-build", "B", false, "unconditionally build all targets")
@@ -36,20 +35,16 @@ func main() {
 		os.Exit(0)
 	}
 
-	var out io.Writer
-	if *quiet {
-		out = io.Discard
-	} else {
-		out = os.Stdout
-	}
+	out := os.Stdout
 
 	err := knit.Run(out, pflag.Args(), knit.Flags{
 		Knitfile: *knitfile,
 		Ncpu:     *ncpu,
-		Viz:      *viz,
+		Graph:    *graph,
 		DryRun:   *dryrun,
 		RunDir:   *rundir,
 		Always:   *always,
+		Quiet:    *quiet,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "knit: %s\n", err)

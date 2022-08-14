@@ -30,13 +30,14 @@ type Options struct {
 	Shell        string
 	AbortOnError bool
 	BuildAll     bool
+	Quiet        bool
 }
 
 func NewExecutor(db *Database, threads int, w io.Writer, opts Options, errf func(msg string)) *Executor {
 	return &Executor{
 		db:        db,
 		errf:      errf,
-		throttler: make(chan struct{}, threads),
+		throttler: make(chan struct{}, threads-1),
 		w:         w,
 		opts:      opts,
 	}
@@ -110,7 +111,7 @@ func (e *Executor) execNode(n *node) bool {
 		} else if c.recipe == "" {
 			continue
 		}
-		if !n.rule.attrs.Quiet {
+		if !n.rule.attrs.Quiet && !e.opts.Quiet {
 			fmt.Fprintln(e.w, c.recipe)
 		}
 		if !e.opts.NoExec {

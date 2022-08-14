@@ -1,5 +1,4 @@
 name = "Multiple virtual rules overriding each other"
-disable = true
 
 [flags]
 
@@ -8,3 +7,9 @@ ncpu = 1
 dryrun = true
 
 [[builds]]
+
+args = ["clean", "tidy"]
+output = """\
+rm -f o.out *.o
+rm -f o.out
+"""

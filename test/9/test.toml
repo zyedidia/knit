@@ -1,16 +1,25 @@
 name = "Meta-rules with no recipe just add to prereqs"
-disable = true
 
 [flags]
 
 knitfile = "Knitfile"
 ncpu = 1
 dryrun = true
+graph = "-"
+quiet = true
 
 [[builds]]
 
 args = ["prog"]
-
-[[builds]]
-
-args = ["prog"]
+output = """\
+:all -> prog
+prog -> f1.o
+f1.o -> f1.c
+f1.o -> hdr.h
+prog -> f2.o
+f2.o -> f2.c
+f2.o -> hdr.h
+prog -> f3.o
+f3.o -> f3.c
+f3.o -> hdr.h
+"""

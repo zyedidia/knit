@@ -1,10 +1,12 @@
 package knit
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -22,10 +24,11 @@ var Stderr io.Writer = os.Stderr
 type Flags struct {
 	Knitfile string
 	Ncpu     int
-	Viz      string
+	Graph    string
 	DryRun   bool
 	RunDir   string
 	Always   bool
+	Quiet    bool
 }
 
 type assign struct {
@@ -151,13 +154,11 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		return err
 	}
 
-	if flags.Viz != "" {
-		f, err := os.Create(flags.Viz)
+	if flags.Graph != "" {
+		err := visualize(out, flags.Graph, g)
 		if err != nil {
 			return err
 		}
-		g.Visualize(f)
-		f.Close()
 	}
 
 	db := rules.NewDatabase(".knit")
@@ -167,6 +168,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		Shell:        "sh",
 		AbortOnError: true,
 		BuildAll:     flags.Always,
+		Quiet:        flags.Quiet,
 	}, func(msg string) {
 		fmt.Fprintln(Stderr, msg)
 	})
@@ -177,4 +179,34 @@ func Run(out io.Writer, args []string, flags Flags) error {
 	}
 
 	return db.Save()
+}
+
+func visualize(out io.Writer, file string, g *rules.Graph) error {
+	var f io.Writer
+	if file == "-" {
+		f = out
+	} else {
+		f, err := os.Create(file)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+	}
+	if strings.HasSuffix(file, ".dot") {
+		g.VisualizeDot(f)
+	} else if strings.HasSuffix(file, ".pdf") {
+		buf := &bytes.Buffer{}
+		g.VisualizeDot(buf)
+		cmd := exec.Command("dot", "-Tpdf")
+		cmd.Stdout = f
+		cmd.Stdin = buf
+		cmd.Stderr = Stderr
+		err := cmd.Run()
+		if err != nil {
+			return err
+		}
+	} else {
+		g.VisualizeText(f)
+	}
+	return nil
 }

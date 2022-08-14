@@ -129,6 +129,7 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 			rule = *r
 			prereqs = append(prereqs, r.prereqs...)
 		}
+		rule.targets = []string{target}
 		rule.recipe = recipe
 		rule.prereqs = prereqs
 	} else if ok {
@@ -144,6 +145,11 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 				continue
 			}
 			if sub, pat := mr.Match(target); sub != nil {
+				// if this rule has a recipe and we already have a recipe, skip it
+				if len(mr.recipe) > 0 && len(rule.recipe) > 0 {
+					continue
+				}
+
 				var metarule DirectRule
 				metarule.attrs = mr.attrs
 				metarule.recipe = mr.recipe
@@ -190,7 +196,6 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 				rule.targets = []string{target}
 				n.meta = true
 				ri = mi // for visit tracking
-				break
 			}
 		}
 	}
@@ -206,10 +211,8 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 
 	n.rule = &rule
 
-	// associate this node with all of the matched rule's targets
-	for _, t := range n.rule.targets {
-		g.nodes[t] = n
-	}
+	// associate this node with only the requested target
+	g.nodes[target] = n
 
 	if ri != -1 {
 		visits[ri]++
@@ -309,8 +312,7 @@ func (n *node) outOfDate(db *Database) bool {
 
 	// if a prereq is newer than an output, this rule is out of date
 	for _, p := range n.prereqs {
-		// if the times are exactly the same we also consider this out-of-date
-		if p.time().After(n.time()) || p.time() == n.time() {
+		if p.time().After(n.time()) {
 			return true
 		}
 	}
@@ -329,15 +331,26 @@ func (n *node) outOfDate(db *Database) bool {
 	return false
 }
 
-func (g *Graph) Visualize(w io.Writer) {
+func (g *Graph) VisualizeDot(w io.Writer) {
 	fmt.Fprintln(w, "digraph take {")
-	g.base.visualize(w)
+	g.base.visualizeDot(w)
 	fmt.Fprintln(w, "}")
 }
 
-func (n *node) visualize(w io.Writer) {
+func (n *node) visualizeDot(w io.Writer) {
 	for _, p := range n.prereqs {
 		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", strings.Join(n.rule.targets, ", "), strings.Join(p.rule.targets, ", "))
-		p.visualize(w)
+		p.visualizeDot(w)
+	}
+}
+
+func (g *Graph) VisualizeText(w io.Writer) {
+	g.base.visualizeText(w)
+}
+
+func (n *node) visualizeText(w io.Writer) {
+	for _, p := range n.prereqs {
+		fmt.Fprintf(w, "%s -> %s\n", strings.Join(n.rule.targets, ", "), strings.Join(p.rule.targets, ", "))
+		p.visualizeText(w)
 	}
 }

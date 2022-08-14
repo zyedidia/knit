@@ -1,6 +1,3 @@
-$ marker:
-    touch $output
-
 $ clean tidy nuke:V:
     rm -f o.out
 

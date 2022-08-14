@@ -4,34 +4,17 @@ name = "Check subtle mk problem"
 
 knitfile = "Knitfile"
 ncpu = 1
+dryrun = true
+graph = "-"
+quiet = true
 
 [[builds]]
 
-args = ["foo.o"]
-output = "as foo.s -c -o foo.o"
-
-[[builds]]
-
-args = ["bar.o"]
-output = "cc -Wall bar.c -c -o bar.o"
-
-[[builds]]
-
-args = ["bar.o"]
-output = ""
-error = "'bar.o': nothing to be done"
-
-[[builds]]
-
-args = ["touch-hdr.h"]
-output = "touch hdr.h"
-
-[[builds]]
-
-args = ["bar.o", "foo.o"]
-output = "cc -Wall bar.c -c -o bar.o"
-
-[[builds]]
-
-args = ["clean"]
-output = "rm -f *.o"
+args = ["foo.o", "bar.o"]
+output = """\
+:all -> foo.o
+foo.o -> foo.s
+:all -> bar.o
+bar.o -> bar.c
+bar.o -> hdr.h
+"""
