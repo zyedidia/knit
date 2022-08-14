@@ -128,28 +128,43 @@ func NewLuaVM() *LuaVM {
 	return vm
 }
 
-// func getVar(L *lua.LState, v string) lua.LValue {
-// 	i := 0
-// 	for dbg, ok := L.GetStack(i); ok; dbg, ok = L.GetStack(i) {
-// 		for j := 0; ; j++ {
-// 			name, val := L.GetLocal(dbg, j)
-// 			if val == nil || val.Type() == lua.LTNil {
-// 				break
-// 			} else if name == v {
-// 				return val
-// 			}
-// 		}
-// 		i++
-// 	}
-// 	return L.GetGlobal(v)
-// }
+func getLocals(L *lua.LState) *lua.LTable {
+	locals := L.GetGlobal("_G").(*lua.LTable)
+	dbg, ok := L.GetStack(1)
+	if ok {
+		for j := 0; ; j++ {
+			name, val := L.GetLocal(dbg, j)
+			if val == nil || val.Type() == lua.LTNil {
+				break
+			}
+			locals.RawSetString(name, val)
+		}
+	}
+	return locals
+}
+
+func getVar(L *lua.LState, v string) lua.LValue {
+	dbg, ok := L.GetStack(1)
+	if ok {
+		for j := 0; ; j++ {
+			name, val := L.GetLocal(dbg, j)
+			if val == nil || val.Type() == lua.LTNil {
+				break
+			} else if name == v {
+				return val
+			}
+		}
+	}
+	return L.GetGlobal(v)
+}
 
 func (vm *LuaVM) Eval(r io.Reader, file string) (lua.LValue, error) {
 	if fn, err := vm.L.Load(r, file); err != nil {
 		return nil, err
 	} else {
+		vm.L.SetFEnv(fn, getLocals(vm.L))
 		vm.L.Push(fn)
-		err := vm.L.PCall(0, lua.MultRet, nil)
+		err = vm.L.PCall(0, lua.MultRet, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -201,7 +216,7 @@ func LArrayToString(v *lua.LTable) string {
 
 func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (string, error)) {
 	return func(name string) (string, error) {
-			v := vm.L.GetGlobal(name)
+			v := getVar(vm.L, name)
 			if v == nil || v.Type() == lua.LTNil {
 				return "", fmt.Errorf("expand: variable '%s' does not exist", name)
 			}
