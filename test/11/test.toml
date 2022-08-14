@@ -1,0 +1,10 @@
+name = "Multiple virtual rules overriding each other"
+disable = true
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]

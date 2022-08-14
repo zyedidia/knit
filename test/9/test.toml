@@ -1,0 +1,16 @@
+name = "Meta-rules with no recipe just add to prereqs"
+disable = true
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = ["prog"]
+
+[[builds]]
+
+args = ["prog"]

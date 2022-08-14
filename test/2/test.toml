@@ -1,3 +1,5 @@
+name = "Failed build files should be removed"
+
 [flags]
 
 knitfile = "Knitfile"

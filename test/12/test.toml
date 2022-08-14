@@ -1,0 +1,13 @@
+name = "Check meta-rule conflict resolution with ambiguity"
+disable = true
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = ["foo.o"]
+# should have error

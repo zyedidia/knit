@@ -15,8 +15,10 @@ import (
 )
 
 type Test struct {
-	Flags  knit.Flags
-	Builds []Build
+	Name    string
+	Disable bool
+	Flags   knit.Flags
+	Builds  []Build
 }
 
 type Build struct {
@@ -46,6 +48,10 @@ func loadTest(dir string, t *testing.T) *Test {
 
 func runTest(dir string, t *testing.T) {
 	test := loadTest(dir, t)
+	if test.Disable {
+		fmt.Printf("%s disabled\n", dir)
+		return
+	}
 
 	wd, err := os.Getwd()
 	if err != nil {

@@ -1,0 +1,10 @@
+$ o.out: $ofiles
+    ld $ofiles
+
+$ %.o: %.c
+    cc -Wall $match.c
+
+ofiles := f1.o f2.o f3.o
+
+$ o.out: $ofiles
+    ld -l $ofiles -lbio -lc

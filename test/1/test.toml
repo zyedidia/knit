@@ -1,3 +1,5 @@
+name = "Check rebuilding and changing vars"
+
 [flags]
 
 knitfile = "Knitfile"

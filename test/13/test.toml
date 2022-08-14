@@ -1,0 +1,38 @@
+name = "Check subtle mk problem"
+disable = true
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+
+[[builds]]
+
+args = ["foo.o"]
+output = "as foo.s -c -o foo.o"
+
+[[builds]]
+
+args = ["bar.o"]
+output = "cc -Wall bar.c -c -o bar.o"
+
+[[builds]]
+
+args = ["bar.o"]
+output = ""
+error = "'bar.o': nothing to be done"
+
+[[builds]]
+
+args = ["touch-hdr.h"]
+output = "touch hdr.h"
+
+[[builds]]
+
+args = ["bar.o", "foo.o"]
+output = "cc -Wall bar.c -c -o bar.o"
+
+[[builds]]
+
+args = ["clean"]
+output = "rm -f *.o"

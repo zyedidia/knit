@@ -1,0 +1,12 @@
+name = "Check meta-rules evaluated at most once"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = ["foo"]
+output = "cp foo.z foo.z.z"

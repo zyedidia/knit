@@ -1,0 +1,8 @@
+$ install:V: bin/prog
+
+$ bin/%: %
+    mv $match $output
+
+$ %: %.c
+    cc $match.c -o $match.o
+    ld -o $output $match.o

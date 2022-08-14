@@ -1,0 +1,12 @@
+name = "Later rules override earlier ones"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = ["o.out"]
+output = "ld -l f1.o f2.o f3.o -lbio -lc"

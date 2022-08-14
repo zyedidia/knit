@@ -121,9 +121,9 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 		for _, ri := range ris {
 			r := &g.rs.directRules[ri]
 			if len(r.recipe) != 0 {
-				if len(recipe) != 0 {
-					return nil, fmt.Errorf("multiple recipes found for target '%s'", target)
-				}
+				// if len(recipe) != 0 {
+				// 	return nil, fmt.Errorf("multiple recipes found for target '%s'", target)
+				// }
 				recipe = r.recipe
 			}
 			rule = *r

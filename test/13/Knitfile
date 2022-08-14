@@ -1,0 +1,11 @@
+$ %.o: %.c hdr.h
+    cc -Wall $match.c -c -o $output
+
+$ %.o: %.s
+    as $match.s -c -o $output
+
+$ touch-%:V:
+    touch $match
+
+$ clean:V:
+    rm -f *.o

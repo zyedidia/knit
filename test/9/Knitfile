@@ -1,0 +1,9 @@
+files := f1.o f2.o f3.o
+
+$ prog: $files
+    echo "ld -o $output $input"
+
+$ %.o: hdr.h
+
+$ %.o: %.c
+    echo "cc -Wall $match.c"

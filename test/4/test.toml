@@ -1,3 +1,5 @@
+name = "Check including rules from other files"
+
 [flags]
 
 knitfile = "Knitfile"

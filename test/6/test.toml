@@ -1,3 +1,5 @@
+name = "Check meta-rule conflict resolution"
+
 [flags]
 
 knitfile = "Knitfile"

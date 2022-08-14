@@ -1,3 +1,5 @@
+name = "Check cycle detection"
+
 [flags]
 
 knitfile = "Knitfile"

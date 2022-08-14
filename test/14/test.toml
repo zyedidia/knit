@@ -1,0 +1,16 @@
+name = "Check path conflicting meta-rules"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = ["install"]
+output = """\
+cc prog.c -o prog.o
+ld -o prog prog.o
+mv prog bin/prog
+"""
