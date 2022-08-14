@@ -137,7 +137,8 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 	// if we did not find a recipe from the direct rules and this target can
 	// use meta-rules, then search all meta-rules for a match
 	if len(rule.recipe) == 0 && !rule.attrs.NoMeta {
-		for mi, mr := range g.rs.metaRules {
+		for mi := len(g.rs.metaRules) - 1; mi >= 0; mi-- {
+			mr := g.rs.metaRules[mi]
 			// a meta-rule can only be used maxVisits times
 			if visits[mi] >= maxVisits {
 				continue

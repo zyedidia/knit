@@ -1,5 +1,4 @@
 name = "Check meta-rule conflict resolution with ambiguity"
-disable = true
 
 [flags]
 
@@ -10,4 +9,4 @@ dryrun = true
 [[builds]]
 
 args = ["foo.o"]
-# should have error
+output = "gcc foo.c -c -o foo.o"
