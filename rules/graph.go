@@ -308,7 +308,8 @@ func (n *node) outOfDate(db *Database) bool {
 
 	// if a prereq is newer than an output, this rule is out of date
 	for _, p := range n.prereqs {
-		if p.time().After(n.time()) {
+		// if the times are exactly the same we also consider this out-of-date
+		if p.time().After(n.time()) || p.time() == n.time() {
 			return true
 		}
 	}

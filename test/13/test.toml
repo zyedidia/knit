@@ -1,5 +1,4 @@
 name = "Check subtle mk problem"
-disable = true
 
 [flags]
 
