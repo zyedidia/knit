@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -97,8 +96,7 @@ func TestAll(t *testing.T) {
 	tests := []string{}
 
 	for _, f := range files {
-		_, err := strconv.Atoi(f.Name())
-		if f.IsDir() && err == nil {
+		if f.IsDir() && f.Name() != "scratch" {
 			tests = append(tests, filepath.Join("test", f.Name()))
 		}
 	}

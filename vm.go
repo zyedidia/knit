@@ -25,6 +25,7 @@ type LRule struct {
 	Contents string
 	File     string
 	Line     int
+	Env      *lua.LTable
 }
 
 func NewLuaVM() *LuaVM {
@@ -39,11 +40,7 @@ func NewLuaVM() *LuaVM {
 		return lib.Import(L, pkg)
 	}))
 	L.SetGlobal("_rule", luar.New(L, func(rule string, file string, line int) {
-		vm.rules = append(vm.rules, LRule{
-			Contents: rule,
-			File:     file,
-			Line:     line,
-		})
+		vm.addRule(rule, file, line)
 	}))
 	L.SetGlobal("rule", luar.New(L, func(rule string) {
 		dbg, ok := L.GetStack(1)
@@ -54,11 +51,7 @@ func NewLuaVM() *LuaVM {
 			file = dbg.Source
 			line = dbg.CurrentLine
 		}
-		vm.rules = append(vm.rules, LRule{
-			Contents: rule,
-			File:     file,
-			Line:     line,
-		})
+		vm.addRule(rule, file, line)
 	}))
 	L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
 		return LToString(v)
@@ -128,8 +121,16 @@ func NewLuaVM() *LuaVM {
 	return vm
 }
 
-func getLocals(L *lua.LState) *lua.LTable {
-	locals := L.GetGlobal("_G").(*lua.LTable)
+func (vm *LuaVM) addRule(rule string, file string, line int) {
+	vm.rules = append(vm.rules, LRule{
+		Contents: rule,
+		File:     file,
+		Line:     line,
+		Env:      getLocals(vm.L),
+	})
+}
+
+func addLocals(L *lua.LState, locals *lua.LTable) *lua.LTable {
 	dbg, ok := L.GetStack(1)
 	if ok {
 		for j := 0; ; j++ {
@@ -141,6 +142,16 @@ func getLocals(L *lua.LState) *lua.LTable {
 		}
 	}
 	return locals
+}
+
+func getLocals(L *lua.LState) *lua.LTable {
+	locals := L.NewTable()
+	return addLocals(L, locals)
+}
+
+func getVars(L *lua.LState) *lua.LTable {
+	globals := L.GetGlobal("_G").(*lua.LTable)
+	return addLocals(L, globals)
 }
 
 func getVar(L *lua.LState, v string) lua.LValue {
@@ -162,7 +173,7 @@ func (vm *LuaVM) Eval(r io.Reader, file string) (lua.LValue, error) {
 	if fn, err := vm.L.Load(r, file); err != nil {
 		return nil, err
 	} else {
-		vm.L.SetFEnv(fn, getLocals(vm.L))
+		vm.L.SetFEnv(fn, getVars(vm.L))
 		vm.L.Push(fn)
 		err = vm.L.PCall(0, lua.MultRet, nil)
 		if err != nil {
