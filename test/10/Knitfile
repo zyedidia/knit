@@ -1,7 +1,7 @@
 $ o.out: $ofiles
     ld $ofiles
 
-$ %.o: %.c
+$ %.o:Q: %.c
     cc -Wall $match.c
 
 ofiles := f1.o f2.o f3.o
