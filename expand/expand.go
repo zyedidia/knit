@@ -79,9 +79,12 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 				inExpr = false
 				value, err := rexpr(exprbuf.String())
 				if err != nil {
-					return "", err
+					buf.WriteString("$(")
+					buf.WriteString(exprbuf.String())
+					buf.WriteByte(')')
+				} else {
+					buf.WriteString(value)
 				}
-				buf.WriteString(value)
 				exprbuf.Reset()
 				continue
 			} else if inExpr {
@@ -100,9 +103,11 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 					inVar = false
 					value, err := rvar(exprbuf.String())
 					if err != nil {
-						return "", err
+						buf.WriteByte('$')
+						buf.WriteString(exprbuf.String())
+					} else {
+						buf.WriteString(value)
 					}
-					buf.WriteString(value)
 					exprbuf.Reset()
 				}
 			}

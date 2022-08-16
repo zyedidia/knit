@@ -35,12 +35,13 @@ func NewLuaVM() *LuaVM {
 		vars: make(map[string]*lua.LTable),
 	}
 
+	rvar, rexpr := vm.ExpandFuncs()
 	lib := liblua.FromLibs(liblua.Knit)
 	L.SetGlobal("import", luar.New(L, func(pkg string) *lua.LTable {
 		return lib.Import(L, pkg)
 	}))
 	L.SetGlobal("_rule", luar.New(L, func(rule string, file string, line int) {
-		vm.addRule(rule, file, line)
+		vm.addRule(rule, file, line, rvar, rexpr)
 	}))
 	L.SetGlobal("rule", luar.New(L, func(rule string) {
 		dbg, ok := L.GetStack(1)
@@ -51,7 +52,7 @@ func NewLuaVM() *LuaVM {
 			file = dbg.Source
 			line = dbg.CurrentLine
 		}
-		vm.addRule(rule, file, line)
+		vm.addRule(rule, file, line, rvar, rexpr)
 	}))
 	L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
 		return LToString(v)
@@ -100,7 +101,6 @@ func NewLuaVM() *LuaVM {
 		return v
 	}))
 
-	rvar, rexpr := vm.ExpandFuncs()
 	// fn := func(name string) (string, error) {
 	// 	v := getVar(L, name)
 	// 	if v == nil {
@@ -121,9 +121,10 @@ func NewLuaVM() *LuaVM {
 	return vm
 }
 
-func (vm *LuaVM) addRule(rule string, file string, line int) {
+func (vm *LuaVM) addRule(rule string, file string, line int, rvar, rexpr expand.Resolver) {
+	s, _ := expand.Expand(rule, rvar, rexpr)
 	vm.rules = append(vm.rules, LRule{
-		Contents: rule,
+		Contents: s,
 		File:     file,
 		Line:     line,
 		Env:      getLocals(vm.L),

@@ -7,6 +7,13 @@ ncpu = 1
 
 [[builds]]
 
+args = ["clean"]
+output = """\
+rm -f hello.o other.o hello
+"""
+
+[[builds]]
+
 args = ["hello"]
 output = """\
 gcc -Wall -O2 -c hello.c -o hello.o
