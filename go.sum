@@ -21,12 +21,11 @@ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.2 h1:4jaiDzPyXQvSd7D0EjG45355tLlV3VOECpq10pLC+8s=
 github.com/stretchr/testify v1.7.2/go.mod h1:R6va5+xMeoiuVRoj+gSkQ7d3FALtqAAGI1FQKckRals=
-github.com/zyedidia/gopher-lua v0.0.0-20220811182220-44d3c0155041 h1:Z1WVjmNfDQdrJmtruWDskE6aHgXDg8DFqAGJ6k2ApU0=
 github.com/zyedidia/gopher-lua v0.0.0-20220811182220-44d3c0155041/go.mod h1:VNzP8GqEgw9ZAdRh7xZPK9DBr39YGjVNhVBMVRQvZbM=
-github.com/zyedidia/gopher-lua v0.0.0-20220813190846-cb4f078b9a60 h1:RhzntmP/XeTNlVikpfJm3n+fL+eB9HmEaO/YMSKKFt4=
-github.com/zyedidia/gopher-lua v0.0.0-20220813190846-cb4f078b9a60/go.mod h1:VNzP8GqEgw9ZAdRh7xZPK9DBr39YGjVNhVBMVRQvZbM=
 github.com/zyedidia/gopher-lua v0.0.0-20220816212941-7e6bd2955008 h1:zGRMqHssN1GuH//aedRqnTOgmOPAJYmYT/IZ3gHcxgA=
 github.com/zyedidia/gopher-lua v0.0.0-20220816212941-7e6bd2955008/go.mod h1:VNzP8GqEgw9ZAdRh7xZPK9DBr39YGjVNhVBMVRQvZbM=
+github.com/zyedidia/gopher-lua v0.0.0-20220816225144-1dae186103b8 h1:EcEtgTOtiuPlijheT6/djjooy1BvvQu2g30pFFO1Q0Q=
+github.com/zyedidia/gopher-lua v0.0.0-20220816225144-1dae186103b8/go.mod h1:VNzP8GqEgw9ZAdRh7xZPK9DBr39YGjVNhVBMVRQvZbM=
 github.com/zyedidia/gopher-luar v0.0.0-20220811182431-9d2fc6a3867f h1:dbt1mMcOXZHpL/mmxN6WsX9MyRJvdkd2wbZvqLuke5U=
 github.com/zyedidia/gopher-luar v0.0.0-20220811182431-9d2fc6a3867f/go.mod h1:Ug3oboaXLuSfSd/FXaBnAnajEqgNEC4mIvFhqSEKPwI=
 golang.org/x/sys v0.0.0-20190204203706-41f3e6584952/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
