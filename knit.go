@@ -22,13 +22,14 @@ func title(s string) string {
 var Stderr io.Writer = os.Stderr
 
 type Flags struct {
-	Knitfile string
-	Ncpu     int
-	Graph    string
-	DryRun   bool
-	RunDir   string
-	Always   bool
-	Quiet    bool
+	Knitfile  string
+	Ncpu      int
+	Graph     string
+	DryRun    bool
+	RunDir    string
+	Always    bool
+	Quiet     bool
+	ShowRules bool
 }
 
 type assign struct {
@@ -120,6 +121,12 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		Rexpr: rexpr,
 	}
 
+	if flags.ShowRules {
+		for _, r := range vm.rules {
+			fmt.Println(r.Contents)
+		}
+	}
+
 	for _, r := range vm.rules {
 		err := rules.ParseInto(r.Contents, rs, fmt.Sprintf("%s:%d:<rule>", r.File, r.Line), errs, expands)
 		if err != nil {
@@ -149,16 +156,16 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		return fmt.Errorf("target not found: %s", targets)
 	}
 
-	err = g.ExpandRecipes(vm)
-	if err != nil {
-		return err
-	}
-
 	if flags.Graph != "" {
 		err := visualize(out, flags.Graph, g)
 		if err != nil {
 			return err
 		}
+	}
+
+	err = g.ExpandRecipes(vm)
+	if err != nil {
+		return err
 	}
 
 	db := rules.NewDatabase(".knit")
@@ -196,11 +203,12 @@ func visualize(out io.Writer, file string, g *rules.Graph) error {
 	if file == "-" {
 		f = out
 	} else {
-		f, err := os.Create(file)
+		fi, err := os.Create(file)
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer fi.Close()
+		f = fi
 	}
 	if strings.HasSuffix(file, ".dot") {
 		g.VisualizeDot(f)

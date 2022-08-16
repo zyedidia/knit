@@ -22,6 +22,7 @@ func main() {
 	quiet := pflag.BoolP("quiet", "q", false, "don't print commands")
 	version := pflag.BoolP("version", "v", false, "show version information")
 	help := pflag.BoolP("help", "h", false, "show this help message")
+	showrules := pflag.Bool("rules", false, "show rules")
 
 	pflag.Parse()
 
@@ -38,13 +39,14 @@ func main() {
 	out := os.Stdout
 
 	err := knit.Run(out, pflag.Args(), knit.Flags{
-		Knitfile: *knitfile,
-		Ncpu:     *ncpu,
-		Graph:    *graph,
-		DryRun:   *dryrun,
-		RunDir:   *rundir,
-		Always:   *always,
-		Quiet:    *quiet,
+		Knitfile:  *knitfile,
+		Ncpu:      *ncpu,
+		Graph:     *graph,
+		DryRun:    *dryrun,
+		RunDir:    *rundir,
+		Always:    *always,
+		Quiet:     *quiet,
+		ShowRules: *showrules,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "knit: %s\n", err)
