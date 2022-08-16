@@ -11,5 +11,7 @@ args = ["test1.txt"]
 output = """\
 echo "hi" > test.txt
 false
+removing 'test.txt' due to failure
 """
+error = "'test1.txt': recipe exited with failure"
 notbuilt = ["test1.txt", "test.txt"]

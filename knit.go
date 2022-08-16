@@ -163,6 +163,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 
 	db := rules.NewDatabase(".knit")
 
+	erred := false
 	e := rules.NewExecutor(db, flags.Ncpu, out, rules.Options{
 		NoExec:       flags.DryRun,
 		Shell:        "sh",
@@ -171,6 +172,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		Quiet:        flags.Quiet,
 	}, func(msg string) {
 		fmt.Fprintln(Stderr, msg)
+		erred = true
 	})
 
 	err = e.Exec(g)
@@ -178,7 +180,15 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		return fmt.Errorf("'%s': %w", strings.Join(targets, " "), err)
 	}
 
-	return db.Save()
+	err = db.Save()
+	if err != nil {
+		return err
+	}
+
+	if erred {
+		return fmt.Errorf("'%s': recipe exited with failure", strings.Join(targets, " "))
+	}
+	return nil
 }
 
 func visualize(out io.Writer, file string, g *rules.Graph) error {

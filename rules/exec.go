@@ -127,10 +127,13 @@ func (e *Executor) execNode(n *node) bool {
 	}
 
 	if failed {
-		for _, t := range n.rule.targets {
-			err := os.RemoveAll(t)
-			if err != nil {
-				e.errf(fmt.Sprintf("error while removing failed targets: %v", err))
+		if !n.rule.attrs.Virtual {
+			for _, t := range n.rule.targets {
+				fmt.Fprintf(e.w, "removing '%s' due to failure\n", t)
+				err := os.RemoveAll(t)
+				if err != nil {
+					e.errf(fmt.Sprintf("error while removing failed targets: %v", err))
+				}
 			}
 		}
 		e.stopped.Store(true)
