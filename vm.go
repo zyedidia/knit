@@ -40,12 +40,7 @@ func NewLuaVM() *LuaVM {
 		return lib.Import(L, pkg)
 	}))
 	L.SetGlobal("_rule", luar.New(L, func(rule string, file string, line int) {
-		vm.rules = append(vm.rules, LRule{
-			Contents: rule,
-			File:     file,
-			Line:     line,
-			Env:      getLocals(L),
-		})
+		vm.addRule(rule, file, line)
 	}))
 	L.SetGlobal("rule", luar.New(L, func(rule string) {
 		dbg, ok := L.GetStack(1)
@@ -56,12 +51,7 @@ func NewLuaVM() *LuaVM {
 			file = dbg.Source
 			line = dbg.CurrentLine
 		}
-		vm.rules = append(vm.rules, LRule{
-			Contents: rule,
-			File:     file,
-			Line:     line,
-			Env:      getLocals(L),
-		})
+		vm.addRule(rule, file, line)
 	}))
 	L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
 		return LToString(v)
@@ -129,6 +119,15 @@ func NewLuaVM() *LuaVM {
 	L.SetGlobal("_format", luar.New(L, format))
 
 	return vm
+}
+
+func (vm *LuaVM) addRule(rule string, file string, line int) {
+	vm.rules = append(vm.rules, LRule{
+		Contents: rule,
+		File:     file,
+		Line:     line,
+		Env:      getLocals(vm.L),
+	})
 }
 
 func addLocals(L *lua.LState, locals *lua.LTable) *lua.LTable {
