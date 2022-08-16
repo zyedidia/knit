@@ -1,0 +1,12 @@
+name = "Allow tabs in rules"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = ["hello"]
+output = "echo hello"

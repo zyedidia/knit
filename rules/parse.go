@@ -91,7 +91,7 @@ func expandInput(s string, expands ExpandFns) (string, error) {
 
 func ParseInto(input string, rules *RuleSet, path string, errfns ErrFns, expands ExpandFns) (err error) {
 	input = strings.Replace(input, "\\\n", "", -1)
-	input = stripIndentation(input, 2)
+	input = stripIndentation(input, 0)
 	input, err = expandInput(input, expands)
 	if err != nil {
 		return fmt.Errorf("expand: %w", err)
