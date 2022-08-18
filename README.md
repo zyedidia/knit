@@ -41,7 +41,7 @@ eget zyedidia/knit
 From source:
 
 ```
-go install github.com/zyedidia/knit@latest
+go install github.com/zyedidia/knit/cmd/knit@latest
 ```
 
 # Example Knitfile
