@@ -52,7 +52,11 @@ func NewLuaVM() *LuaVM {
 	L.SetGlobal("import", luar.New(L, func(pkg string) *lua.LTable {
 		return lib.Import(L, pkg)
 	}))
-	L.SetGlobal("r", luar.New(L, func(rules []LRule) LRuleSet {
+	L.SetGlobal("r", luar.New(L, func(rulesets ...[]LRule) LRuleSet {
+		rules := make([]LRule, 0, len(rulesets))
+		for _, rs := range rulesets {
+			rules = append(rules, rs...)
+		}
 		rs := LRuleSet{
 			rules: rules,
 			name:  rulesName(),

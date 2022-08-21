@@ -2,7 +2,7 @@ clean = {"hello.o", "hello"}
 
 sub = dofile("add/Knitfile")
 
-return r{
+return r(sub, {
 $ all:V: hello
 
 $ hello: hello.o add/add.o
@@ -10,4 +10,4 @@ $ hello: hello.o add/add.o
 
 $ clean:VB:
     rm -f $clean
-}
+})
