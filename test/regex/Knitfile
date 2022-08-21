@@ -1,5 +1,6 @@
 version = "0.0.0"
 
+return r{
 $ all:V: knit-$version-linux-amd64.tar.gz \
          knit-$version-linux-386.tar.gz \
          knit-$version-linux-arm.tar.gz \
@@ -12,3 +13,4 @@ $ all:V: knit-$version-linux-amd64.tar.gz \
 
 $ (knit-$version-(.*)-(.*)).tar.gz:R:
     echo $match1 $match2 $match3
+}

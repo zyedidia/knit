@@ -1,2 +1,4 @@
-$ hello:V:
+return r{
+$ hello:VB:
 	echo hello
+}

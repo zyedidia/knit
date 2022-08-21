@@ -13,5 +13,5 @@ echo "hi" > test.txt
 false
 removing 'test.txt' due to failure
 """
-error = "'test1.txt': recipe exited with failure"
+error = "'test.txt': error during recipe: exit status 1"
 notbuilt = ["test1.txt", "test.txt"]

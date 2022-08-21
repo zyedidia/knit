@@ -31,6 +31,7 @@ const (
 	tokenColon
 	tokenRecipe
 	tokenEnd
+	tokenGt
 )
 
 func (typ tokenType) String() string {
@@ -47,6 +48,8 @@ func (typ tokenType) String() string {
 		return "[Recipe]"
 	case tokenEnd:
 		return "[End]"
+	case tokenGt:
+		return "[Gt]"
 	}
 	return "[InvalidToken]"
 }
@@ -63,17 +66,16 @@ func (t token) String() string {
 }
 
 type lexer struct {
-	input     string     // input string to be lexed
-	output    chan token // channel on which tokens are sent
-	start     int        // token beginning
-	startcol  int        // column on which the token begins
-	pos       int        // position within input
-	line      int        // line within input
-	col       int        // column within input
-	errmsg    string     // set to an appropriate error message when necessary
-	indented  bool       // true if the only whitespace so far on this line
-	barewords bool       // lex only a sequence of words
-	state     lexerStateFun
+	input    string     // input string to be lexed
+	output   chan token // channel on which tokens are sent
+	start    int        // token beginning
+	startcol int        // column on which the token begins
+	pos      int        // position within input
+	line     int        // line within input
+	col      int        // column within input
+	errmsg   string     // set to an appropriate error message when necessary
+	indented bool       // true if the only whitespace so far on this line
+	state    lexerStateFun
 }
 
 // A lexerStateFun is simultaneously the the state of the lexer and the next
@@ -202,11 +204,11 @@ func (l *lexer) skipUntil(invalid string) {
 }
 
 // Start a new lexer to lex the given input.
-func lex(input string) *lexer {
+func lex(input string, line int) *lexer {
 	l := &lexer{
 		input:    input,
 		output:   make(chan token, 2),
-		line:     1,
+		line:     line,
 		col:      0,
 		indented: true,
 		state:    lexTopLevel,
@@ -236,17 +238,13 @@ func lexTopLevel(l *lexer) lexerStateFun {
 		// emit a newline token if we are ending a non-empty line.
 		if l.peek() == '\n' && !l.indented {
 			l.next()
-			if l.barewords {
-				return nil
-			} else {
-				l.emit(tokenNewline)
-			}
+			l.emit(tokenNewline)
 		}
 		l.skipRun(" \t\r\n")
 
 		if l.peek() == '\\' && l.peekN(1) == '\n' {
-			l.next()
-			l.next()
+			l.skip()
+			l.skip()
 			l.indented = false
 		} else {
 			break
@@ -261,6 +259,10 @@ func lexTopLevel(l *lexer) lexerStateFun {
 	switch c {
 	case eof:
 		return nil
+	case '>':
+		l.next()
+		l.emit(tokenGt)
+		return lexRecipe
 	case '#':
 		return lexComment
 	case ':':
@@ -351,6 +353,7 @@ func lexBareWord(l *lexer) lexerStateFun {
 			}
 			l.skip()
 			l.skip()
+			l.indented = false
 			return lexTopLevel
 		} else {
 			l.next()
@@ -359,7 +362,7 @@ func lexBareWord(l *lexer) lexerStateFun {
 		}
 	} else if c == '$' {
 		c1 := l.peekN(1)
-		if c1 == '{' {
+		if c1 == '(' {
 			return lexBracketExpansion
 		} else {
 			l.next()
@@ -376,8 +379,8 @@ func lexBareWord(l *lexer) lexerStateFun {
 
 func lexBracketExpansion(l *lexer) lexerStateFun {
 	l.next() // '$'
-	l.next() // '{'
-	l.acceptUntil("}")
-	l.next() // '}'
+	l.next() // '('
+	l.acceptUntil(")")
+	l.next() // ')'
 	return lexBareWord
 }

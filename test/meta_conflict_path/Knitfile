@@ -1,3 +1,4 @@
+return r{
 $ install:V: bin/prog
 
 $ %: %.c
@@ -6,3 +7,4 @@ $ %: %.c
 
 $ bin/%: %
     mv $match $output
+}

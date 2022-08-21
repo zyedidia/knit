@@ -1,5 +1,6 @@
 files := f1.o f2.o f3.o
 
+return r{
 $ prog: $files
     cc $input -o $output
 
@@ -7,3 +8,4 @@ $ %.o: hdr.h
 
 $ %.o: %.c
     cc $input -c -o $output
+}

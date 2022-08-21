@@ -4,51 +4,46 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/zyedidia/knit/expand"
 )
 
 type parser struct {
-	l        *lexer   // underlying lexer
-	path     string   // full path of the file being parsed
+	l        *lexer // underlying lexer
+	file     string
 	tokenbuf []token  // tokens consumed on the current statement
 	rules    *RuleSet // current ruleSet
+	rulesets []string // names of all rulesets used
 
-	expands ExpandFns
-
-	printErr func(string)
-	errFn    func(string)
+	fatal  bool
+	errors MultiError
 }
 
-type ExpandFns struct {
-	Rvar  func(string) (string, error)
-	Rexpr func(string) (string, error)
+type MultiError []error
+
+func (e MultiError) Error() string {
+	buf := &bytes.Buffer{}
+	for _, err := range e {
+		buf.WriteString(err.Error())
+		buf.WriteByte('\n')
+	}
+	return buf.String()
 }
 
-type ErrFns struct {
-	PrintErr func(string)
-	Err      func(string)
-}
-
-// Pretty errors.
 func (p *parser) parseError(context string, expected string, found token) {
-	p.printErr(fmt.Sprintf("%s:%d: syntax error: ", p.path, found.line))
-	p.printErr(fmt.Sprintf("while %s, expected %s but found %s.\n",
-		context, expected, found.String()))
-	p.errFn("parse error")
+	err := fmt.Errorf("%s:%d: syntax error: while %s, expected %s but found %s", p.file, found.line, context, expected, found.String())
+	p.errors = append(p.errors, err)
+	p.fatal = true
 }
 
-// More basic errors.
 func (p *parser) basicErrorAtToken(what string, found token) {
 	p.basicErrorAtLine(what, found.line)
 }
 
 func (p *parser) basicErrorAtLine(what string, line int) {
-	p.errFn(fmt.Sprintf("%s:%d: syntax error: %s\n", p.path, line, what))
+	err := fmt.Errorf("%s:%d: syntax error: %s", p.file, line, what)
+	p.errors = append(p.errors, err)
 }
 
 // Accept a token for use in the current statement being parsed.
@@ -65,46 +60,16 @@ func (p *parser) clear() {
 // state function, or nil if there was a parse error.
 type parserStateFun func(*parser, token) parserStateFun
 
-func expandInput(s string, expands ExpandFns) (string, error) {
-	b := bufio.NewReader(strings.NewReader(s))
-	buf := &bytes.Buffer{}
-	remaining := len(s)
-	for remaining > 0 {
-		l, err := b.ReadString('\n')
-		if err != nil && err != io.EOF {
-			return "", err
-		}
-		remaining -= len(l)
-		r, size := utf8.DecodeRuneInString(l)
-		if size == 0 || strings.ContainsRune(" \t\r\n", r) {
-			buf.WriteString(l)
-			continue
-		}
-		e, err := expand.Expand(l, expands.Rvar, expands.Rexpr)
-		if err != nil {
-			return "", err
-		}
-		buf.WriteString(e)
-	}
-	return buf.String(), nil
-}
-
-func ParseInto(input string, rules *RuleSet, path string, errfns ErrFns, expands ExpandFns) (err error) {
-	input = strings.Replace(input, "\\\n", "", -1)
-	input = stripIndentation(input, 0)
-	input, err = expandInput(input, expands)
-	if err != nil {
-		return fmt.Errorf("expand: %w", err)
-	}
-	l := lex(input)
+// ParseInto parses 'input' into the rules RuleSet, from the file at 'file'.
+// The list of rulesets used by this ruleset is returned, or a possible parse
+// error.
+func ParseInto(input string, rules *RuleSet, file string, line int) ([]string, error) {
+	l := lex(input, line)
 	p := &parser{
 		l:        l,
-		path:     path,
+		file:     file,
 		tokenbuf: []token{},
 		rules:    rules,
-		printErr: errfns.PrintErr,
-		errFn:    errfns.Err,
-		expands:  expands,
 	}
 	state := parseTopLevel
 	for t := l.nextToken(); t.typ != tokenEnd; t = l.nextToken() {
@@ -114,50 +79,31 @@ func ParseInto(input string, rules *RuleSet, path string, errfns ErrFns, expands
 		}
 
 		state = state(p, t)
+
+		if p.fatal {
+			return nil, p.errors
+		}
 	}
 
 	// insert a dummy newline to allow parsing of any assignments or recipeless
 	// rules to finish.
 	state(p, token{tokenNewline, "\n", l.line, l.col})
 
-	return nil
-
-	// TODO: Error when state != parseTopLevel
+	return p.rulesets, nil
 }
 
-// We are at the top level of a mkfile, expecting rules, assignments, or
-// includes.
 func parseTopLevel(p *parser, t token) parserStateFun {
 	switch t.typ {
 	case tokenNewline:
 		return parseTopLevel
 	case tokenWord:
-		return parseTarget(p, t)
+		return parseTargets(p, t)
 	default:
-		p.parseError("parsing mkfile",
+		p.parseError("parsing rules",
 			"a rule", t)
 	}
 
 	return parseTopLevel
-}
-
-// Consumed one bare string ot the beginning of the line.
-func parseTarget(p *parser, t token) parserStateFun {
-	switch t.typ {
-	case tokenWord:
-		p.push(t)
-		return parseTargets
-
-	case tokenColon:
-		p.push(t)
-		return parseAttributesOrPrereqs
-
-	default:
-		p.parseError("reading a target",
-			"'=', ':', or another target", t)
-	}
-
-	return parseTopLevel // unreachable
 }
 
 // Everything up to ':' must be a target.
@@ -168,7 +114,6 @@ func parseTargets(p *parser, t token) parserStateFun {
 	case tokenColon:
 		p.push(t)
 		return parseAttributesOrPrereqs
-
 	default:
 		p.parseError("reading a rule's targets",
 			"filename or pattern", t)
@@ -180,12 +125,16 @@ func parseTargets(p *parser, t token) parserStateFun {
 // Consume one or more strings followed by a first ':'.
 func parseAttributesOrPrereqs(p *parser, t token) parserStateFun {
 	switch t.typ {
-	case tokenNewline:
+	case tokenNewline, tokenGt:
 		return parseRecipe
 	case tokenColon:
 		p.push(t)
 		return parsePrereqs
 	case tokenWord:
+		pr := parsePrereq(t.val)
+		if pr.ruleset != "" {
+			p.rulesets = append(p.rulesets, pr.ruleset)
+		}
 		p.push(t)
 	default:
 		p.parseError("reading a rule's attributes or prerequisites",
@@ -201,8 +150,11 @@ func parsePrereqs(p *parser, t token) parserStateFun {
 	case tokenNewline:
 		return parseRecipe
 	case tokenWord:
+		pr := parsePrereq(t.val)
+		if pr.ruleset != "" {
+			p.rulesets = append(p.rulesets, pr.ruleset)
+		}
 		p.push(t)
-
 	default:
 		p.parseError("reading a rule's prerequisites",
 			"filename or pattern", t)
@@ -270,7 +222,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 					p.basicErrorAtToken(msg, p.tokenbuf[k])
 				}
 				patterns = append(patterns, Pattern{
-					Rgx: rpat,
+					Regex: rpat,
 				})
 			} else {
 				idx := strings.IndexRune(str, '%')
@@ -290,7 +242,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 						p.basicErrorAtToken(msg, p.tokenbuf[k])
 					}
 					patterns = append(patterns, Pattern{
-						Rgx:    rpat,
+						Regex:  rpat,
 						Suffix: true,
 					})
 				}

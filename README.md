@@ -66,6 +66,7 @@ src = knit.glob("*.c")
 obj = knit.extrepl(src, ".c", ".o")
 prog := hello
 
+return r{
 $ $prog: $obj
     $cc $cflags $input -o $output
 
@@ -74,6 +75,7 @@ $ %.o: %.c
 
 $ clean:V:
     rm -f $obj $prog
+}
 ```
 
 See the [docs](./docs/knit.md) for more information.

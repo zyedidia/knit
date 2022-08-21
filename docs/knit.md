@@ -1,3 +1,5 @@
+Note: this documentation is out of date.
+
 # Rules
 
 A rule consists of four parts:

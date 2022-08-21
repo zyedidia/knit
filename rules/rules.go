@@ -18,6 +18,8 @@ type baseRule struct {
 
 func (b baseRule) isRule() {}
 
+// A DirectRule specifies how to build a fully specified list of targets from a
+// list of prereqs.
 type DirectRule struct {
 	baseRule
 	targets []string
@@ -38,6 +40,7 @@ func (r *DirectRule) String() string {
 	return fmt.Sprintf("%s: %s", r.targets, r.prereqs)
 }
 
+// A MetaRule specifies the targets to build based on a pattern.
 type MetaRule struct {
 	baseRule
 	targets []Pattern
@@ -54,9 +57,11 @@ func NewMetaRule(targets []Pattern, prereqs, recipe []string, attrs AttrSet) Met
 	}
 }
 
+// Match returns the submatch and pattern used to perform the match, if there
+// is one.
 func (r *MetaRule) Match(target string) ([]int, *Pattern) {
 	for i, t := range r.targets {
-		if s := t.Rgx.FindStringSubmatchIndex(target); s != nil {
+		if s := t.Regex.FindStringSubmatchIndex(target); s != nil {
 			return s, &r.targets[i]
 		}
 	}
@@ -64,19 +69,18 @@ func (r *MetaRule) Match(target string) ([]int, *Pattern) {
 }
 
 type AttrSet struct {
-	Regex     bool
-	Virtual   bool
-	Quiet     bool
-	NoMeta    bool // rule cannot be matched by meta rules
-	Exclusive bool
-	NonStop   bool
-	DelFailed bool
-	Rebuild   bool
+	Regex     bool // regular expression meta-rule
+	Virtual   bool // targets are not files
+	Quiet     bool // is not displayed as part of the build process
+	NoMeta    bool // cannot be matched by meta rules
+	Exclusive bool // cannot run in parallel with other rules
+	NonStop   bool // does not stop if the recipe fails
+	Rebuild   bool // this rule is always out-of-date
 }
 
 type Pattern struct {
 	Suffix bool
-	Rgx    *regexp.Regexp
+	Regex  *regexp.Regexp
 }
 
 type RuleSet struct {
@@ -142,8 +146,6 @@ func ParseAttribs(input string) (AttrSet, error) {
 			attrs.Exclusive = true
 		case 'E':
 			attrs.NonStop = true
-		case 'D':
-			attrs.DelFailed = true
 		case 'B':
 			attrs.Rebuild = true
 		default:

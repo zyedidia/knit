@@ -1,11 +1,13 @@
+return r{
 $ %.o: %.c hdr.h
     cc -Wall $match.c -c -o $output
 
 $ %.o: %.s
     as $match.s -c -o $output
 
-$ touch-%:V:
+$ touch-%:VB:
     touch $match
 
-$ clean:V:
+$ clean:VB:
     rm -f *.o
+}

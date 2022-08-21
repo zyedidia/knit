@@ -1,0 +1,14 @@
+return r{
+$ all:V: libfoo.a
+
+$ %.o: %.c
+    cc -c $input -o $output
+
+$ libfoo.a: foo.o bar.o
+    ar -rcs $output $input
+
+$ clean:VB:
+    rm -f *.o
+    rm -f *.a
+
+}

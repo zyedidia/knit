@@ -1,5 +1,7 @@
+return r{
 $ rule1: rule2
 
 $ rule2: rule3
 
 $ rule3: rule1
+}

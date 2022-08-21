@@ -1,0 +1,20 @@
+name = "Sub builds"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = []
+output = """\
+cc -c f1.c -o f1.o
+cc -c f2.c -o f2.o
+cc -c f3.c -o f3.o
+[in libfoo] cc -c foo.c -o foo.o
+[in libfoo] cc -c bar.c -o bar.o
+[in libfoo] ar -rcs libfoo.a foo.o bar.o
+cc f1.o f2.o f3.o libfoo/libfoo.a -o prog
+"""

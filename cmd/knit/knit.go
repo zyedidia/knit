@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/zyedidia/knit"
 	"github.com/zyedidia/knit/info"
-	"github.com/zyedidia/knit/rules"
 )
 
 func main() {
@@ -37,7 +36,6 @@ func main() {
 	}
 
 	out := os.Stdout
-
 	err := knit.Run(out, pflag.Args(), knit.Flags{
 		Knitfile:  *knitfile,
 		Ncpu:      *ncpu,
@@ -50,7 +48,7 @@ func main() {
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "knit: %s\n", err)
-		if !errors.Is(err, rules.ErrNothingToDo) {
+		if !errors.Is(err, knit.ErrNothingToDo) {
 			os.Exit(1)
 		}
 	}

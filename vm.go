@@ -14,11 +14,17 @@ import (
 	"github.com/zyedidia/knit/liblua"
 )
 
+var rulesCount = 0
+
+func rulesName() string {
+	rulesCount++
+	return fmt.Sprintf("r%d", rulesCount)
+}
+
 type LuaVM struct {
 	L     *lua.LState
-	rules []LRule
-
-	vars map[string]*lua.LTable
+	rsets map[string]LRuleSet
+	vars  map[string]*lua.LTable
 }
 
 type LRule struct {
@@ -28,11 +34,17 @@ type LRule struct {
 	Env      *lua.LTable
 }
 
+type LRuleSet struct {
+	rules []LRule
+	name  string
+}
+
 func NewLuaVM() *LuaVM {
 	L := lua.NewState()
 	vm := &LuaVM{
-		L:    L,
-		vars: make(map[string]*lua.LTable),
+		L:     L,
+		vars:  make(map[string]*lua.LTable),
+		rsets: make(map[string]LRuleSet),
 	}
 
 	rvar, rexpr := vm.ExpandFuncs()
@@ -40,10 +52,18 @@ func NewLuaVM() *LuaVM {
 	L.SetGlobal("import", luar.New(L, func(pkg string) *lua.LTable {
 		return lib.Import(L, pkg)
 	}))
-	L.SetGlobal("_rule", luar.New(L, func(rule string, file string, line int) {
-		vm.addRule(rule, file, line, rvar, rexpr)
+	L.SetGlobal("r", luar.New(L, func(rules []LRule) LRuleSet {
+		rs := LRuleSet{
+			rules: rules,
+			name:  rulesName(),
+		}
+		vm.rsets[rs.name] = rs
+		return rs
 	}))
-	L.SetGlobal("rule", luar.New(L, func(rule string) {
+	L.SetGlobal("_rule", luar.New(L, func(rule string, file string, line int) LRule {
+		return vm.makeRule(rule, file, line, rvar, rexpr)
+	}))
+	L.SetGlobal("rule", luar.New(L, func(rule string) LRule {
 		dbg, ok := L.GetStack(1)
 		file := "<rule>"
 		line := 0
@@ -52,7 +72,7 @@ func NewLuaVM() *LuaVM {
 			file = dbg.Source
 			line = dbg.CurrentLine
 		}
-		vm.addRule(rule, file, line, rvar, rexpr)
+		return vm.makeRule(rule, file, line, rvar, rexpr)
 	}))
 	L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
 		return LToString(v)
@@ -85,16 +105,16 @@ func NewLuaVM() *LuaVM {
 		// anything else is true
 		return lua.LTrue
 	}))
-	L.SetGlobal("rulefile", luar.New(L, func(f string) {
+	L.SetGlobal("rulefile", luar.New(L, func(f string) LRule {
 		b, err := os.ReadFile(f)
 		if err != nil {
-			return
+			return LRule{}
 		}
-		vm.rules = append(vm.rules, LRule{
+		return LRule{
 			Contents: string(b),
 			File:     f,
-			Line:     0,
-		})
+			Line:     1,
+		}
 	}))
 	L.SetGlobal("eval", luar.New(L, func(s string) lua.LValue {
 		v, _ := vm.Eval(strings.NewReader("return "+s), "<eval>")
@@ -121,14 +141,14 @@ func NewLuaVM() *LuaVM {
 	return vm
 }
 
-func (vm *LuaVM) addRule(rule string, file string, line int, rvar, rexpr expand.Resolver) {
+func (vm *LuaVM) makeRule(rule string, file string, line int, rvar, rexpr expand.Resolver) LRule {
 	s, _ := expand.Expand(rule, rvar, rexpr)
-	vm.rules = append(vm.rules, LRule{
+	return LRule{
 		Contents: s,
 		File:     file,
 		Line:     line,
 		Env:      getLocals(vm.L),
-	})
+	}
 }
 
 func addLocals(L *lua.LState, locals *lua.LTable) *lua.LTable {
@@ -188,6 +208,8 @@ func LToString(v lua.LValue) string {
 	switch v := v.(type) {
 	case *lua.LUserData:
 		switch u := v.Value.(type) {
+		case LRuleSet:
+			return u.name
 		case []string:
 			return strings.Join(u, " ")
 		default:
@@ -201,6 +223,17 @@ func LToString(v lua.LValue) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+func LToRuleSet(v lua.LValue) (LRuleSet, bool) {
+	switch v := v.(type) {
+	case *lua.LUserData:
+		switch u := v.Value.(type) {
+		case LRuleSet:
+			return u, true
+		}
+	}
+	return LRuleSet{}, false
 }
 
 func LTableToString(v *lua.LTable) string {
@@ -246,6 +279,11 @@ func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (stri
 
 func (vm *LuaVM) SetVar(name string, val interface{}) {
 	vm.L.SetGlobal(name, luar.New(vm.L, val))
+}
+
+func (vm *LuaVM) GetRuleSet(name string) (LRuleSet, bool) {
+	rs, ok := vm.rsets[name]
+	return rs, ok
 }
 
 func (vm *LuaVM) MakeTable(tbl string) {

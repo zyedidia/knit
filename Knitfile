@@ -3,6 +3,11 @@ knit = import("knit")
 version = knit.trim(knit.shell("cd tools/version; go run version.go"))
 goflags = f"-trimpath -ldflags \"-s -w -X github.com/zyedidia/knit/info.Version=$version\""
 
+race = tobool(cli.race) and "-race" or ""
+
+pkgs = ".,./rules,./expand"
+
+return r{
 $ knit:
     go build $goflags ./cmd/knit
 $ build:V: knit
@@ -31,8 +36,6 @@ $ (knit-$version-(.*)-(.*)).tar.gz:R:
 $ clean:V:
     rm -f *.tar.gz knit cover.out
 
-race = tobool(cli.race) and "-race" or ""
-
 $ test:V:
     go test $race
 
@@ -42,8 +45,6 @@ $ check:V:
     staticcheck ./...
     go test $race
 
-pkgs = ".,./rules,./expand"
-
 $ cover.out:
     go test -coverpkg=$pkgs -coverprofile cover.out .
 
@@ -52,3 +53,4 @@ $ cover:V:
 
 $ cover-html:V: cover.out
     go tool cover -html=cover.out
+}

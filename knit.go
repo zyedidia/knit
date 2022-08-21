@@ -59,6 +59,37 @@ func exists(path string) bool {
 	return err == nil
 }
 
+func getRuleSets(vm *LuaVM, sets []string, rulesets map[string]*rules.RuleSet) error {
+	for _, set := range sets {
+		if _, ok := rulesets[set]; ok {
+			continue
+		}
+
+		lrs, ok := vm.GetRuleSet(set)
+		if !ok {
+			return fmt.Errorf("ruleset not found: %s", set)
+		}
+
+		var sets []string
+		rs := rules.NewRuleSet()
+		for _, lr := range lrs.rules {
+			s, err := rules.ParseInto(lr.Contents, rs, lr.File, lr.Line)
+			if err != nil {
+				return err
+			}
+			sets = append(sets, s...)
+		}
+		rulesets[set] = rs
+		err := getRuleSets(vm, sets, rulesets)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var ErrNothingToDo = errors.New("nothing to be done")
+
 func Run(out io.Writer, args []string, flags Flags) error {
 	if flags.RunDir != "" {
 		os.Chdir(flags.RunDir)
@@ -96,43 +127,24 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		vm.AddVar("env", v.name, v.value)
 	}
 
-	_, err = vm.Eval(f, f.Name())
+	lval, err := vm.Eval(f, f.Name())
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	rulesets := make(map[string]*rules.RuleSet)
+
+	lruleset, ok := LToRuleSet(lval)
+	if !ok {
+		return fmt.Errorf("eval returned %s, expected ruleset", lval.Type())
+	}
+	err = getRuleSets(vm, []string{lruleset.name}, rulesets)
 	if err != nil {
 		return err
 	}
 
-	f.Close()
-
-	rs := rules.NewRuleSet()
-
-	errs := rules.ErrFns{
-		PrintErr: func(e string) {
-			fmt.Fprint(Stderr, e)
-		},
-		Err: func(e string) {
-			fmt.Fprintln(Stderr, e)
-			os.Exit(1)
-		},
-	}
-
-	rvar, rexpr := vm.ExpandFuncs()
-	expands := rules.ExpandFns{
-		Rvar:  rvar,
-		Rexpr: rexpr,
-	}
-
-	if flags.ShowRules {
-		for _, r := range vm.rules {
-			fmt.Println(r.Contents)
-		}
-	}
-
-	for _, r := range vm.rules {
-		err := rules.ParseInto(r.Contents, rs, fmt.Sprintf("%s:%d:<rule>", r.File, r.Line), errs, expands)
-		if err != nil {
-			return err
-		}
-	}
+	rs := rulesets[lruleset.name]
 
 	if len(targets) == 0 {
 		targets = rs.MainTargets()
@@ -147,53 +159,59 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		NoMeta:  true,
 	}))
 
-	g, err := rules.NewGraph(rs, ":all")
+	graph, err := rules.NewGraphSet(rulesets, lruleset.name, ":all")
 	if err != nil {
 		return err
 	}
 
-	if g.Size() == 1 {
+	if graph.Size() == 1 {
 		return fmt.Errorf("target not found: %s", targets)
 	}
 
 	if flags.Graph != "" {
-		err := visualize(out, flags.Graph, g)
+		err := visualize(out, flags.Graph, graph)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = g.ExpandRecipes(vm)
+	err = graph.ExpandRecipes(vm)
 	if err != nil {
 		return err
 	}
 
 	db := rules.NewDatabase(".knit")
 
-	erred := false
-	e := rules.NewExecutor(db, flags.Ncpu, out, rules.Options{
+	var w io.Writer = out
+	if flags.Quiet {
+		w = io.Discard
+	}
+	ex := rules.NewExecutor(".", db, flags.Ncpu, func(inputs, outputs, recipe []string, step, nsteps int) {
+		// fmt.Printf("Building '%s' from '%s'\n", strings.Join(outputs, ", "), strings.Join(inputs, ", "))
+	}, func(cmd, dir string) {
+		if dir != "." {
+			fmt.Fprintf(w, "[in %s] ", dir)
+		}
+		fmt.Fprintln(w, cmd)
+	}, func(msg string) {
+		fmt.Fprintln(out, msg)
+	}, rules.Options{
 		NoExec:       flags.DryRun,
 		Shell:        "sh",
 		AbortOnError: true,
 		BuildAll:     flags.Always,
-		Quiet:        flags.Quiet,
-	}, func(msg string) {
-		fmt.Fprintln(Stderr, msg)
-		erred = true
 	})
-
-	err = e.Exec(g)
-	if err != nil {
-		return fmt.Errorf("'%s': %w", strings.Join(targets, " "), err)
-	}
+	rebuilt, execerr := ex.Exec(graph)
 
 	err = db.Save()
 	if err != nil {
 		return err
 	}
-
-	if erred {
-		return fmt.Errorf("'%s': recipe exited with failure", strings.Join(targets, " "))
+	if execerr != nil {
+		return execerr
+	}
+	if !rebuilt {
+		return fmt.Errorf("'%s': %w", strings.Join(targets, " "), ErrNothingToDo)
 	}
 	return nil
 }

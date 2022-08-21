@@ -1,30 +1,56 @@
 package rules
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/zyedidia/knit/expand"
 )
 
 const maxVisits = 1
 
+type GraphSet struct {
+	rules map[string]*RuleSet
+	main  *Graph
+}
+
+func NewGraphSet(rules map[string]*RuleSet, main string, target string) (*Graph, error) {
+	if rs, ok := rules[main]; ok {
+		gs := &GraphSet{
+			rules: rules,
+		}
+		g, err := NewGraph(rs, target, gs, main, ".")
+		if err != nil {
+			return nil, err
+		}
+		gs.main = g
+		return g, nil
+	}
+	return nil, fmt.Errorf("ruleset not found: %s", main)
+}
+
 type Graph struct {
 	base  *node
 	rs    *RuleSet
 	nodes map[string]*node
+	// Directory this graph is executed in, can be relative to the main graph.
+	dir string
 }
 
 type node struct {
 	outputs map[string]*file
 	rule    *DirectRule
-	prereqs []*node
 	recipe  []string
+	prereqs []*node
+
+	// graph that this node belongs to
+	graph *Graph
 
 	// for cycle checking
 	visited bool
@@ -33,6 +59,52 @@ type node struct {
 	meta    bool
 	match   string
 	matches []string
+
+	// for concurrent graph execution
+	done chan struct{}
+}
+
+type prereq struct {
+	name    string
+	ruleset string
+	dir     string
+}
+
+func parsePrereq(ps string) prereq {
+	var p prereq
+	buf := &bytes.Buffer{}
+	sawset := false
+	sawdir := false
+	sqn := 0
+
+	pos := 0
+	for pos < len(ps) {
+		r, size := utf8.DecodeRuneInString(ps[pos:])
+		switch r {
+		case '[':
+			sqn++
+		case ']':
+			sqn--
+			if sqn == 0 {
+				if sawset && sawdir {
+					buf.WriteRune(r)
+				} else if sawset {
+					p.dir = buf.String()
+					buf.Reset()
+					sawdir = true
+				} else {
+					p.ruleset = buf.String()
+					buf.Reset()
+					sawset = true
+				}
+			}
+		default:
+			buf.WriteRune(r)
+		}
+		pos += size
+	}
+	p.name = buf.String()
+	return p
 }
 
 type file struct {
@@ -41,9 +113,9 @@ type file struct {
 	exists bool
 }
 
-func newFile(target string) *file {
+func newFile(dir string, target string) *file {
 	f := &file{
-		name: target,
+		name: filepath.Join(dir, target),
 	}
 	f.updateTimestamp()
 	return f
@@ -56,21 +128,17 @@ func (f *file) updateTimestamp() {
 		f.exists = true
 		return
 	}
-	var perr *os.PathError
-	if errors.As(err, &perr) {
-		f.t = time.Unix(0, 0)
-		f.exists = false
-		return
-	}
-	// not sure what happened in this case
-	log.Fatalf("update-timestamp: %v\n", err)
+	f.t = time.Unix(0, 0)
+	f.exists = false
 }
 
 func (g *Graph) newNode(target string) *node {
 	n := &node{
 		outputs: map[string]*file{
-			target: newFile(target),
+			target: newFile(g.dir, target),
 		},
+		graph: g,
+		done:  make(chan struct{}, 1),
 	}
 	return n
 }
@@ -84,26 +152,39 @@ type VM interface {
 	SetVar(name string, val interface{})
 }
 
-func NewGraph(rs *RuleSet, target string) (g *Graph, err error) {
+func NewGraph(rs *RuleSet, target string, gs *GraphSet, name string, dir string) (g *Graph, err error) {
 	g = &Graph{
 		rs:    rs,
 		nodes: make(map[string]*node),
+		dir:   dir,
 	}
 	visits := make([]int, len(rs.metaRules))
-	g.base, err = g.resolveTarget(target, visits)
+	g.base, err = g.resolveTarget(target, visits, gs)
 	if err != nil {
 		return g, err
 	}
 	return g, checkCycles(g.base)
 }
 
-func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
+func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node, error) {
+	p := parsePrereq(target)
+	if rs, ok := gs.rules[p.ruleset]; ok {
+		// if this target uses a separate ruleset, create a subgraph and
+		// use that to resolve the target.
+		subg, err := NewGraph(rs, p.name, gs, p.ruleset, filepath.Join(g.dir, p.dir))
+		if err != nil {
+			return nil, err
+		}
+		return subg.base, nil
+	}
+	target = p.name
+
 	// do we have a node that builds target already
 	n, ok := g.nodes[target]
 	if ok {
 		// make sure the node knows that it builds target too
 		if _, ok := n.outputs[target]; !ok {
-			n.outputs[target] = newFile(target)
+			n.outputs[target] = newFile(g.dir, target)
 		}
 		return n, nil
 	}
@@ -121,9 +202,6 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 		for _, ri := range ris {
 			r := &g.rs.directRules[ri]
 			if len(r.recipe) != 0 {
-				// if len(recipe) != 0 {
-				// 	return nil, fmt.Errorf("multiple recipes found for target '%s'", target)
-				// }
 				recipe = r.recipe
 			}
 			rule = *r
@@ -168,16 +246,17 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 						n.matches = append(n.matches, string(target[sub[i]:sub[i+1]]))
 					}
 					for _, p := range mr.prereqs {
-						expanded := pat.Rgx.ExpandString([]byte{}, p, target, sub)
+						expanded := pat.Regex.ExpandString([]byte{}, p, target, sub)
 						metarule.prereqs = append(metarule.prereqs, string(expanded))
 					}
 				}
 
+				// Only use this rule if its prereqs can also be resolved.
 				failed := false
 				visits[mi]++
 				// TODO: measure the performance impact of this, and optimize if necessary
 				for _, p := range metarule.prereqs {
-					_, err := g.resolveTarget(p, visits)
+					_, err := g.resolveTarget(p, visits, gs)
 					if err != nil {
 						failed = true
 						break
@@ -203,9 +282,12 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 	if len(rule.targets) == 0 && !rule.attrs.Virtual {
 		for o, f := range n.outputs {
 			if !f.exists {
-				return nil, fmt.Errorf("no rule to make target '%s'", o)
+				return nil, fmt.Errorf("%sno rule to make target '%s'", g.subdir(), o)
 			}
 		}
+		// If this rule had no targets, the target is the requested one.  For
+		// example, maybe we didn't find a rule, and the requested target was
+		// foo.c. If foo.c exists, then this is an empty rule to "build" it.
 		rule.targets = []string{target}
 	}
 
@@ -218,7 +300,7 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 		visits[ri]++
 	}
 	for _, p := range n.rule.prereqs {
-		pn, err := g.resolveTarget(p, visits)
+		pn, err := g.resolveTarget(p, visits, gs)
 		if err != nil {
 			return nil, err
 		}
@@ -230,26 +312,48 @@ func (g *Graph) resolveTarget(target string, visits []int) (*node, error) {
 	return n, nil
 }
 
+func (g *Graph) subdir() string {
+	if g.dir != "." && g.dir != "" {
+		return fmt.Sprintf("in %s: ", g.dir)
+	}
+	return ""
+}
+
 // ExpandRecipes evaluates all variables and expressions in the recipes for the
 // build
 func (g *Graph) ExpandRecipes(vm VM) error {
-	for _, n := range g.nodes {
-		if n.recipe == nil {
-			err := n.expandRecipe(vm)
-			if err != nil {
-				return err
+	return g.base.expandRecipe(vm)
+}
+
+func (n *node) prereqsSub() []string {
+	ps := make([]string, 0, len(n.rule.prereqs))
+	for _, p := range n.prereqs {
+		if p.rule.attrs.Virtual {
+			continue
+		}
+		for _, t := range p.rule.targets {
+			if p.graph.dir != n.graph.dir {
+				relpath, err := filepath.Rel(n.graph.dir, p.graph.dir)
+				if err != nil {
+					// TODO
+					panic(err)
+				}
+				ps = append(ps, filepath.Join(relpath, t))
+			} else {
+				ps = append(ps, t)
 			}
 		}
 	}
-	return nil
+	return ps
 }
 
 // Expand variable and expression references in this node's recipe. This
 // function will assign the appropriate variables in the Lua VM and then
 // evaluate the variables and expressions that must be expanded.
 func (n *node) expandRecipe(vm VM) error {
-	vm.SetVar("inputs", n.rule.prereqs)
-	vm.SetVar("input", strings.Join(n.rule.prereqs, " "))
+	prs := n.prereqsSub()
+	vm.SetVar("inputs", prs)
+	vm.SetVar("input", strings.Join(prs, " "))
 	vm.SetVar("outputs", n.rule.targets)
 	vm.SetVar("output", strings.Join(n.rule.targets, " "))
 	if n.meta {
@@ -268,6 +372,14 @@ func (n *node) expandRecipe(vm VM) error {
 		}
 		n.recipe = append(n.recipe, output)
 	}
+
+	for _, pn := range n.prereqs {
+		err := pn.expandRecipe(vm)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -299,26 +411,30 @@ func (n *node) time() time.Time {
 
 // returns true if this node should be rebuilt during the build
 func (n *node) outOfDate(db *Database) bool {
-	// virtual rules are always out of date
-	if n.rule.attrs.Virtual || n.rule.attrs.Rebuild {
+	// rebuild rules are always out of date
+	if n.rule.attrs.Rebuild {
 		return true
 	}
-	// if an output does not exist, it is out of date
-	for _, o := range n.outputs {
-		if !o.exists {
-			return true
-		}
-	}
 
-	// if a prereq is newer than an output, this rule is out of date
-	for _, p := range n.prereqs {
-		if p.time().After(n.time()) {
-			return true
+	// virtual rules don't have outputs
+	if !n.rule.attrs.Virtual {
+		// if an output does not exist, it is out of date
+		for _, o := range n.outputs {
+			if !o.exists {
+				return true
+			}
+		}
+
+		// if a prereq is newer than an output, this rule is out of date
+		for _, p := range n.prereqs {
+			if p.time().After(n.time()) {
+				return true
+			}
 		}
 	}
 
 	// database doesn't have an entry for this recipe
-	if !db.HasRecipe(n.rule.targets, n.recipe) {
+	if !db.HasRecipe(n.rule.targets, n.recipe, n.graph.dir) {
 		return true
 	}
 
@@ -337,9 +453,16 @@ func (g *Graph) VisualizeDot(w io.Writer) {
 	fmt.Fprintln(w, "}")
 }
 
+func (n *node) String() string {
+	if n.graph.dir == "" || n.graph.dir == "." {
+		return strings.Join(n.rule.targets, ", ")
+	}
+	return fmt.Sprintf("[%s]%s", n.graph.dir, strings.Join(n.rule.targets, ", "))
+}
+
 func (n *node) visualizeDot(w io.Writer) {
 	for _, p := range n.prereqs {
-		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", strings.Join(n.rule.targets, ", "), strings.Join(p.rule.targets, ", "))
+		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", n, p)
 		p.visualizeDot(w)
 	}
 }
@@ -350,7 +473,7 @@ func (g *Graph) VisualizeText(w io.Writer) {
 
 func (n *node) visualizeText(w io.Writer) {
 	for _, p := range n.prereqs {
-		fmt.Fprintf(w, "%s -> %s\n", strings.Join(n.rule.targets, ", "), strings.Join(p.rule.targets, ", "))
+		fmt.Fprintf(w, "%s -> %s\n", n, p)
 		p.visualizeText(w)
 	}
 }

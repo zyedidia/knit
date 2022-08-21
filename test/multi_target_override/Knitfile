@@ -1,5 +1,7 @@
-$ clean tidy nuke:V:
+return r{
+$ clean tidy nuke:VB:
     rm -f o.out
 
-$ clean:V:
+$ clean:VB:
     rm -f o.out *.o
+}

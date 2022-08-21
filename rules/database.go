@@ -43,12 +43,12 @@ func NewCacheDatabase(wd string) *Database {
 	return NewDatabase(filepath.Join(xdg.CacheHome, url.PathEscape(wd)))
 }
 
-func (db *Database) HasRecipe(targets, recipe []string) bool {
-	return db.recipes.has(targets, recipe)
+func (db *Database) HasRecipe(targets, recipe []string, dir string) bool {
+	return db.recipes.has(targets, recipe, dir)
 }
 
-func (db *Database) InsertRecipe(targets, recipe []string) {
-	db.recipes.insert(targets, recipe)
+func (db *Database) InsertRecipe(targets, recipe []string, dir string) {
+	db.recipes.insert(targets, recipe, dir)
 }
 
 func (db *Database) Save() error {
@@ -91,17 +91,21 @@ func hashSlice(s []string) uint64 {
 	return fnv1a.HashString64(strings.Join(s, ""))
 }
 
-func (r *recipes) has(targets, recipe []string) bool {
+func hashSliceAndString(s []string, str string) uint64 {
+	return fnv1a.HashString64(strings.Join(s, "") + str)
+}
+
+func (r *recipes) has(targets, recipe []string, dir string) bool {
 	rhash := hashSlice(recipe)
-	thash := hashSlice(targets)
+	thash := hashSliceAndString(targets, dir)
 	if h, ok := r.Hashes[thash]; ok {
 		return rhash == h
 	}
 	return false
 }
 
-func (r *recipes) insert(targets, recipe []string) {
+func (r *recipes) insert(targets, recipe []string, dir string) {
 	rhash := hashSlice(recipe)
-	thash := hashSlice(targets)
+	thash := hashSliceAndString(targets, dir)
 	r.Hashes[thash] = rhash
 }
