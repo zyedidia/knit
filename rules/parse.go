@@ -87,9 +87,14 @@ func ParseInto(input string, rules *RuleSet, file string, line int) ([]string, e
 		}
 	}
 
-	// insert a dummy newline to allow parsing of any assignments or recipeless
+	// insert two dummy newlines to allow parsing of any prereqs or recipeless
 	// rules to finish.
+	state = state(p, token{tokenNewline, "\n", l.line, l.col})
 	state(p, token{tokenNewline, "\n", l.line, l.col})
+
+	if len(p.errors) != 0 {
+		return p.rulesets, p.errors
+	}
 
 	return p.rulesets, nil
 }

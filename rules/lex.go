@@ -337,7 +337,7 @@ func lexRecipe(l *lexer) lexerStateFun {
 }
 
 func lexBareWord(l *lexer) lexerStateFun {
-	l.acceptUntil(nonBareRunes)
+	l.acceptUntilOrEof(nonBareRunes)
 	c := l.peek()
 	if c == '"' {
 		return lexDoubleQuotedWord
