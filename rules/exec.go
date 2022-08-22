@@ -92,12 +92,26 @@ func (e *Executor) execNode(n *node) {
 		e.execNode(p)
 	}
 
-	// wait for all prereqs to finish
-	for _, p := range n.prereqs {
-		<-p.done
+	// We want to allow each job to be enqueued immediately when its prereqs
+	// are done, so all nodes wait for their prereqs in parallel.
+	dojob := func() {
+		// wait for all prereqs to finish
+		for _, p := range n.prereqs {
+			<-p.done
+		}
+
+		e.jobs <- n
 	}
 
-	e.jobs <- n
+	// If we are not doing a parallel build there is no point in optimizing the
+	// queueing order for parallelism, so there's no point to waiting in
+	// parallel, and we'd rather not make goroutines so we can get
+	// deterministic builds with ncpu=1.
+	if e.threads == 1 {
+		dojob()
+	} else {
+		go dojob()
+	}
 }
 
 func (e *Executor) runServer() {
