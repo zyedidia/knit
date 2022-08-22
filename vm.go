@@ -36,7 +36,7 @@ type LRule struct {
 }
 
 type LRuleSet struct {
-	rules []LRule
+	Rules []LRule
 	name  string
 }
 
@@ -73,7 +73,7 @@ func NewLuaVM() *LuaVM {
 			rules = append(rules, rs...)
 		}
 		rs := LRuleSet{
-			rules: rules,
+			Rules: rules,
 			name:  rulesName(),
 		}
 		vm.rsets[rs.name] = rs

@@ -73,7 +73,7 @@ func getRuleSets(vm *LuaVM, sets []string, rulesets map[string]*rules.RuleSet) e
 
 		var sets []string
 		rs := rules.NewRuleSet()
-		for _, lr := range lrs.rules {
+		for _, lr := range lrs.Rules {
 			s, err := rules.ParseInto(lr.Contents, rs, lr.File, lr.Line)
 			if err != nil {
 				return err

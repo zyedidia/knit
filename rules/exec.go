@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -61,8 +62,8 @@ type command struct {
 // Exec runs all commands and returns true if something was rebuilt.
 func (e *Executor) Exec(g *Graph) (bool, error) {
 	// make sure ctrl-c doesn't kill this process, just the children
-	// sig := make(chan os.Signal, 1)
-	// signal.Notify(sig, os.Interrupt)
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
 
 	for i := 0; i < e.threads; i++ {
 		go e.runServer()
