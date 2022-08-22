@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -186,14 +187,19 @@ func Run(out io.Writer, args []string, flags Flags) error {
 	if flags.Quiet {
 		w = io.Discard
 	}
+	lock := sync.Mutex{}
 	ex := rules.NewExecutor(".", db, flags.Ncpu, func(inputs, outputs, recipe []string, step, nsteps int) {
 		// fmt.Printf("Building '%s' from '%s'\n", strings.Join(outputs, ", "), strings.Join(inputs, ", "))
 	}, func(cmd, dir string) {
+		lock.Lock()
+		defer lock.Unlock()
 		if dir != "." {
 			fmt.Fprintf(w, "[in %s] ", dir)
 		}
 		fmt.Fprintln(w, cmd)
 	}, func(msg string) {
+		lock.Lock()
+		defer lock.Unlock()
 		fmt.Fprintln(out, msg)
 	}, rules.Options{
 		NoExec:       flags.DryRun,

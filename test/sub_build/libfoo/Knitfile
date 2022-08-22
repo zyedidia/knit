@@ -1,10 +1,15 @@
+local knit = import("knit")
+
+local src = knit.glob("*.c")
+local obj = knit.extrepl(src, ".c", ".o")
+
 return r{
 $ all:V: libfoo.a
 
 $ %.o: %.c
     cc -c $input -o $output
 
-$ libfoo.a: foo.o bar.o
+$ libfoo.a: $obj
     ar -rcs $output $input
 
 $ clean:VB:

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -51,6 +52,20 @@ func NewLuaVM() *LuaVM {
 	lib := liblua.FromLibs(liblua.Knit)
 	L.SetGlobal("import", luar.New(L, func(pkg string) *lua.LTable {
 		return lib.Import(L, pkg)
+	}))
+	L.SetGlobal("include", luar.New(L, func(file string) lua.LValue {
+		dir := filepath.Dir(file)
+		wd, err := os.Getwd()
+		if err != nil {
+			return luar.New(L, err)
+		}
+		os.Chdir(dir)
+		val, err := vm.DoFile(filepath.Base(file))
+		if err != nil {
+			return luar.New(L, err)
+		}
+		os.Chdir(wd)
+		return val
 	}))
 	L.SetGlobal("r", luar.New(L, func(rulesets ...[]LRule) LRuleSet {
 		rules := make([]LRule, 0, len(rulesets))
@@ -199,6 +214,23 @@ func (vm *LuaVM) Eval(r io.Reader, file string) (lua.LValue, error) {
 		return nil, err
 	} else {
 		vm.L.SetFEnv(fn, getVars(vm.L))
+		vm.L.Push(fn)
+		err = vm.L.PCall(0, lua.MultRet, nil)
+		if err != nil {
+			return nil, err
+		}
+		return vm.L.Get(-1), nil
+	}
+}
+
+func (vm *LuaVM) DoFile(file string) (lua.LValue, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return lua.LNil, err
+	}
+	if fn, err := vm.L.Load(f, file); err != nil {
+		return nil, err
+	} else {
 		vm.L.Push(fn)
 		err = vm.L.PCall(0, lua.MultRet, nil)
 		if err != nil {

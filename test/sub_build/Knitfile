@@ -1,4 +1,4 @@
-foo = dofile("libfoo/Knitfile")
+foo = include("libfoo/Knitfile")
 
 return r{
 $ %.o: %.c

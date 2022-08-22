@@ -1,5 +1,7 @@
 todo.txt
 *.o
+*.a
+prog
 *.dot
 hello
 *.pdf
