@@ -36,21 +36,21 @@ $ (knit-$version-(.*)-(.*)).tar.gz:R:
 $ clean:VB:
     rm -f *.tar.gz knit cover.out
 
-$ test:V:
+$ test:VB:
     go test $race
 
-$ check:V:
+$ check:VB:
     if [ "$$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
     go vet ./...
     staticcheck ./...
     go test $race
 
-$ cover.out:
+$ cover.out:B:
     go test -coverpkg=$pkgs -coverprofile cover.out .
 
-$ cover:V:
+$ cover:VB:
     go test -coverpkg=$pkgs -cover .
 
-$ cover-html:V: cover.out
+$ cover-html:VB: cover.out
     go tool cover -html=cover.out
 }
