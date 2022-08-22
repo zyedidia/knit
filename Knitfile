@@ -33,7 +33,7 @@ $ (knit-$version-(.*)-(.*)).tar.gz:R:
     tar czf $output $match1
     rm -rf $match1
 
-$ clean:V:
+$ clean:VB:
     rm -f *.tar.gz knit cover.out
 
 $ test:V:
