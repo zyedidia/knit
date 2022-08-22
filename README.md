@@ -73,7 +73,7 @@ $ $prog: $obj
 $ %.o: %.c
     $cc $cflags -c $input -o $output
 
-$ clean:V:
+$ clean:VB:
     rm -f $obj $prog
 }
 ```
