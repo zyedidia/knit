@@ -115,10 +115,17 @@ type file struct {
 
 func newFile(dir string, target string) *file {
 	f := &file{
-		name: filepath.Join(dir, target),
+		name: pathJoin(dir, target),
 	}
 	f.updateTimestamp()
 	return f
+}
+
+func pathJoin(dir, target string) string {
+	if filepath.IsAbs(target) {
+		return target
+	}
+	return filepath.Join(dir, target)
 }
 
 func (f *file) updateTimestamp() {
@@ -171,7 +178,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 	if rs, ok := gs.rules[p.ruleset]; ok {
 		// if this target uses a separate ruleset, create a subgraph and
 		// use that to resolve the target.
-		subg, err := NewGraph(rs, p.name, gs, p.ruleset, filepath.Join(g.dir, p.dir))
+		subg, err := NewGraph(rs, p.name, gs, p.ruleset, pathJoin(g.dir, p.dir))
 		if err != nil {
 			return nil, err
 		}
@@ -338,7 +345,7 @@ func (n *node) prereqsSub() []string {
 					// TODO
 					panic(err)
 				}
-				ps = append(ps, filepath.Join(relpath, t))
+				ps = append(ps, pathJoin(relpath, t))
 			} else {
 				ps = append(ps, t)
 			}

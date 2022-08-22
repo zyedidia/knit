@@ -8,11 +8,11 @@ race = tobool(cli.race) and "-race" or ""
 pkgs = ".,./rules,./expand"
 
 return r{
-$ knit:
+$ knit:B:
     go build $goflags ./cmd/knit
 $ build:V: knit
 
-$ install:V:
+$ install:VB:
     go install $goflags ./cmd/knit
 
 $ all:V: knit-$version-linux-amd64.tar.gz \

@@ -64,6 +64,8 @@ type parserStateFun func(*parser, token) parserStateFun
 // The list of rulesets used by this ruleset is returned, or a possible parse
 // error.
 func ParseInto(input string, rules *RuleSet, file string, line int) ([]string, error) {
+	input = stripIndentation(input, 0)
+	input = strings.TrimSpace(input)
 	l := lex(input, line)
 	p := &parser{
 		l:        l,
