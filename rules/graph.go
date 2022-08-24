@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -61,7 +62,30 @@ type node struct {
 	matches []string
 
 	// for concurrent graph execution
-	done chan struct{}
+	cond   *sync.Cond
+	done   bool
+	queued bool
+}
+
+func (n *node) wait() {
+	n.cond.L.Lock()
+	for !n.done {
+		n.cond.Wait()
+	}
+	n.cond.L.Unlock()
+}
+
+func (n *node) queue() {
+	n.cond.L.Lock()
+	n.queued = true
+	n.cond.L.Unlock()
+}
+
+func (n *node) setDone() {
+	n.cond.L.Lock()
+	n.done = true
+	n.cond.Broadcast()
+	n.cond.L.Unlock()
 }
 
 type prereq struct {
@@ -145,7 +169,7 @@ func (g *Graph) newNode(target string) *node {
 			target: newFile(g.dir, target),
 		},
 		graph: g,
-		done:  make(chan struct{}, 1),
+		cond:  sync.NewCond(&sync.Mutex{}),
 	}
 	return n
 }

@@ -73,7 +73,7 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 	e.execNode(g.base)
 
 	// wait for base to complete
-	<-g.base.done
+	g.base.wait()
 
 	// no more jobs to send
 	close(e.jobs)
@@ -83,7 +83,7 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 
 func (e *Executor) execNode(n *node) {
 	if !e.opts.BuildAll && !n.outOfDate(e.db) {
-		n.done <- struct{}{}
+		n.setDone()
 		return
 	}
 	e.db.InsertRecipe(n.rule.targets, n.recipe, n.graph.dir)
@@ -97,10 +97,17 @@ func (e *Executor) execNode(n *node) {
 	dojob := func() {
 		// wait for all prereqs to finish
 		for _, p := range n.prereqs {
-			<-p.done
+			p.wait()
+		}
+
+		n.cond.L.Lock()
+		defer n.cond.L.Unlock()
+		if n.queued {
+			return
 		}
 
 		e.jobs <- n
+		n.queued = true
 	}
 
 	// If we are not doing a parallel build there is no point in optimizing the
@@ -117,12 +124,12 @@ func (e *Executor) execNode(n *node) {
 func (e *Executor) runServer() {
 	for n := range e.jobs {
 		if len(n.rule.recipe) == 0 {
-			n.done <- struct{}{}
+			n.setDone()
 			continue
 		}
 
 		if e.stopped.Load() {
-			n.done <- struct{}{}
+			n.setDone()
 			continue
 		}
 
@@ -181,7 +188,7 @@ func (e *Executor) runServer() {
 			e.lock.Unlock()
 		}
 		e.rebuilt.Store(true)
-		n.done <- struct{}{}
+		n.setDone()
 	}
 }
 

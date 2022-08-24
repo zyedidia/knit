@@ -1,0 +1,12 @@
+local obj := f1.o f2.o f3.o
+
+return r{
+$ f1.c:
+    echo "int main() { return 0; }" > $output
+
+$ %.o: f1.c
+    cc -c $input -o $output
+
+$ prog: $obj
+    ld $input -o $output
+}
