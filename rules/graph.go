@@ -75,12 +75,6 @@ func (n *node) wait() {
 	n.cond.L.Unlock()
 }
 
-func (n *node) queue() {
-	n.cond.L.Lock()
-	n.queued = true
-	n.cond.L.Unlock()
-}
-
 func (n *node) setDone() {
 	n.cond.L.Lock()
 	n.done = true
