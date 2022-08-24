@@ -1,0 +1,9 @@
+local test = $ test: > echo test
+
+return r{
+    $ all:VB:
+        echo all
+    test,
+    $ clean:VB:
+        echo clean
+}

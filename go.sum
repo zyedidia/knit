@@ -27,6 +27,8 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/zyedidia/gopher-lua v0.0.0-20220811182220-44d3c0155041/go.mod h1:VNzP8GqEgw9ZAdRh7xZPK9DBr39YGjVNhVBMVRQvZbM=
 github.com/zyedidia/gopher-lua v0.0.0-20220821190313-7ccd76417f7f h1:AbQ/16B1oTSph3NaapK79+SHn8BAmrrz2rwLPX7x8H8=
 github.com/zyedidia/gopher-lua v0.0.0-20220821190313-7ccd76417f7f/go.mod h1:VNzP8GqEgw9ZAdRh7xZPK9DBr39YGjVNhVBMVRQvZbM=
+github.com/zyedidia/gopher-lua v0.0.0-20220824000833-910ae8da2c12 h1:vECF2I8aAWr/UQvH8W6V4hYpTA+TdgbT7TMASq/WDLU=
+github.com/zyedidia/gopher-lua v0.0.0-20220824000833-910ae8da2c12/go.mod h1:VNzP8GqEgw9ZAdRh7xZPK9DBr39YGjVNhVBMVRQvZbM=
 github.com/zyedidia/gopher-luar v0.0.0-20220811182431-9d2fc6a3867f h1:dbt1mMcOXZHpL/mmxN6WsX9MyRJvdkd2wbZvqLuke5U=
 github.com/zyedidia/gopher-luar v0.0.0-20220811182431-9d2fc6a3867f/go.mod h1:Ug3oboaXLuSfSd/FXaBnAnajEqgNEC4mIvFhqSEKPwI=
 golang.org/x/sys v0.0.0-20190204203706-41f3e6584952/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=

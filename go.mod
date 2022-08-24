@@ -9,8 +9,10 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.3
 	github.com/segmentio/fasthash v1.0.3
 	github.com/spf13/pflag v1.0.5
-	github.com/zyedidia/gopher-lua v0.0.0-20220821190313-7ccd76417f7f
 	github.com/zyedidia/gopher-luar v0.0.0-20220811182431-9d2fc6a3867f
 )
 
-require golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359 // indirect
+require (
+	github.com/zyedidia/gopher-lua v0.0.0-20220824000833-910ae8da2c12 // indirect
+	golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359 // indirect
+)
