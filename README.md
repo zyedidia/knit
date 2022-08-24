@@ -35,7 +35,7 @@ of adding enough features so that I can convert my projects to Knit.
 Prebuilt binary:
 
 ```
-eget zyedidia/knit
+eget zyedidia/knit --pre-release
 ```
 
 From source:
