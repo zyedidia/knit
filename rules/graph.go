@@ -210,9 +210,11 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 			r := &g.rs.directRules[ri]
 			if len(r.recipe) != 0 {
 				recipe = r.recipe
+				prereqs = r.prereqs
+			} else {
+				prereqs = append(prereqs, r.prereqs...)
 			}
 			rule = *r
-			prereqs = append(prereqs, r.prereqs...)
 		}
 		rule.targets = []string{target}
 		rule.recipe = recipe
