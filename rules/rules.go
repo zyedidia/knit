@@ -76,6 +76,7 @@ type AttrSet struct {
 	Exclusive bool // cannot run in parallel with other rules
 	NonStop   bool // does not stop if the recipe fails
 	Rebuild   bool // this rule is always out-of-date
+	Linked    bool // only run this rule if a sub-rule that requires it needs to run
 }
 
 type Pattern struct {
@@ -148,6 +149,8 @@ func ParseAttribs(input string) (AttrSet, error) {
 			attrs.NonStop = true
 		case 'B':
 			attrs.Rebuild = true
+		case 'L':
+			attrs.Linked = true
 		default:
 			return attrs, attrError{c}
 		}

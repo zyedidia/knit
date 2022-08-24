@@ -82,7 +82,7 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 }
 
 func (e *Executor) execNode(n *node) {
-	if !e.opts.BuildAll && !n.outOfDate(e.db) {
+	if !e.opts.BuildAll && !n.rule.attrs.Linked && !n.outOfDate(e.db) {
 		n.setDone()
 		return
 	}
