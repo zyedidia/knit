@@ -1,0 +1,16 @@
+name = "Multiple targets being used from the same rule"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = ["build-1", "build-2"]
+output = """\
+echo "1" > out1.txt; echo "2" > out2.txt
+echo out1.txt
+echo out2.txt
+"""

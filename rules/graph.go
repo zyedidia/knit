@@ -17,11 +17,12 @@ import (
 const maxVisits = 1
 
 type GraphSet struct {
-	rules map[string]*RuleSet
-	main  *Graph
+	*Graph
+	rules  map[string]*RuleSet
+	graphs []*Graph
 }
 
-func NewGraphSet(rules map[string]*RuleSet, main string, target string) (*Graph, error) {
+func NewGraphSet(rules map[string]*RuleSet, main string, target string) (*GraphSet, error) {
 	if rs, ok := rules[main]; ok {
 		gs := &GraphSet{
 			rules: rules,
@@ -30,21 +31,22 @@ func NewGraphSet(rules map[string]*RuleSet, main string, target string) (*Graph,
 		if err != nil {
 			return nil, err
 		}
-		gs.main = g
-		return g, nil
+		gs.Graph = g
+		return gs, nil
 	}
 	return nil, fmt.Errorf("ruleset not found: %s", main)
 }
 
 type Graph struct {
-	base  *node
-	rs    *RuleSet
-	nodes map[string]*node
+	base      *node
+	rs        *RuleSet
+	nodes     map[string]*node
+	fullNodes map[string]*node
 	// Directory this graph is executed in, can be relative to the main graph.
 	dir string
 }
 
-type node struct {
+type inner struct {
 	outputs map[string]*file
 	rule    *DirectRule
 	recipe  []string
@@ -65,6 +67,11 @@ type node struct {
 	cond   *sync.Cond
 	done   bool
 	queued bool
+}
+
+type node struct {
+	*inner
+	myPrereqs []string
 }
 
 func (n *node) wait() {
@@ -159,11 +166,13 @@ func (f *file) updateTimestamp() {
 
 func (g *Graph) newNode(target string) *node {
 	n := &node{
-		outputs: map[string]*file{
-			target: newFile(g.dir, target),
+		inner: &inner{
+			outputs: map[string]*file{
+				target: newFile(g.dir, target),
+			},
+			graph: g,
+			cond:  sync.NewCond(&sync.Mutex{}),
 		},
-		graph: g,
-		cond:  sync.NewCond(&sync.Mutex{}),
 	}
 	return n
 }
@@ -179,10 +188,12 @@ type VM interface {
 
 func NewGraph(rs *RuleSet, target string, gs *GraphSet, name string, dir string) (g *Graph, err error) {
 	g = &Graph{
-		rs:    rs,
-		nodes: make(map[string]*node),
-		dir:   dir,
+		rs:        rs,
+		nodes:     make(map[string]*node),
+		fullNodes: make(map[string]*node),
+		dir:       dir,
 	}
+	gs.graphs = append(gs.graphs, g)
 	visits := make([]int, len(rs.metaRules))
 	g.base, err = g.resolveTarget(target, visits, gs)
 	if err != nil {
@@ -234,7 +245,6 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 			}
 			rule = *r
 		}
-		rule.targets = []string{target}
 		rule.recipe = recipe
 		rule.prereqs = prereqs
 	} else if ok {
@@ -318,7 +328,27 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 		rule.targets = []string{target}
 	}
 
+	n.myPrereqs = rule.prereqs
+
+	// if the rule we found is equivalent to an existing rule that also builds
+	// this target, then use that
+	if gn, ok := g.fullNodes[target]; ok && gn.rule.Equals(&rule) {
+		// make sure the node knows that it builds target too
+		if _, ok := n.outputs[target]; !ok {
+			n.outputs[target] = newFile(g.dir, target)
+		}
+		n.inner = gn.inner
+		g.nodes[target] = n
+		return n, nil
+	}
+
 	n.rule = &rule
+
+	for _, t := range n.rule.targets {
+		g.fullNodes[t] = n
+	}
+
+	n.rule.targets = []string{target}
 
 	// associate this node with only the requested target
 	g.nodes[target] = n
@@ -354,21 +384,20 @@ func (g *Graph) ExpandRecipes(vm VM) error {
 
 func (n *node) prereqsSub() []string {
 	ps := make([]string, 0, len(n.rule.prereqs))
-	for _, p := range n.prereqs {
+	for i, prereq := range n.myPrereqs {
+		p := n.prereqs[i]
 		if p.rule.attrs.Virtual {
 			continue
 		}
-		for _, t := range p.rule.targets {
-			if p.graph.dir != n.graph.dir {
-				relpath, err := filepath.Rel(n.graph.dir, p.graph.dir)
-				if err != nil {
-					// TODO
-					panic(err)
-				}
-				ps = append(ps, pathJoin(relpath, t))
-			} else {
-				ps = append(ps, t)
+		if p.graph.dir != n.graph.dir {
+			relpath, err := filepath.Rel(n.graph.dir, p.graph.dir)
+			if err != nil {
+				// TODO
+				panic(err)
 			}
+			ps = append(ps, pathJoin(relpath, parsePrereq(prereq).name))
+		} else {
+			ps = append(ps, prereq)
 		}
 	}
 	return ps

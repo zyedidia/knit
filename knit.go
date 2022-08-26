@@ -148,7 +148,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 	rs := rulesets[lruleset.name]
 
 	if len(targets) == 0 {
-		targets = rs.MainTargets()
+		targets = []string{rs.MainTarget()}
 	}
 
 	if len(targets) == 0 {
@@ -207,7 +207,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		AbortOnError: true,
 		BuildAll:     flags.Always,
 	})
-	rebuilt, execerr := ex.Exec(graph)
+	rebuilt, execerr := ex.Exec(graph.Graph)
 
 	err = db.Save()
 	if err != nil {
@@ -222,7 +222,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 	return nil
 }
 
-func visualize(out io.Writer, file string, g *rules.Graph) error {
+func visualize(out io.Writer, file string, g *rules.GraphSet) error {
 	var f io.Writer
 	if file == "-" {
 		f = out

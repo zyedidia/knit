@@ -36,6 +36,24 @@ func NewDirectRule(targets, prereqs, recipe []string, attrs AttrSet) DirectRule 
 	}
 }
 
+func equal(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *DirectRule) Equals(other *DirectRule) bool {
+	return r.attrs == other.attrs &&
+		equal(r.prereqs, other.prereqs) &&
+		equal(r.recipe, other.recipe)
+}
+
 func (r *DirectRule) String() string {
 	return fmt.Sprintf("%s: %s", r.targets, r.prereqs)
 }
@@ -114,11 +132,11 @@ func (rs *RuleSet) Add(r Rule) {
 	}
 }
 
-func (rs *RuleSet) MainTargets() []string {
-	if len(rs.directRules) == 0 {
-		return nil
+func (rs *RuleSet) MainTarget() string {
+	if len(rs.directRules) == 0 || len(rs.directRules[0].targets) == 0 {
+		return ""
 	}
-	return rs.directRules[0].targets
+	return rs.directRules[0].targets[0]
 }
 
 type attrError struct {
