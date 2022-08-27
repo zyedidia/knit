@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,10 +13,17 @@ import (
 	"github.com/kballard/go-shellquote"
 )
 
+type Printer interface {
+	Print(cmd, dir string, name string, step int)
+	SetSteps(nsteps int)
+	Update()
+	Done(name string)
+	Clear()
+}
+
 type Executor struct {
-	pRule PrintRuleFn
-	pCmd  PrintCmdFn
-	info  InfoFn
+	printer Printer
+	info    InfoFn
 
 	db      *Database
 	lock    sync.Mutex
@@ -23,14 +31,16 @@ type Executor struct {
 	jobs    chan *node
 	threads int
 
+	steps int
+	step  atomic.Int32
+
 	rebuilt atomic.Bool
 	err     error
 
 	opts Options
 }
 
-type PrintRuleFn func(inputs, outputs, recipe []string, step, nsteps int)
-type PrintCmdFn func(cmd string, dir string)
+type PrintCmdFn func(cmd string, dir string, step int, nsteps int)
 type InfoFn func(msg string)
 
 type Options struct {
@@ -40,11 +50,10 @@ type Options struct {
 	BuildAll     bool   // build all rules even if they are up-to-date
 }
 
-func NewExecutor(basedir string, db *Database, threads int, pRule PrintRuleFn, pCmd PrintCmdFn, info InfoFn, opts Options) *Executor {
+func NewExecutor(basedir string, db *Database, threads int, printer Printer, info InfoFn, opts Options) *Executor {
 	return &Executor{
 		db:      db,
-		pRule:   pRule,
-		pCmd:    pCmd,
+		printer: printer,
 		opts:    opts,
 		jobs:    make(chan *node, 128),
 		threads: threads,
@@ -65,6 +74,9 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 
+	e.steps = g.Steps(true)
+	e.printer.SetSteps(e.steps)
+
 	for i := 0; i < e.threads; i++ {
 		go e.runServer()
 	}
@@ -82,6 +94,8 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 }
 
 func (e *Executor) Clean(g *Graph) {
+	e.steps = g.Steps(false)
+	e.printer.SetSteps(e.steps)
 	e.cleanNode(g.base)
 }
 
@@ -90,8 +104,13 @@ func (e *Executor) cleanNode(n *node) {
 		e.cleanNode(p)
 	}
 
+	if n.done {
+		return
+	}
+
 	// don't clean virtual rules or rules without a recipe to rebuild the outputs
 	if len(n.rule.recipe) != 0 && !n.rule.attrs.Virtual {
+		step := e.step.Add(1)
 		for _, o := range n.outputs {
 			if !o.exists && !e.opts.BuildAll {
 				continue
@@ -102,9 +121,11 @@ func (e *Executor) cleanNode(n *node) {
 					e.info(err.Error())
 				}
 			}
-			e.pCmd(fmt.Sprintf("remove %s", o.name), n.graph.dir)
+			e.printer.Print(fmt.Sprintf("remove %s", o.name), n.graph.dir, o.name, int(step))
+			e.printer.Done(o.name)
 		}
 	}
+	n.done = true
 }
 
 func (e *Executor) execNode(n *node) {
@@ -159,6 +180,8 @@ func (e *Executor) runServer() {
 			continue
 		}
 
+		step := e.step.Add(1)
+
 		locked := false
 		if n.rule.attrs.Exclusive {
 			e.lock.Lock()
@@ -166,9 +189,6 @@ func (e *Executor) runServer() {
 		}
 
 		failed := false
-		if !n.rule.attrs.Quiet {
-			e.pRule(n.rule.prereqs, n.rule.targets, n.recipe, 0, 0)
-		}
 		var execErr error
 		for _, cmd := range n.recipe {
 			c, err := e.getCmd(cmd, n.graph.dir)
@@ -180,7 +200,7 @@ func (e *Executor) runServer() {
 				continue
 			}
 			if !n.rule.attrs.Quiet {
-				e.pCmd(c.recipe, c.dir)
+				e.printer.Print(c.recipe, c.dir, strings.Join(n.rule.targets, " "), int(step))
 			}
 			if !e.opts.NoExec {
 				err := e.execCmd(c)
@@ -193,6 +213,7 @@ func (e *Executor) runServer() {
 				}
 			}
 		}
+		e.printer.Done(strings.Join(n.rule.targets, " "))
 
 		if failed {
 			if !n.rule.attrs.Virtual {
@@ -243,7 +264,13 @@ func (e *Executor) execCmd(c command) error {
 	cmd := exec.Command(c.name, c.args...)
 	cmd.Dir = c.dir
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	outbuf := &bytes.Buffer{}
+	cmd.Stdout = outbuf
+	errbuf := &bytes.Buffer{}
+	cmd.Stderr = errbuf
+	err := cmd.Run()
+	e.printer.Clear()
+	fmt.Fprint(os.Stdout, outbuf.String())
+	e.printer.Update()
+	return err
 }

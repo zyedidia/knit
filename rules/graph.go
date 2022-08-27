@@ -67,6 +67,9 @@ type inner struct {
 	cond   *sync.Cond
 	done   bool
 	queued bool
+
+	// for build step count estimate
+	counted bool
 }
 
 type node struct {
@@ -536,4 +539,23 @@ func (n *node) visualizeText(w io.Writer) {
 		fmt.Fprintf(w, "%s -> %s\n", n, p)
 		p.visualizeText(w)
 	}
+}
+
+// don't want to count virtual rules for clean counts
+func (n *node) count(virtual bool) int {
+	s := 0
+	if !n.counted && len(n.rule.recipe) != 0 {
+		if virtual || (!virtual && !n.rule.attrs.Virtual) {
+			s++
+		}
+	}
+	n.counted = true
+	for _, p := range n.prereqs {
+		s += p.count(virtual)
+	}
+	return s
+}
+
+func (g *Graph) Steps(virtual bool) int {
+	return g.base.count(virtual)
 }
