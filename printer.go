@@ -54,10 +54,11 @@ func (p *StepPrinter) Print(cmd, dir string, name string, step int) {
 }
 
 type ProgressPrinter struct {
-	w     io.Writer
-	lock  sync.Mutex
-	bar   *pb.ProgressBar
-	tasks map[string]string
+	w            io.Writer
+	lock         sync.Mutex
+	bar          *pb.ProgressBar
+	tasks        map[string]string
+	showCommands bool
 }
 
 func (p *ProgressPrinter) SetSteps(steps int) {
@@ -101,6 +102,16 @@ func (p *ProgressPrinter) Print(cmd, dir string, name string, step int) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.tasks[name] = cmd
+
+	if p.showCommands {
+		p.bar.Clear()
+		fmt.Fprint(p.w, "\r")
+		if dir != "." {
+			fmt.Fprintf(p.w, "[in %s] ", dir)
+		}
+		fmt.Fprintln(p.w, cmd)
+	}
+
 	p.bar.Describe(p.desc())
 	p.bar.RenderBlank()
 }
