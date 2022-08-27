@@ -22,6 +22,7 @@ func main() {
 	version := pflag.BoolP("version", "v", false, "show version information")
 	help := pflag.BoolP("help", "h", false, "show this help message")
 	showrules := pflag.Bool("rules", false, "show rules")
+	clean := pflag.BoolP("clean", "c", false, "automatically clean files made by the given target")
 
 	pflag.Parse()
 
@@ -45,6 +46,7 @@ func main() {
 		Always:    *always,
 		Quiet:     *quiet,
 		ShowRules: *showrules,
+		Clean:     *clean,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "knit: %s\n", err)

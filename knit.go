@@ -31,6 +31,7 @@ type Flags struct {
 	Always    bool
 	Quiet     bool
 	ShowRules bool
+	Clean     bool
 }
 
 type assign struct {
@@ -207,6 +208,12 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		AbortOnError: true,
 		BuildAll:     flags.Always,
 	})
+
+	if flags.Clean {
+		ex.Clean(graph.Graph)
+		return nil
+	}
+
 	rebuilt, execerr := ex.Exec(graph.Graph)
 
 	err = db.Save()

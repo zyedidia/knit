@@ -164,6 +164,10 @@ func (f *file) updateTimestamp() {
 	f.exists = false
 }
 
+func (f *file) remove() error {
+	return os.RemoveAll(f.name)
+}
+
 func (g *Graph) newNode(target string) *node {
 	n := &node{
 		inner: &inner{
