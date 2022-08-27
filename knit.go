@@ -160,6 +160,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 	rs.Add(rules.NewDirectRule([]string{":all"}, targets, nil, rules.AttrSet{
 		Virtual: true,
 		NoMeta:  true,
+		Rebuild: true,
 	}))
 
 	graph, err := rules.NewGraphSet(rulesets, lruleset.name, ":all")
