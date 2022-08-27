@@ -23,6 +23,7 @@ func main() {
 	help := pflag.BoolP("help", "h", false, "show this help message")
 	showrules := pflag.Bool("rules", false, "show rules")
 	clean := pflag.BoolP("clean", "c", false, "automatically clean files made by the given target")
+	style := pflag.StringP("style", "s", "basic", "printer style to use (basic, steps, progress)")
 
 	pflag.Parse()
 
@@ -47,6 +48,7 @@ func main() {
 		Quiet:     *quiet,
 		ShowRules: *showrules,
 		Clean:     *clean,
+		Style:     *style,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "knit: %s\n", err)

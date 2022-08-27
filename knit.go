@@ -32,6 +32,7 @@ type Flags struct {
 	Quiet     bool
 	ShowRules bool
 	Clean     bool
+	Style     string
 }
 
 type assign struct {
@@ -188,8 +189,22 @@ func Run(out io.Writer, args []string, flags Flags) error {
 	if flags.Quiet {
 		w = io.Discard
 	}
+
+	var printer rules.Printer
+	switch flags.Style {
+	case "steps":
+		printer = &StepPrinter{w: w}
+	case "progress":
+		printer = &ProgressPrinter{
+			w:     w,
+			tasks: make(map[string]string),
+		}
+	default:
+		printer = &BasicPrinter{w: w}
+	}
+
 	lock := sync.Mutex{}
-	ex := rules.NewExecutor(".", db, flags.Ncpu, &ProgressPrinter{w: w, tasks: make(map[string]string)}, func(msg string) {
+	ex := rules.NewExecutor(".", db, flags.Ncpu, printer, func(msg string) {
 		lock.Lock()
 		defer lock.Unlock()
 		fmt.Fprintln(out, msg)

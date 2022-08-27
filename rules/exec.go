@@ -1,8 +1,9 @@
 package rules
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -17,6 +18,7 @@ type Printer interface {
 	Print(cmd, dir string, name string, step int)
 	SetSteps(nsteps int)
 	Update()
+	NeedsUpdate() bool
 	Done(name string)
 	Clear()
 }
@@ -188,19 +190,21 @@ func (e *Executor) runServer() {
 			locked = true
 		}
 
+		ruleName := strings.Join(n.rule.targets, " ")
+
 		failed := false
 		var execErr error
 		for _, cmd := range n.recipe {
 			c, err := e.getCmd(cmd, n.graph.dir)
 			if err != nil {
-				execErr = fmt.Errorf("'%s': error while evaluating '%s': %w", strings.Join(n.rule.targets, " "), cmd, err)
+				execErr = fmt.Errorf("'%s': error while evaluating '%s': %w", ruleName, cmd, err)
 				failed = true
 				break
 			} else if c.recipe == "" {
 				continue
 			}
 			if !n.rule.attrs.Quiet {
-				e.printer.Print(c.recipe, c.dir, strings.Join(n.rule.targets, " "), int(step))
+				e.printer.Print(c.recipe, c.dir, ruleName, int(step))
 			}
 			if !e.opts.NoExec {
 				err := e.execCmd(c)
@@ -213,7 +217,7 @@ func (e *Executor) runServer() {
 				}
 			}
 		}
-		e.printer.Done(strings.Join(n.rule.targets, " "))
+		e.printer.Done(ruleName)
 
 		if failed {
 			if !n.rule.attrs.Virtual {
@@ -264,13 +268,30 @@ func (e *Executor) execCmd(c command) error {
 	cmd := exec.Command(c.name, c.args...)
 	cmd.Dir = c.dir
 	cmd.Stdin = os.Stdin
-	outbuf := &bytes.Buffer{}
-	cmd.Stdout = outbuf
-	errbuf := &bytes.Buffer{}
-	cmd.Stderr = errbuf
-	err := cmd.Run()
-	e.printer.Clear()
-	fmt.Fprint(os.Stdout, outbuf.String())
-	e.printer.Update()
-	return err
+
+	if e.printer.NeedsUpdate() {
+		stdout, _ := cmd.StdoutPipe()
+		stderr, _ := cmd.StderrPipe()
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		go forwardStream(e.printer, stdout, os.Stdout)
+		go forwardStream(e.printer, stderr, os.Stderr)
+		return cmd.Wait()
+	}
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func forwardStream(p Printer, stream io.Reader, w io.Writer) {
+	buf := make([]byte, 1024)
+	r := bufio.NewReader(stream)
+	for n, err := r.Read(buf); err == nil; n, err = r.Read(buf) {
+		p.Clear()
+		w.Write(buf[:n])
+		p.Update()
+	}
 }

@@ -5,7 +5,6 @@ import (
 	"io"
 	"strings"
 	"sync"
-	"time"
 
 	pb "github.com/schollz/progressbar/v3"
 )
@@ -15,8 +14,11 @@ type BasicPrinter struct {
 	lock sync.Mutex
 }
 
-func (p *BasicPrinter) SetSteps(int) {}
-func (p *BasicPrinter) Update()      {}
+func (p *BasicPrinter) SetSteps(int)      {}
+func (p *BasicPrinter) Update()           {}
+func (p *BasicPrinter) Clear()            {}
+func (p *BasicPrinter) Done(string)       {}
+func (p *BasicPrinter) NeedsUpdate() bool { return false }
 
 func (p *BasicPrinter) Print(cmd, dir string, name string, step int) {
 	p.lock.Lock()
@@ -36,7 +38,10 @@ type StepPrinter struct {
 func (p *StepPrinter) SetSteps(steps int) {
 	p.steps = steps
 }
-func (p *StepPrinter) Update() {}
+func (p *StepPrinter) Update()           {}
+func (p *StepPrinter) Clear()            {}
+func (p *StepPrinter) Done(string)       {}
+func (p *StepPrinter) NeedsUpdate() bool { return false }
 
 func (p *StepPrinter) Print(cmd, dir string, name string, step int) {
 	p.lock.Lock()
@@ -59,7 +64,6 @@ func (p *ProgressPrinter) SetSteps(steps int) {
 	p.bar = pb.NewOptions64(int64(steps),
 		pb.OptionSetWriter(p.w),
 		pb.OptionSetWidth(10),
-		pb.OptionThrottle(65*time.Millisecond),
 		pb.OptionShowCount(),
 		pb.OptionSpinnerType(14),
 		pb.OptionFullWidth(),
@@ -77,25 +81,31 @@ func (p *ProgressPrinter) SetSteps(steps int) {
 		}))
 }
 
+func (p *ProgressPrinter) NeedsUpdate() bool { return true }
+
 func (p *ProgressPrinter) Update() {
-	fmt.Print(p.bar.String())
-	fmt.Print("\r")
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	p.bar.RenderBlank()
+	fmt.Fprint(p.w, "\r")
 }
 
 func (p *ProgressPrinter) Clear() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
 	p.bar.Clear()
-	fmt.Print("\r")
+	fmt.Fprint(p.w, "\r")
 }
 
 func (p *ProgressPrinter) Print(cmd, dir string, name string, step int) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.tasks[name] = cmd
-	p.describe()
-	p.Update()
+	p.bar.Describe(p.desc())
+	p.bar.RenderBlank()
 }
 
-func (p *ProgressPrinter) describe() {
+func (p *ProgressPrinter) desc() string {
 	desc := "Building"
 	for k, cmd := range p.tasks {
 		desc += " " + k
@@ -105,13 +115,17 @@ func (p *ProgressPrinter) describe() {
 		}
 		break
 	}
-	p.bar.Describe(desc)
+	return desc
 }
 
 func (p *ProgressPrinter) Done(name string) {
 	p.lock.Lock()
+	defer p.lock.Unlock()
 	delete(p.tasks, name)
-	p.describe()
+	if len(p.tasks) == 0 {
+		p.bar.Describe("Built " + name)
+	} else {
+		p.bar.Describe(p.desc())
+	}
 	p.bar.Add(1)
-	p.lock.Unlock()
 }
