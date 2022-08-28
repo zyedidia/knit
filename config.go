@@ -59,6 +59,9 @@ func UserDefaults() (UserFlags, error) {
 		path = filepath.Join("..", path)
 	}
 	data, err := os.ReadFile(path)
+	if err != nil {
+		return UserFlags{}, err
+	}
 	var flags UserFlags
 	err = toml.Unmarshal(data, &flags)
 	if err != nil {
