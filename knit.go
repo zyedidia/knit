@@ -7,11 +7,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/adrg/xdg"
 	"github.com/zyedidia/knit/rules"
 )
 
@@ -184,7 +186,20 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		return err
 	}
 
-	db := rules.NewDatabase(".knit")
+	var db *rules.Database
+	if flags.CacheDir == "." || flags.CacheDir == "" {
+		db = rules.NewDatabase(".knit")
+	} else {
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		dir := flags.CacheDir
+		if dir == "$cache" {
+			dir = filepath.Join(xdg.CacheHome, "knit")
+		}
+		db = rules.NewCacheDatabase(dir, wd)
+	}
 
 	var w io.Writer = out
 	if flags.Quiet {

@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/adrg/xdg"
 	"github.com/segmentio/fasthash/fnv1a"
 )
 
@@ -39,8 +38,8 @@ func NewDatabase(dir string) *Database {
 	}
 }
 
-func NewCacheDatabase(wd string) *Database {
-	return NewDatabase(filepath.Join(xdg.CacheHome, url.PathEscape(wd)))
+func NewCacheDatabase(dir, wd string) *Database {
+	return NewDatabase(filepath.Join(dir, url.PathEscape(wd)))
 }
 
 func (db *Database) HasRecipe(targets, recipe []string, dir string) bool {

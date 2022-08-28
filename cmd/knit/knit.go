@@ -11,18 +11,6 @@ import (
 	"github.com/zyedidia/knit/info"
 )
 
-var defaults = knit.Flags{
-	Knitfile: "knitfile",
-	Ncpu:     runtime.NumCPU(),
-	Graph:    "",
-	DryRun:   false,
-	RunDir:   ".",
-	Always:   false,
-	Quiet:    false,
-	Clean:    false,
-	Style:    "basic",
-}
-
 func optString(name, short string, val string, user *string, desc string) *string {
 	if user != nil {
 		return pflag.StringP(name, short, *user, desc)
@@ -60,6 +48,7 @@ func main() {
 	quiet := optBool("quiet", "q", false, user.Quiet, "don't print commands")
 	clean := optBool("clean", "c", false, user.Clean, "automatically clean files made by the given target")
 	style := optString("style", "s", "basic", user.Style, "printer style to use (basic, steps, progress)")
+	cache := optString("cache", "", ".", user.CacheDir, "directory for caching internal build information")
 
 	version := pflag.BoolP("version", "v", false, "show version information")
 	help := pflag.BoolP("help", "h", false, "show this help message")
@@ -87,6 +76,7 @@ func main() {
 		Quiet:    *quiet,
 		Clean:    *clean,
 		Style:    *style,
+		CacheDir: *cache,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "knit: %s\n", err)
