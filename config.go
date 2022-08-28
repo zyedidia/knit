@@ -1,9 +1,12 @@
 package knit
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/pelletier/go-toml/v2"
 )
 
 func DefaultConfigDir() string {
@@ -26,4 +29,40 @@ func DefaultBuildFile() string {
 		return filepath.Join(dir, defaultFile)
 	}
 	return filepath.Join(DefaultConfigDir(), title(defaultFile))
+}
+
+type UserFlags struct {
+	Knitfile *string
+	Ncpu     *int
+	Graph    *string
+	DryRun   *bool
+	RunDir   *string
+	Always   *bool
+	Quiet    *bool
+	Clean    *bool
+	Style    *string
+	CacheDir *string
+}
+
+const configFile = ".knit.toml"
+
+func UserDefaults() (UserFlags, error) {
+	path := "."
+	for {
+		if !exists(path) {
+			return UserFlags{}, nil
+		}
+		if exists(filepath.Join(path, configFile)) {
+			path = filepath.Join(path, configFile)
+			break
+		}
+		path = filepath.Join("..", path)
+	}
+	data, err := os.ReadFile(path)
+	var flags UserFlags
+	err = toml.Unmarshal(data, &flags)
+	if err != nil {
+		return flags, fmt.Errorf("%s: %w", path, err)
+	}
+	return flags, nil
 }

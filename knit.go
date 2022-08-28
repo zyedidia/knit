@@ -23,16 +23,16 @@ func title(s string) string {
 var Stderr io.Writer = os.Stderr
 
 type Flags struct {
-	Knitfile  string
-	Ncpu      int
-	Graph     string
-	DryRun    bool
-	RunDir    string
-	Always    bool
-	Quiet     bool
-	ShowRules bool
-	Clean     bool
-	Style     string
+	Knitfile string
+	Ncpu     int
+	Graph    string
+	DryRun   bool
+	RunDir   string
+	Always   bool
+	Quiet    bool
+	Clean    bool
+	Style    string
+	CacheDir string
 }
 
 type assign struct {
