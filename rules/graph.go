@@ -502,7 +502,7 @@ func (n *node) outOfDate(db *Database) bool {
 	}
 
 	// database doesn't have an entry for this recipe
-	if !db.HasRecipe(n.rule.targets, n.recipe, n.graph.dir) {
+	if !db.recipes.has(n.rule.targets, n.recipe, n.graph.dir) {
 		return true
 	}
 

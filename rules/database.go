@@ -8,15 +8,19 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/segmentio/fasthash/fnv1"
 	"github.com/segmentio/fasthash/fnv1a"
 )
 
 const recipesFile = "recipes"
+const filesFile = "files"
 
 type Database struct {
 	location string
 	recipes  *recipes
+	files    *files
 }
 
 func NewDatabase(dir string) *Database {
@@ -32,22 +36,25 @@ func NewDatabase(dir string) *Database {
 		r = &recipes{Hashes: make(map[uint64]uint64)}
 	}
 
+	var fi *files
+	if f, err = os.Open(filepath.Join(dir, recipesFile)); err == nil {
+		fi, err = loadFiles(f)
+		f.Close()
+	}
+	// error opening or loading recipes file
+	if err != nil {
+		fi = &files{Data: make(map[string]File)}
+	}
+
 	return &Database{
 		location: dir,
 		recipes:  r,
+		files:    fi,
 	}
 }
 
 func NewCacheDatabase(dir, wd string) *Database {
 	return NewDatabase(filepath.Join(dir, url.PathEscape(wd)))
-}
-
-func (db *Database) HasRecipe(targets, recipe []string, dir string) bool {
-	return db.recipes.has(targets, recipe, dir)
-}
-
-func (db *Database) InsertRecipe(targets, recipe []string, dir string) {
-	db.recipes.insert(targets, recipe, dir)
 }
 
 func (db *Database) Save() error {
@@ -59,7 +66,9 @@ func (db *Database) Save() error {
 		return err
 	}
 	defer f.Close()
-	return db.recipes.WriteBytesTo(f)
+	db.recipes.WriteBytesTo(f)
+	db.files.WriteBytesTo(f)
+	return nil
 }
 
 type recipes struct {
@@ -107,4 +116,85 @@ func (r *recipes) insert(targets, recipe []string, dir string) {
 	rhash := hashSlice(recipe)
 	thash := hashSliceAndString(targets, dir)
 	r.Hashes[thash] = rhash
+}
+
+type files struct {
+	Data map[string]File
+}
+
+type File struct {
+	ModTime time.Time
+	Size    int64
+	// TODO: optimize with a short hash
+	Full uint64 // hash of the full file
+}
+
+func NewFile(path string) (File, bool) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return File{}, false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return File{}, false
+	}
+	return File{
+		ModTime: info.ModTime(),
+		Size:    info.Size(),
+		Full:    fnv1a.HashBytes64(data),
+	}, true
+}
+
+func (f File) Equals(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	if info.ModTime() == f.ModTime {
+		return true
+	}
+	if info.Size() != f.Size {
+		return false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	return fnv1.HashBytes64(data) == f.Full
+}
+
+func (f *files) WriteBytesTo(w io.Writer) error {
+	fz := gzip.NewWriter(w)
+	enc := gob.NewEncoder(fz)
+	err := enc.Encode(f)
+	fz.Close()
+	return err
+}
+
+func loadFiles(r io.Reader) (*files, error) {
+	var files files
+	fz, err := gzip.NewReader(r)
+	if err != nil {
+		return nil, err
+	}
+	dec := gob.NewDecoder(fz)
+	err = dec.Decode(&files)
+	fz.Close()
+	return &files, err
+}
+
+func (f *files) insert(path string) {
+	file, ok := NewFile(path)
+	if !ok {
+		return
+	}
+	f.Data[path] = file
+}
+
+func (f *files) matches(path string) bool {
+	if file, ok := f.Data[path]; ok {
+		return file.Equals(path)
+	}
+	f.insert(path)
+	return false
 }
