@@ -49,6 +49,7 @@ func main() {
 	clean := optBool("clean", "c", false, user.Clean, "automatically clean files made by the given target")
 	style := optString("style", "s", "basic", user.Style, "printer style to use (basic, steps, progress)")
 	cache := optString("cache", "", ".", user.CacheDir, "directory for caching internal build information")
+	hash := optBool("hash", "", true, user.Hash, "hash files to determine if they are out-of-date")
 
 	version := pflag.BoolP("version", "v", false, "show version information")
 	help := pflag.BoolP("help", "h", false, "show this help message")
@@ -77,6 +78,7 @@ func main() {
 		Clean:    *clean,
 		Style:    *style,
 		CacheDir: *cache,
+		Hash:     *hash,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "knit: %s\n", err)

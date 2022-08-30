@@ -35,6 +35,7 @@ type Flags struct {
 	Clean    bool
 	Style    string
 	CacheDir string
+	Hash     bool
 }
 
 type assign struct {
@@ -229,6 +230,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		Shell:        "sh",
 		AbortOnError: true,
 		BuildAll:     flags.Always,
+		Hash:         flags.Hash,
 	})
 
 	if flags.Clean {

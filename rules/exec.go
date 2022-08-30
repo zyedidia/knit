@@ -50,6 +50,7 @@ type Options struct {
 	Shell        string // use shell for executing commands
 	AbortOnError bool   // stop if an error happens in a recipe
 	BuildAll     bool   // build all rules even if they are up-to-date
+	Hash         bool   // use hashes to determine whether a file has been modified
 }
 
 func NewExecutor(basedir string, db *Database, threads int, printer Printer, info InfoFn, opts Options) *Executor {
@@ -132,7 +133,7 @@ func (e *Executor) cleanNode(n *node) {
 
 func (e *Executor) execNode(n *node) {
 	e.lock.Lock()
-	if !e.opts.BuildAll && !n.rule.attrs.Linked && !n.outOfDate(e.db) {
+	if !e.opts.BuildAll && !n.rule.attrs.Linked && !n.outOfDate(e.db, e.opts.Hash) {
 		e.lock.Unlock()
 		n.setDone()
 		return
@@ -226,8 +227,10 @@ func (e *Executor) runServer() {
 
 		e.lock.Lock()
 
-		for _, f := range n.outputs {
-			e.db.Files.insert(f.name)
+		if e.opts.Hash {
+			for _, f := range n.outputs {
+				e.db.Files.insert(f.name)
+			}
 		}
 
 		if failed {

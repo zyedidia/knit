@@ -478,7 +478,7 @@ func (n *node) time() time.Time {
 }
 
 // returns true if this node should be rebuilt during the build
-func (n *node) outOfDate(db *Database) bool {
+func (n *node) outOfDate(db *Database, hash bool) bool {
 	// rebuild rules are always out of date
 	if n.rule.attrs.Rebuild {
 		return true
@@ -495,10 +495,14 @@ func (n *node) outOfDate(db *Database) bool {
 
 		// if a prereq is newer than an output, this rule is out of date
 		for _, p := range n.prereqs {
-			for _, f := range p.outputs {
-				if !db.Files.matches(f.name) {
-					return true
+			if hash {
+				for _, f := range p.outputs {
+					if !db.Files.matches(f.name) {
+						return true
+					}
 				}
+			} else if p.time().After(n.time()) {
+				return true
 			}
 		}
 	}
@@ -510,7 +514,7 @@ func (n *node) outOfDate(db *Database) bool {
 
 	// if a prereq is out of date, this rule is out of date
 	for _, p := range n.prereqs {
-		if p.outOfDate(db) {
+		if p.outOfDate(db, hash) {
 			return true
 		}
 	}

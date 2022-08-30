@@ -4,6 +4,7 @@ name = "Check rebuilding from hashing files"
 
 knitfile = "Knitfile"
 ncpu = 1
+hash = true
 
 [[builds]]
 
