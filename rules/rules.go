@@ -87,14 +87,13 @@ func (r *MetaRule) Match(target string) ([]int, *Pattern) {
 }
 
 type AttrSet struct {
-	Regex     bool // regular expression meta-rule
-	Virtual   bool // targets are not files
-	Quiet     bool // is not displayed as part of the build process
-	NoMeta    bool // cannot be matched by meta rules
-	Exclusive bool // cannot run in parallel with other rules
-	NonStop   bool // does not stop if the recipe fails
-	Rebuild   bool // this rule is always out-of-date
-	Linked    bool // only run this rule if a sub-rule that requires it needs to run
+	Regex   bool // regular expression meta-rule
+	Virtual bool // targets are not files
+	Quiet   bool // is not displayed as part of the build process
+	NoMeta  bool // cannot be matched by meta rules
+	NonStop bool // does not stop if the recipe fails
+	Rebuild bool // this rule is always out-of-date
+	Linked  bool // only run this rule if a sub-rule that requires it needs to run
 }
 
 type Pattern struct {
@@ -161,8 +160,6 @@ func ParseAttribs(input string) (AttrSet, error) {
 			attrs.Virtual = true
 		case 'M':
 			attrs.NoMeta = true
-		case 'X':
-			attrs.Exclusive = true
 		case 'E':
 			attrs.NonStop = true
 		case 'B':

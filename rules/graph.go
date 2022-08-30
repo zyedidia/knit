@@ -226,7 +226,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 	n, ok := g.nodes[target]
 	if ok {
 		// make sure the node knows that it builds target too
-		if _, ok := n.outputs[target]; !ok {
+		if _, ok := n.outputs[target]; !ok && !n.rule.attrs.Virtual {
 			n.outputs[target] = newFile(g.dir, target)
 		}
 		return n, nil
@@ -341,7 +341,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 	// this target, then use that
 	if gn, ok := g.fullNodes[target]; ok && gn.rule.Equals(&rule) {
 		// make sure the node knows that it builds target too
-		if _, ok := n.outputs[target]; !ok {
+		if _, ok := n.outputs[target]; !ok && !n.rule.attrs.Virtual {
 			n.outputs[target] = newFile(g.dir, target)
 		}
 		n.inner = gn.inner
@@ -495,8 +495,10 @@ func (n *node) outOfDate(db *Database) bool {
 
 		// if a prereq is newer than an output, this rule is out of date
 		for _, p := range n.prereqs {
-			if p.time().After(n.time()) {
-				return true
+			for _, f := range p.outputs {
+				if !db.Files.matches(f.name) {
+					return true
+				}
 			}
 		}
 	}

@@ -1,0 +1,42 @@
+name = "Check rebuilding from hashing files"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+
+[[builds]]
+
+args = ["reset", "clean"]
+output = """\
+echo "int main() {return 0;}" > hello.c
+rm -f hello
+"""
+
+[[builds]]
+
+args = ["hello"]
+output = "cc -o hello hello.c"
+
+[[builds]]
+
+args = ["touch"]
+output = "touch hello.c"
+
+[[builds]]
+
+args = ["hello"]
+output = ""
+error = "'hello': nothing to be done"
+
+[[builds]]
+
+args = ["modify"]
+output = """\
+echo "// test" >> hello.c
+"""
+
+[[builds]]
+
+args = ["hello"]
+output = "cc -o hello hello.c"
