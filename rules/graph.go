@@ -323,6 +323,10 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 		}
 	}
 
+	if rule.attrs.Virtual {
+		n.outputs = nil
+	}
+
 	if len(rule.targets) == 0 && !rule.attrs.Virtual {
 		for o, f := range n.outputs {
 			if !f.exists {
@@ -341,7 +345,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 	// this target, then use that
 	if gn, ok := g.fullNodes[target]; ok && gn.rule.Equals(&rule) {
 		// make sure the node knows that it builds target too
-		if _, ok := n.outputs[target]; !ok && !n.rule.attrs.Virtual {
+		if _, ok := n.outputs[target]; !ok && !rule.attrs.Virtual {
 			n.outputs[target] = newFile(g.dir, target)
 		}
 		n.inner = gn.inner
@@ -356,7 +360,9 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 		// are incidentally created vs outputs that were meant to be created as
 		// part of the build (incidental ones should be auto-cleaned, but only
 		// actual ones should be used for build timestamping).
-		n.outputs[t] = newFile(g.dir, t)
+		if !n.rule.attrs.Virtual {
+			n.outputs[t] = newFile(g.dir, t)
+		}
 		g.fullNodes[t] = n
 	}
 
