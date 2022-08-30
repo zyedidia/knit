@@ -135,7 +135,7 @@ func (e *Executor) execNode(n *node) {
 		n.setDone()
 		return
 	}
-	e.db.InsertRecipe(n.rule.targets, n.recipe, n.graph.dir)
+	e.db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
 
 	for _, p := range n.prereqs {
 		e.execNode(p)
