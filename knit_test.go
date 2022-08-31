@@ -59,26 +59,26 @@ func runTest(dir string, t *testing.T) {
 
 	os.Chdir(dir)
 	defer os.Chdir(wd)
-	for _, b := range test.Builds {
+	for i, b := range test.Builds {
 		buf := &bytes.Buffer{}
 		err := knit.Run(buf, b.Args, test.Flags)
 		if err != nil {
 			if err.Error() == b.Error {
 				continue
 			}
-			t.Fatal(err)
+			t.Fatalf("%d: %v", i, err)
 		}
 
 		expected := strings.TrimSpace(b.Output)
 		got := strings.TrimSpace(buf.String())
 
 		if expected != got {
-			t.Fatalf("expected %s, got %s", expected, got)
+			t.Fatalf("%d: expected %s, got %s", i, expected, got)
 		}
 
 		for _, f := range b.Notbuilt {
 			if exists(f) {
-				t.Fatalf("expected %s not to exist, but it does", f)
+				t.Fatalf("%d: expected %s not to exist, but it does", i, f)
 			}
 		}
 	}

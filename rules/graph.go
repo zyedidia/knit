@@ -498,18 +498,18 @@ func (n *node) outOfDate(db *Database, hash bool) bool {
 				return true
 			}
 		}
+	}
 
-		// if a prereq is newer than an output, this rule is out of date
-		for _, p := range n.prereqs {
-			if hash {
-				for _, f := range p.outputs {
-					if !db.Files.matches(f.name) {
-						return true
-					}
+	// if a prereq is newer than an output, this rule is out of date
+	for _, p := range n.prereqs {
+		if hash {
+			for _, f := range p.outputs {
+				if !db.Files.matches(f.name) {
+					return true
 				}
-			} else if p.time().After(n.time()) {
-				return true
 			}
+		} else if p.time().After(n.time()) {
+			return true
 		}
 	}
 

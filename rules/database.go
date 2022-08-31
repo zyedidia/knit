@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -19,6 +20,19 @@ func hashSlice(s []string) uint64 {
 
 func hashSliceAndString(s []string, str string) uint64 {
 	return fnv1a.HashString64(strings.Join(s, "") + str)
+}
+
+func hashFile(path string) uint64 {
+	var hash uint64
+	filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
+		if !info.IsDir() {
+			data, _ := os.ReadFile(path)
+			hash = fnv1a.AddBytes64(hash, data)
+			hash = fnv1a.AddString64(hash, path)
+		}
+		return nil
+	})
+	return hash
 }
 
 const dataFile = "data"
@@ -149,14 +163,11 @@ func NewFile(path string) (File, bool) {
 	if err != nil {
 		return File{}, false
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return File{}, false
-	}
+
 	return File{
 		ModTime: info.ModTime(),
 		Size:    info.Size(),
-		Full:    fnv1a.HashBytes64(data),
+		Full:    hashFile(path),
 	}, true
 }
 
@@ -171,9 +182,5 @@ func (f File) Equals(path string) bool {
 	if info.Size() != f.Size {
 		return false
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	return fnv1a.HashBytes64(data) == f.Full
+	return hashFile(path) == f.Full
 }

@@ -159,6 +159,14 @@ func (e *Executor) execNode(n *node) {
 		// wait for all prereqs to finish
 		for _, p := range n.prereqs {
 			p.wait()
+
+			e.lock.Lock()
+			if e.opts.Hash {
+				for _, f := range p.outputs {
+					e.db.Files.insert(f.name)
+				}
+			}
+			e.lock.Unlock()
 		}
 
 		n.cond.L.Lock()
@@ -226,12 +234,6 @@ func (e *Executor) runServer() {
 		e.printer.Done(ruleName)
 
 		e.lock.Lock()
-
-		if e.opts.Hash {
-			for _, f := range n.outputs {
-				e.db.Files.insert(f.name)
-			}
-		}
 
 		if failed {
 			if !n.rule.attrs.Virtual {
