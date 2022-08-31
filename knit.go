@@ -2,6 +2,7 @@ package knit
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -36,6 +37,7 @@ type Flags struct {
 	Style    string
 	CacheDir string
 	Hash     bool
+	Commands bool
 }
 
 type assign struct {
@@ -187,6 +189,18 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		return err
 	}
 
+	if flags.Commands {
+		f, err := os.Create("compile_commands.json")
+		if err != nil {
+			return err
+		}
+		err = writeCompileCommands(f, graph)
+		if err != nil {
+			return err
+		}
+		f.Close()
+	}
+
 	var db *rules.Database
 	if flags.CacheDir == "." || flags.CacheDir == "" {
 		db = rules.NewDatabase(".knit")
@@ -282,4 +296,13 @@ func visualize(out io.Writer, file string, g *rules.GraphSet) error {
 		g.VisualizeText(f)
 	}
 	return nil
+}
+
+func writeCompileCommands(out io.Writer, gs *rules.GraphSet) error {
+	data, err := json.Marshal(rules.Commands(gs))
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(data)
+	return err
 }
