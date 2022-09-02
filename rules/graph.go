@@ -349,6 +349,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 			n.outputs[target] = newFile(g.dir, target)
 		}
 		n.inner = gn.inner
+		n.rule.targets = append(n.rule.targets, target)
 		g.nodes[target] = n
 		return n, nil
 	}

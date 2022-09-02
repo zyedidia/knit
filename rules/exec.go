@@ -140,8 +140,6 @@ func (e *Executor) execNode(n *node) {
 	}
 	e.lock.Unlock()
 
-	e.db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
-
 	for _, p := range n.prereqs {
 		e.execNode(p)
 		if len(p.recipe) == 0 {
@@ -193,11 +191,13 @@ func (e *Executor) execNode(n *node) {
 func (e *Executor) runServer() {
 	for n := range e.jobs {
 		if len(n.rule.recipe) == 0 {
+			e.db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
 			n.setDone()
 			continue
 		}
 
 		if e.stopped.Load() {
+			e.db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
 			n.setDone()
 			continue
 		}
@@ -247,6 +247,8 @@ func (e *Executor) runServer() {
 			}
 			e.stopped.Store(true)
 			e.err = execErr
+		} else {
+			e.db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
 		}
 
 		e.lock.Unlock()
