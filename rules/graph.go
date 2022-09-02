@@ -93,8 +93,10 @@ func (n *node) setDoneOrErr() {
 }
 
 func (n *node) setDone(db *Database) {
-	for _, f := range n.outputs {
-		db.Files.insert(f.name)
+	for _, p := range n.prereqs {
+		for _, f := range p.outputs {
+			db.Files.insert(f.name)
+		}
 	}
 	db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
 	n.setDoneOrErr()
