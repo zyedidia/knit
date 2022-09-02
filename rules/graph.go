@@ -85,11 +85,19 @@ func (n *node) wait() {
 	n.cond.L.Unlock()
 }
 
-func (n *node) setDone() {
+func (n *node) setDoneOrErr() {
 	n.cond.L.Lock()
 	n.done = true
 	n.cond.Broadcast()
 	n.cond.L.Unlock()
+}
+
+func (n *node) setDone(db *Database) {
+	for _, f := range n.outputs {
+		db.Files.insert(f.name)
+	}
+	db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
+	n.setDoneOrErr()
 }
 
 type prereq struct {

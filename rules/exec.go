@@ -134,21 +134,14 @@ func (e *Executor) cleanNode(n *node) {
 func (e *Executor) execNode(n *node) {
 	e.lock.Lock()
 	if !e.opts.BuildAll && !n.rule.attrs.Linked && !n.outOfDate(e.db, e.opts.Hash) {
+		n.setDone(e.db)
 		e.lock.Unlock()
-		n.setDone()
 		return
 	}
 	e.lock.Unlock()
 
 	for _, p := range n.prereqs {
 		e.execNode(p)
-		if len(p.recipe) == 0 {
-			e.lock.Lock()
-			for _, f := range p.outputs {
-				e.db.Files.insert(f.name)
-			}
-			e.lock.Unlock()
-		}
 	}
 
 	// We want to allow each job to be enqueued immediately when its prereqs
@@ -157,14 +150,6 @@ func (e *Executor) execNode(n *node) {
 		// wait for all prereqs to finish
 		for _, p := range n.prereqs {
 			p.wait()
-
-			e.lock.Lock()
-			if e.opts.Hash {
-				for _, f := range p.outputs {
-					e.db.Files.insert(f.name)
-				}
-			}
-			e.lock.Unlock()
 		}
 
 		n.cond.L.Lock()
@@ -192,17 +177,15 @@ func (e *Executor) runServer() {
 	for n := range e.jobs {
 		if len(n.rule.recipe) == 0 {
 			e.lock.Lock()
-			e.db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
+			n.setDone(e.db)
 			e.lock.Unlock()
-			n.setDone()
 			continue
 		}
 
 		if e.stopped.Load() {
 			e.lock.Lock()
-			e.db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
+			n.setDone(e.db)
 			e.lock.Unlock()
-			n.setDone()
 			continue
 		}
 
@@ -251,13 +234,13 @@ func (e *Executor) runServer() {
 			}
 			e.stopped.Store(true)
 			e.err = execErr
+			n.setDoneOrErr()
 		} else {
-			e.db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
+			n.setDone(e.db)
 		}
 
-		e.lock.Unlock()
 		e.rebuilt.Store(true)
-		n.setDone()
+		e.lock.Unlock()
 	}
 }
 
