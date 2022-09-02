@@ -191,13 +191,17 @@ func (e *Executor) execNode(n *node) {
 func (e *Executor) runServer() {
 	for n := range e.jobs {
 		if len(n.rule.recipe) == 0 {
+			e.lock.Lock()
 			e.db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
+			e.lock.Unlock()
 			n.setDone()
 			continue
 		}
 
 		if e.stopped.Load() {
+			e.lock.Lock()
 			e.db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
+			e.lock.Unlock()
 			n.setDone()
 			continue
 		}
