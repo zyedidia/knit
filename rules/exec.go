@@ -134,7 +134,7 @@ func (e *Executor) cleanNode(n *node) {
 func (e *Executor) execNode(n *node) {
 	e.lock.Lock()
 	if !e.opts.BuildAll && !n.rule.attrs.Linked && !n.outOfDate(e.db, e.opts.Hash) {
-		n.setDone(e.db)
+		n.setDone(e.db, e.opts.NoExec)
 		e.lock.Unlock()
 		return
 	}
@@ -177,14 +177,14 @@ func (e *Executor) runServer() {
 	for n := range e.jobs {
 		if len(n.rule.recipe) == 0 {
 			e.lock.Lock()
-			n.setDone(e.db)
+			n.setDone(e.db, e.opts.NoExec)
 			e.lock.Unlock()
 			continue
 		}
 
 		if e.stopped.Load() {
 			e.lock.Lock()
-			n.setDone(e.db)
+			n.setDone(e.db, e.opts.NoExec)
 			e.lock.Unlock()
 			continue
 		}
@@ -236,7 +236,7 @@ func (e *Executor) runServer() {
 			e.err = execErr
 			n.setDoneOrErr()
 		} else {
-			n.setDone(e.db)
+			n.setDone(e.db, e.opts.NoExec)
 		}
 
 		e.rebuilt.Store(true)
