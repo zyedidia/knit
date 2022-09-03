@@ -6,20 +6,29 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/zyedidia/knit/blob/master/LICENSE)
 
 Knit is a build tool inspired by Make and Plan9 mk. You define rules with a
-Make-like syntax within a Lua program. Knit also tracks more of your build to
-give you better incremental builds. For example, Knit automatically tracks
-recipes that are executed across builds, so changing a variable (even at the
-command-line) can cause a rule to be rebuilt because Knit can see that the
-recipe depends on the variable.
+Make-like syntax within a Lua program. Rule sets can be passed around as Lua
+objects, you can use the Lua module system to make reusable modules for
+building any kind of source code.
 
-Knit is very much in-progress and there may be bugs. I am still in the process
-of adding enough features so that I can convert my projects to Knit.
+Knit also tracks more of your build to give you better incremental builds. For
+example, Knit automatically tracks recipes that are executed across builds, so
+changing a variable (even at the command-line) can cause a rule to be rebuilt
+because Knit can see that the recipe depends on the variable.
+
+Knit is in-progress -- backwards-incompatible changes will be made until a
+version 1.0 is released.
 
 # Improvements over Make
 
-* Knit uses Lua for customization, rather than the Make custom language.
+* Knit uses Lua for customization, rather than the Make custom language. This
+  makes is possible to write reusable build libraries.
+* Knit has direct support for sub-builds, while make requires you to spawn a
+  make sub-process to perform a sub-build.
+* Knit can hash files to determine if they are out-of-date, rather than just
+  relying on file modification times.
 * Knit tracks recipe changes, so if you update a variable (in the Knitfile or
   at the command-line), any dependent rules will be automatically rebuilt.
+* Knit can export a compile commands database for use with a language server.
 * Knit supports `%` meta-rules and regular expression meta-rules. Make only
   supports `%` meta-rules.
 * Make requires tab characters for indentation, Knit does not.
@@ -29,6 +38,17 @@ of adding enough features so that I can convert my projects to Knit.
 * Knit uses sane variable names like `$input`, `$output`, and `$match` instead
   of `$^`, `$@`, and `$*`.
 * Knit builds using all cores by default.
+* Knit can generate a build graph visualization using graphviz (dot).
+
+# Planned possible features
+
+Some major features are planned, but haven't been implemented yet (and may
+never be implemented).
+
+* Automatic dependency tracking using ptrace (Linux-only feature).
+* Global build file cache.
+* Ninja to Knit converter (for compatibility with cmake, and for benchmarking).
+* Building in a separate directory and build sandboxing.
 
 # Installation
 
