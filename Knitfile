@@ -1,6 +1,7 @@
 knit = import("knit")
 
-version = knit.trim(knit.shell("cd tools/version; go run version.go"))
+knit.shell("knit -C tools/version")
+version = knit.shell("./tools/version/version")
 goflags = f"-trimpath -ldflags \"-s -w -X github.com/zyedidia/knit/info.Version=$version\""
 
 race = tobool(cli.race) and "-race" or ""
