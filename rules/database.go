@@ -176,7 +176,7 @@ func (f File) Equals(path string) bool {
 	if err != nil {
 		return false
 	}
-	if info.ModTime() == f.ModTime {
+	if !info.IsDir() && info.ModTime() == f.ModTime {
 		return true
 	}
 	if info.Size() != f.Size {

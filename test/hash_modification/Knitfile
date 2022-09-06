@@ -4,7 +4,7 @@ $ hello: hello.c
 $ touch:VB:
     touch hello.c
 $ modify:VB:
-    echo "// test" >> hello.c
+    sleep 0.01; echo "// test" >> hello.c
 $ reset:VB:
     echo "int main() {return 0;}" > hello.c
 $ clean:VB:
