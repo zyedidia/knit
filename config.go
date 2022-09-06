@@ -1,34 +1,34 @@
 package knit
 
 import (
-	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
+	"github.com/adrg/xdg"
 	"github.com/pelletier/go-toml/v2"
 )
 
-func DefaultConfigDir() string {
-	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		return xdg
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		log.Printf("error finding user home dir: %v", err)
-		return ""
-	}
-	return filepath.Join(home, ".config", "knit")
-}
-
 const defaultFile = "knitfile.def"
 
-func DefaultBuildFile() string {
-	dir := DefaultConfigDir()
-	if exists(filepath.Join(dir, defaultFile)) {
-		return filepath.Join(dir, defaultFile)
+var configDirs = []string{
+	filepath.Join(xdg.ConfigHome, "knit"),
+}
+
+func init() {
+	for _, dir := range xdg.DataDirs {
+		configDirs = append(configDirs, filepath.Join(dir, "knit"))
 	}
-	return filepath.Join(DefaultConfigDir(), title(defaultFile))
+}
+
+func DefaultBuildFile() (string, bool) {
+	for _, dir := range configDirs {
+		if exists(filepath.Join(dir, defaultFile)) {
+			return filepath.Join(defaultFile), true
+		} else if exists(filepath.Join(dir, title(defaultFile))) {
+			return filepath.Join(dir, title(defaultFile)), true
+		}
+	}
+	return "", false
 }
 
 type UserFlags struct {
@@ -49,25 +49,40 @@ type UserFlags struct {
 const configFile = ".knit.toml"
 
 func UserDefaults() (UserFlags, error) {
-	path := "."
-	for {
-		if !exists(path) {
-			return UserFlags{}, nil
+	var flags UserFlags
+
+	loadFile := func(dir string) error {
+		configPath := filepath.Join(dir, configFile)
+		if exists(configPath) {
+			data, err := os.ReadFile(configPath)
+			if err != nil {
+				return err
+			}
+			err = toml.Unmarshal(data, &flags)
+			if err != nil {
+				return err
+			}
 		}
-		if exists(filepath.Join(path, configFile)) {
-			path = filepath.Join(path, configFile)
-			break
-		}
-		path = filepath.Join("..", path)
+		return nil
 	}
-	data, err := os.ReadFile(path)
+
+	wd, err := os.Getwd()
 	if err != nil {
 		return UserFlags{}, err
 	}
-	var flags UserFlags
-	err = toml.Unmarshal(data, &flags)
-	if err != nil {
-		return flags, fmt.Errorf("%s: %w", path, err)
+	dirs := []string{wd}
+	path := wd
+	for path != "/" {
+		path = filepath.Dir(path)
+		dirs = append(dirs, path)
+	}
+	dirs = append(dirs, configDirs...)
+	for i := len(dirs) - 1; i >= 0; i-- {
+		dir := dirs[i]
+		err := loadFile(dir)
+		if err != nil {
+			return UserFlags{}, err
+		}
 	}
 	return flags, nil
 }

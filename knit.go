@@ -111,8 +111,8 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		flags.Knitfile = title(flags.Knitfile)
 	}
 
-	def := DefaultBuildFile()
-	if !exists(flags.Knitfile) && exists(def) {
+	def, ok := DefaultBuildFile()
+	if !exists(flags.Knitfile) && ok {
 		flags.Knitfile = def
 	}
 
