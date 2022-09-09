@@ -38,6 +38,7 @@ type Flags struct {
 	CacheDir string
 	Hash     bool
 	Commands bool
+	Updated  []string
 }
 
 type assign struct {
@@ -168,7 +169,12 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		Rebuild: true,
 	}))
 
-	graph, err := rules.NewGraphSet(rulesets, lruleset.name, ":all")
+	updated := make(map[string]bool)
+	for _, u := range flags.Updated {
+		updated[u] = true
+	}
+
+	graph, err := rules.NewGraphSet(rulesets, lruleset.name, ":all", updated)
 	if err != nil {
 		return err
 	}

@@ -18,6 +18,13 @@ func optString(name, short string, val string, user *string, desc string) *strin
 	return pflag.StringP(name, short, val, desc)
 }
 
+func optStringSlice(name, short string, val []string, user *[]string, desc string) *[]string {
+	if user != nil {
+		return pflag.StringSliceP(name, short, *user, desc)
+	}
+	return pflag.StringSliceP(name, short, val, desc)
+}
+
 func optInt(name, short string, val int, user *int, desc string) *int {
 	if user != nil {
 		return pflag.IntP(name, short, *user, desc)
@@ -51,6 +58,7 @@ func main() {
 	cache := optString("cache", "", ".", user.CacheDir, "directory for caching internal build information")
 	hash := optBool("hash", "", true, user.Hash, "hash files to determine if they are out-of-date")
 	commands := optBool("commands", "", false, user.Commands, "export compilation command database")
+	updated := optStringSlice("updated", "u", nil, user.Updated, "treat files as updated")
 
 	version := pflag.BoolP("version", "v", false, "show version information")
 	help := pflag.BoolP("help", "h", false, "show this help message")
@@ -81,6 +89,7 @@ func main() {
 		CacheDir: *cache,
 		Hash:     *hash,
 		Commands: *commands,
+		Updated:  *updated,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "knit: %s\n", err)

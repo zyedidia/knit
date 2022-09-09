@@ -44,6 +44,7 @@ type UserFlags struct {
 	CacheDir *string
 	Hash     *bool
 	Commands *bool
+	Updated  *[]string
 }
 
 const configFile = ".knit.toml"

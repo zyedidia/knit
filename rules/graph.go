@@ -22,12 +22,12 @@ type GraphSet struct {
 	graphs []*Graph
 }
 
-func NewGraphSet(rules map[string]*RuleSet, main string, target string) (*GraphSet, error) {
+func NewGraphSet(rules map[string]*RuleSet, main string, target string, updated map[string]bool) (*GraphSet, error) {
 	if rs, ok := rules[main]; ok {
 		gs := &GraphSet{
 			rules: rules,
 		}
-		g, err := NewGraph(rs, target, gs, main, ".")
+		g, err := NewGraph(rs, target, gs, main, ".", updated)
 		if err != nil {
 			return nil, err
 		}
@@ -148,15 +148,17 @@ func parsePrereq(ps string) prereq {
 }
 
 type file struct {
-	name   string
-	t      time.Time
-	exists bool
+	name    string
+	t       time.Time
+	exists  bool
+	updated bool
 }
 
-func newFile(dir string, target string) *file {
+func newFile(dir string, target string, updated map[string]bool) *file {
 	f := &file{
 		name: pathJoin(dir, target),
 	}
+	f.updated = updated[f.name]
 	f.updateTimestamp()
 	return f
 }
@@ -183,11 +185,11 @@ func (f *file) remove() error {
 	return os.RemoveAll(f.name)
 }
 
-func (g *Graph) newNode(target string) *node {
+func (g *Graph) newNode(target string, updated map[string]bool) *node {
 	n := &node{
 		inner: &inner{
 			outputs: map[string]*file{
-				target: newFile(g.dir, target),
+				target: newFile(g.dir, target, updated),
 			},
 			graph: g,
 			cond:  sync.NewCond(&sync.Mutex{}),
@@ -205,7 +207,7 @@ type VM interface {
 	SetVar(name string, val interface{})
 }
 
-func NewGraph(rs *RuleSet, target string, gs *GraphSet, name string, dir string) (g *Graph, err error) {
+func NewGraph(rs *RuleSet, target string, gs *GraphSet, name string, dir string, updated map[string]bool) (g *Graph, err error) {
 	g = &Graph{
 		rs:        rs,
 		nodes:     make(map[string]*node),
@@ -214,19 +216,19 @@ func NewGraph(rs *RuleSet, target string, gs *GraphSet, name string, dir string)
 	}
 	gs.graphs = append(gs.graphs, g)
 	visits := make([]int, len(rs.metaRules))
-	g.base, err = g.resolveTarget(target, visits, gs)
+	g.base, err = g.resolveTarget(target, visits, gs, updated)
 	if err != nil {
 		return g, err
 	}
 	return g, checkCycles(g.base)
 }
 
-func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node, error) {
+func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet, updated map[string]bool) (*node, error) {
 	p := parsePrereq(target)
 	if rs, ok := gs.rules[p.ruleset]; ok {
 		// if this target uses a separate ruleset, create a subgraph and
 		// use that to resolve the target.
-		subg, err := NewGraph(rs, p.name, gs, p.ruleset, pathJoin(g.dir, p.dir))
+		subg, err := NewGraph(rs, p.name, gs, p.ruleset, pathJoin(g.dir, p.dir), updated)
 		if err != nil {
 			return nil, err
 		}
@@ -239,11 +241,11 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 	if ok {
 		// make sure the node knows that it builds target too
 		if _, ok := n.outputs[target]; !ok && !n.rule.attrs.Virtual {
-			n.outputs[target] = newFile(g.dir, target)
+			n.outputs[target] = newFile(g.dir, target, updated)
 		}
 		return n, nil
 	}
-	n = g.newNode(target)
+	n = g.newNode(target, updated)
 
 	var rule DirectRule
 	var ri = -1
@@ -312,7 +314,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 				visits[mi]++
 				// TODO: measure the performance impact of this, and optimize if necessary
 				for _, p := range metarule.prereqs {
-					_, err := g.resolveTarget(p, visits, gs)
+					_, err := g.resolveTarget(p, visits, gs, updated)
 					if err != nil {
 						failed = true
 						break
@@ -358,7 +360,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 	if gn, ok := g.fullNodes[target]; ok && gn.rule.Equals(&rule) {
 		// make sure the node knows that it builds target too
 		if _, ok := n.outputs[target]; !ok && !rule.attrs.Virtual {
-			n.outputs[target] = newFile(g.dir, target)
+			n.outputs[target] = newFile(g.dir, target, updated)
 		}
 		n.inner = gn.inner
 		n.rule.targets = append(n.rule.targets, target)
@@ -374,7 +376,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 		// part of the build (incidental ones should be auto-cleaned, but only
 		// actual ones should be used for build timestamping).
 		if !n.rule.attrs.Virtual {
-			n.outputs[t] = newFile(g.dir, t)
+			n.outputs[t] = newFile(g.dir, t, updated)
 		}
 		g.fullNodes[t] = n
 	}
@@ -388,7 +390,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet) (*node,
 		visits[ri]++
 	}
 	for _, p := range n.rule.prereqs {
-		pn, err := g.resolveTarget(p, visits, gs)
+		pn, err := g.resolveTarget(p, visits, gs, updated)
 		if err != nil {
 			return nil, err
 		}
@@ -515,6 +517,12 @@ func (n *node) outOfDate(db *Database, hash bool) bool {
 
 	// if a prereq is newer than an output, this rule is out of date
 	for _, p := range n.prereqs {
+		for _, f := range p.outputs {
+			if f.updated {
+				return true
+			}
+		}
+
 		if hash {
 			for _, f := range p.outputs {
 				if !db.Files.matches(f.name) {
