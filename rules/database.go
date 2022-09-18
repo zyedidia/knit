@@ -163,11 +163,7 @@ func (p *Prereqs) has(targets []string, prereq, dir string) bool {
 	if !ok {
 		return false
 	}
-	path := filepath.Join(dir, prereq)
-	if file, ok := files.Data[path]; ok {
-		return file.Equals(path)
-	}
-	return false
+	return files.matches(filepath.Join(dir, prereq))
 }
 
 type Files struct {
