@@ -79,7 +79,7 @@ func (db *Database) Save() error {
 
 type data struct {
 	Recipes Recipes
-	Files   Files
+	Prereqs Prereqs
 }
 
 func newData() *data {
@@ -87,8 +87,8 @@ func newData() *data {
 		Recipes: Recipes{
 			Hashes: make(map[uint64]uint64),
 		},
-		Files: Files{
-			Data: make(map[string]File),
+		Prereqs: Prereqs{
+			Hashes: make(map[uint64]*Files),
 		},
 	}
 }
@@ -110,10 +110,19 @@ func loadData(d io.Reader) (*data, error) {
 	dec := gob.NewDecoder(fz)
 	err = dec.Decode(&dat)
 	fz.Close()
+
+	if dat.Recipes.Hashes == nil {
+		dat.Recipes.Hashes = make(map[uint64]uint64)
+	}
+	if dat.Prereqs.Hashes == nil {
+		dat.Prereqs.Hashes = make(map[uint64]*Files)
+	}
+
 	return &dat, err
 }
 
 type Recipes struct {
+	// map from hash of targets to hash of recipe contents
 	Hashes map[uint64]uint64
 }
 
@@ -132,15 +141,42 @@ func (r *Recipes) insert(targets, recipe []string, dir string) {
 	r.Hashes[thash] = rhash
 }
 
+type Prereqs struct {
+	// map from hash of targets to files
+	Hashes map[uint64]*Files
+}
+
+func (p *Prereqs) insert(targets []string, prereq, dir string) {
+	thash := hashSliceAndString(targets, dir)
+	f := p.Hashes[thash]
+	if f == nil {
+		p.Hashes[thash] = &Files{
+			Data: make(map[string]File),
+		}
+	}
+	p.Hashes[thash].insert(filepath.Join(dir, prereq))
+}
+
+func (p *Prereqs) has(targets []string, prereq, dir string) bool {
+	thash := hashSliceAndString(targets, dir)
+	files, ok := p.Hashes[thash]
+	if !ok {
+		return false
+	}
+	path := filepath.Join(dir, prereq)
+	if file, ok := files.Data[path]; ok {
+		return file.Equals(path)
+	}
+	return false
+}
+
 type Files struct {
+	// map from file name to file hash/data
 	Data map[string]File
 }
 
 func (f *Files) insert(path string) {
-	file, ok := NewFile(path)
-	if !ok {
-		return
-	}
+	file := NewFile(path)
 	f.Data[path] = file
 }
 
@@ -155,25 +191,38 @@ type File struct {
 	ModTime time.Time
 	Size    int64
 	// TODO: optimize with a short hash
-	Full uint64 // hash of the full file
+	Full   uint64 // hash of the full file
+	Path   string
+	Exists bool
 }
 
-func NewFile(path string) (File, bool) {
+func NewFile(path string) File {
 	info, err := os.Stat(path)
 	if err != nil {
-		return File{}, false
+		return File{
+			Path:   path,
+			Exists: false,
+		}
 	}
 
 	return File{
 		ModTime: info.ModTime(),
 		Size:    info.Size(),
 		Full:    hashFile(path),
-	}, true
+		Path:    path,
+		Exists:  true,
+	}
 }
 
 func (f File) Equals(path string) bool {
+	if f.Path != path {
+		return false
+	}
 	info, err := os.Stat(path)
-	if err != nil {
+	if err != nil && f.Exists {
+		return false
+	}
+	if err == nil && !f.Exists {
 		return false
 	}
 	if !info.IsDir() && info.ModTime() == f.ModTime {

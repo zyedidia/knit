@@ -96,7 +96,7 @@ func (n *node) setDone(db *Database, noexec bool) {
 	if !noexec {
 		for _, p := range n.prereqs {
 			for _, f := range p.outputs {
-				db.Files.insert(f.name)
+				db.Prereqs.insert(n.rule.targets, f.name, n.graph.dir)
 			}
 		}
 		db.Recipes.insert(n.rule.targets, n.recipe, n.graph.dir)
@@ -525,7 +525,7 @@ func (n *node) outOfDate(db *Database, hash bool) bool {
 
 		if hash {
 			for _, f := range p.outputs {
-				if !db.Files.matches(f.name) {
+				if !db.Prereqs.has(n.rule.targets, f.name, n.graph.dir) {
 					return true
 				}
 			}
