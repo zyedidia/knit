@@ -67,8 +67,9 @@ func NewLuaVM() *LuaVM {
 		os.Chdir(wd)
 		return val
 	}))
-	mt := L.NewTypeMetatable("ruleset")
-	L.SetField(mt, "__add", luar.New(L, func(r1, r2 LRuleSet) lua.LValue {
+	mt := luar.MT(L, LRuleSet{})
+	// mt := L.NewTypeMetatable("ruleset")
+	L.SetField(mt.LTable, "__add", luar.New(L, func(r1, r2 LRuleSet) LRuleSet {
 		rules := make([]LRule, len(r1.Rules)+len(r2.Rules))
 		copy(rules, r1.Rules)
 		copy(rules[len(r1.Rules):], r2.Rules)
@@ -77,11 +78,9 @@ func NewLuaVM() *LuaVM {
 			name:  rulesName(),
 		}
 		vm.rsets[rs.name] = rs
-		v := luar.New(L, rs)
-		L.SetMetatable(v, mt)
-		return v
+		return rs
 	}))
-	L.SetGlobal("r", luar.New(L, func(ruletbls ...[]LRule) lua.LValue {
+	L.SetGlobal("r", luar.New(L, func(ruletbls ...[]LRule) LRuleSet {
 		rules := make([]LRule, 0, len(ruletbls))
 		for _, rs := range ruletbls {
 			rules = append(rules, rs...)
@@ -91,9 +90,7 @@ func NewLuaVM() *LuaVM {
 			name:  rulesName(),
 		}
 		vm.rsets[rs.name] = rs
-		v := luar.New(L, rs)
-		L.SetMetatable(v, mt)
-		return v
+		return rs
 	}))
 	L.SetGlobal("_rule", luar.New(L, func(rule string, file string, line int) LRule {
 		return vm.makeRule(rule, file, line, rvar, rexpr)
