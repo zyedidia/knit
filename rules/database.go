@@ -215,8 +215,8 @@ func (f File) Equals(path string) bool {
 		return false
 	}
 	info, err := os.Stat(path)
-	if err != nil && f.Exists {
-		return false
+	if err != nil {
+		return !f.Exists
 	}
 	if err == nil && !f.Exists {
 		return false

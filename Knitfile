@@ -29,13 +29,14 @@ $ all:V: knit-$version-linux-amd64.tar.gz \
          knit-$version-freebsd-amd64.tar.gz \
          knit-$version-windows-amd64.tar.gz
 
-$ (knit-$version-(.*)-(.*)).tar.gz:R:
+$ %.tar.gz: %/
+    tar czf $output $input
+
+$ (knit-$version-(.*)-(.*))/:R:
     mkdir -p $match1
     GOOS=$match2 GOARCH=$match3 go build $goflags -o $match1/knit ./cmd/knit
     cp LICENSE* $match1
     cp README.md $match1
-    tar czf $output $match1
-    rm -rf $match1
 
 $ clean:VB:
     rm -f *.tar.gz knit cover.out

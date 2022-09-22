@@ -68,7 +68,6 @@ func NewLuaVM() *LuaVM {
 		return val
 	}))
 	mt := luar.MT(L, LRuleSet{})
-	// mt := L.NewTypeMetatable("ruleset")
 	L.SetField(mt.LTable, "__add", luar.New(L, func(r1, r2 LRuleSet) LRuleSet {
 		rules := make([]LRule, len(r1.Rules)+len(r2.Rules))
 		copy(rules, r1.Rules)
