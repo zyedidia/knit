@@ -235,7 +235,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		case "graph":
 			t = &rules.GraphTool{W: w}
 		case "clean":
-			t = &rules.CleanTool{}
+			t = &rules.CleanTool{W: w, NoExec: flags.DryRun, All: flags.Always}
 		case "rules":
 			t = &rules.RulesTool{}
 		case "targets":

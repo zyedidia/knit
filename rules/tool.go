@@ -25,11 +25,13 @@ type Tool interface {
 	String() string
 }
 
-type ListTool struct{}
+type ListTool struct {
+	W io.Writer
+}
 
 func (t *ListTool) Run(g *Graph, args []string) error {
-	for _, t := range tools {
-		fmt.Println(t)
+	for _, tl := range tools {
+		fmt.Fprintln(t.W, tl)
 	}
 
 	return nil
@@ -106,6 +108,10 @@ func (t *GraphTool) String() string {
 }
 
 type CleanTool struct {
+	NoExec bool
+	All    bool
+	W      io.Writer
+
 	err error
 }
 
@@ -121,23 +127,27 @@ func (t *CleanTool) clean(n *node, done map[*info]bool) {
 	// don't clean virtual rules or rules without a recipe to rebuild the outputs
 	if len(n.rule.recipe) != 0 && !n.rule.attrs.Virtual {
 		for _, o := range n.outputs {
-			if !o.exists {
+			if !o.exists && !t.All {
 				continue
 			}
-			err := o.remove()
-			if err != nil {
-				t.err = err
-				continue
+			if !t.NoExec {
+				err := o.remove()
+				if err != nil {
+					t.err = err
+					continue
+				}
 			}
-			fmt.Println("remove", o.name)
+			if n.graph.dir != "." && n.graph.dir != "" {
+				fmt.Fprintf(t.W, "[%s] ", n.graph.dir)
+			}
+			fmt.Fprintln(t.W, "remove", o.name)
 		}
 	}
 	done[n.info] = true
 }
 
 func (t *CleanTool) Run(g *Graph, args []string) error {
-	done := make(map[*info]bool)
-	t.clean(g.base, done)
+	t.clean(g.base, make(map[*info]bool))
 	return t.err
 }
 
@@ -145,14 +155,16 @@ func (t *CleanTool) String() string {
 	return "clean - remove all files produced by the build"
 }
 
-type RulesTool struct{}
+type RulesTool struct {
+	W io.Writer
+}
 
 func (t *RulesTool) visit(n *node, visited map[*info]bool) {
 	if visited[n.info] || len(n.rule.recipe) == 0 && len(n.rule.prereqs) == 0 {
 		return
 	}
 
-	fmt.Printf("%s: %s\n\t%s\n", strings.Join(n.rule.targets, " "), strings.Join(n.rule.prereqs, " "), strings.Join(n.recipe, "\n\t"))
+	fmt.Fprintf(t.W, "%s: %s\n\t%s\n", strings.Join(n.rule.targets, " "), strings.Join(n.rule.prereqs, " "), strings.Join(n.recipe, "\n\t"))
 
 	visited[n.info] = true
 	for _, p := range n.prereqs {
@@ -161,8 +173,7 @@ func (t *RulesTool) visit(n *node, visited map[*info]bool) {
 }
 
 func (t *RulesTool) Run(g *Graph, args []string) error {
-	visited := make(map[*info]bool)
-	t.visit(g.base, visited)
+	t.visit(g.base, make(map[*info]bool))
 	return nil
 }
 
@@ -170,7 +181,9 @@ func (t *RulesTool) String() string {
 	return "rules - print rules for the build"
 }
 
-type TargetsTool struct{}
+type TargetsTool struct {
+	W io.Writer
+}
 
 func (t *TargetsTool) targets(n *node, virtual bool, visited map[*info]bool) {
 	if visited[n.info] || len(n.rule.recipe) == 0 && len(n.rule.prereqs) == 0 {
@@ -178,7 +191,7 @@ func (t *TargetsTool) targets(n *node, virtual bool, visited map[*info]bool) {
 	}
 
 	if !virtual || virtual && n.rule.attrs.Virtual {
-		fmt.Println(strings.Join(n.rule.targets, "\n"))
+		fmt.Fprintln(t.W, strings.Join(n.rule.targets, "\n"))
 	}
 
 	visited[n.info] = true
