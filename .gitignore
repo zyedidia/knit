@@ -12,6 +12,7 @@ knit-*
 !/cmd/knit
 *.out
 *.cov
+knit.1
 test/scratch
 
 build.ninja

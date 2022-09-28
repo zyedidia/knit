@@ -6,8 +6,8 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/zyedidia/knit/blob/master/LICENSE)
 
 Knit is a build tool inspired by Make and Plan9 mk. You define rules with a
-Make-like syntax within a Lua program. Rule sets can be passed around as Lua
-objects, you can use the Lua module system to make reusable modules for
+Make-like syntax within a Lua program. Rules can be passed around as Lua
+objects, and you can use the Lua module system to make reusable modules for
 building any kind of source code.
 
 Knit also tracks more of your build to give you better incremental builds. For
@@ -98,3 +98,25 @@ $ build:V: $prog
 See the [docs](./docs/knit.md) for more information.
 
 See this repository's Knitfile and the tests for more examples.
+
+# Usage
+
+```
+Usage of knit:
+  knit [TARGETS] [ARGS]
+
+Options:
+  -B, --always-build       unconditionally build all targets
+      --cache string       directory for caching internal build information (default ".")
+  -C, --directory string   run command from directory
+  -n, --dry-run            print commands without actually executing
+  -f, --file string        knitfile to use (default "knitfile")
+      --hash               hash files to determine if they are out-of-date (default true)
+  -h, --help               show this help message
+  -q, --quiet              don't print commands
+  -s, --style string       printer style to use (basic, steps, progress) (default "basic")
+  -j, --threads int        number of cores to use (default 8)
+  -t, --tool string        subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool
+  -u, --updated strings    treat files as updated
+  -v, --version            show version information
+```

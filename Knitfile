@@ -32,11 +32,12 @@ $ all:V: knit-$version-linux-amd64.tar.gz \
 $ %.tar.gz: %/
     tar czf $output $input
 
-$ (knit-$version-(.*)-(.*))/:R:
+$ (knit-$version-(.*)-(.*))/:R: knit.1
     mkdir -p $match1
     GOOS=$match2 GOARCH=$match3 go build $goflags -o $match1/knit ./cmd/knit
     cp LICENSE* $match1
     cp README.md $match1
+    cp knit.1 $match1
 
 $ clean:VB:
     rm -f *.tar.gz knit cover.out
@@ -58,4 +59,7 @@ $ cover:VB:
 
 $ cover-html:VB: cover.out
     go tool cover -html=cover.out
+
+$ knit.1: man/knit.md
+    pandoc $input -s -t man -o $output
 }
