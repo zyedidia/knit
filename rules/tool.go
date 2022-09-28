@@ -268,6 +268,12 @@ func (r BuildRules) toKnit(w io.Writer) {
 	}
 }
 
+func (r BuildRules) toNinja(w io.Writer) {
+	for _, c := range r {
+		c.toNinja(w)
+	}
+}
+
 type BuildCommand struct {
 	Directory string   `json:"directory"`
 	Inputs    []string `json:"inputs"`
@@ -327,6 +333,23 @@ func (c *BuildCommand) toKnit(w io.Writer) {
 	w.Write(buf.Bytes())
 }
 
+func (c *BuildCommand) toNinja(w io.Writer) {
+	if len(c.Commands) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "rule %s\n", c.Name)
+	cd := ""
+	if c.Directory != "." && c.Directory != "" {
+		cd = "cd " + c.Directory + "; "
+	}
+	fmt.Fprintf(w, "  command = %s%s\n", cd, strings.Join(c.Commands, ";"))
+	out := c.Name
+	if len(c.Outputs) > 1 {
+		out = strings.Join(c.Outputs, " ")
+	}
+	fmt.Fprintf(w, "build %s: %s %s\n", out, c.Name, strings.Join(c.Inputs, " "))
+}
+
 func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) BuildRules {
 	if visited[n.info] || len(n.rule.prereqs) == 0 && len(n.rule.recipe) == 0 {
 		return cmds
@@ -353,6 +376,30 @@ func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) B
 	return cmds
 }
 
+func (t *BuildTool) shell(n *node, visited map[*info]bool, w io.Writer) {
+	if visited[n.info] {
+		return
+	}
+	visited[n.info] = true
+
+	for _, p := range n.prereqs {
+		t.shell(p, visited, w)
+	}
+	cd := ""
+	if n.graph.dir != "." && n.graph.dir != "" {
+		cd = "cd " + n.graph.dir + ";"
+	}
+	for _, c := range n.recipe {
+		var cmd string
+		if cd != "" {
+			cmd = fmt.Sprintf("(%s %s)\n", cd, c)
+		} else {
+			cmd = c + "\n"
+		}
+		w.Write([]byte(cmd))
+	}
+}
+
 func (t *BuildTool) Run(g *Graph, args []string) error {
 	choice := "knit"
 	if len(args) > 0 {
@@ -367,6 +414,7 @@ func (t *BuildTool) Run(g *Graph, args []string) error {
 	case "make":
 		cmds.toMake(t.W)
 	case "ninja":
+		cmds.toNinja(t.W)
 	case "json":
 		data, err := json.Marshal(cmds)
 		if err != nil {
@@ -376,6 +424,7 @@ func (t *BuildTool) Run(g *Graph, args []string) error {
 		_, err = t.W.Write([]byte{'\n'})
 		return err
 	case "shell":
+		t.shell(g.base, make(map[*info]bool), t.W)
 	default:
 		return fmt.Errorf("invalid argument '%s', must be one of: knit, json, make, ninja, shell", choice)
 	}
