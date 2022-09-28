@@ -12,5 +12,6 @@ knit-*
 !/cmd/knit
 *.out
 *.cov
+test/scratch
 
 tools/version/version
