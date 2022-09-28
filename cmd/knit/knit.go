@@ -86,7 +86,10 @@ func main() {
 	}
 
 	if *help {
-		fmt.Println("knit [TARGETS] [ARGS]")
+		fmt.Println("Usage of knit:")
+		fmt.Println("  knit [TARGETS] [ARGS]")
+		fmt.Println()
+		fmt.Println("Options:")
 		main.PrintDefaults()
 		os.Exit(0)
 	}

@@ -264,9 +264,11 @@ func (r BuildRules) toMake(w io.Writer) {
 }
 
 func (r BuildRules) toKnit(w io.Writer) {
+	fmt.Fprintln(w, "return r{")
 	for _, c := range r {
 		c.toKnit(w)
 	}
+	fmt.Fprintln(w, "}")
 }
 
 func (r BuildRules) toNinja(w io.Writer) {
@@ -313,6 +315,8 @@ func (c *BuildCommand) toMake(w io.Writer) {
 
 func (c *BuildCommand) toKnit(w io.Writer) {
 	buf := &bytes.Buffer{}
+
+	buf.WriteString("$ ")
 
 	if len(c.Outputs) == 0 {
 		buf.WriteString(c.Name)
