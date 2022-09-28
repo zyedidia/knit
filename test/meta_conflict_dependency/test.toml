@@ -3,18 +3,15 @@ name = "Check subtle mk problem"
 [flags]
 
 knitfile = "Knitfile"
-ncpu = 1
-dryrun = true
-graph = "-"
-quiet = true
+tool = "graph"
 
 [[builds]]
 
 args = ["foo.o", "bar.o"]
 output = """\
-:all -> foo.o
+_build -> foo.o
 foo.o -> foo.s
-:all -> bar.o
+_build -> bar.o
 bar.o -> bar.c
 bar.o -> hdr.h
 """

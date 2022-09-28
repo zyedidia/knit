@@ -3,7 +3,7 @@ package rules
 import (
 	"bytes"
 	"fmt"
-	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +14,7 @@ import (
 	"github.com/zyedidia/knit/expand"
 )
 
+// number of times a meta-rule can be used in one dependency chain.
 const maxVisits = 1
 
 type GraphSet struct {
@@ -22,12 +23,15 @@ type GraphSet struct {
 	graphs []*Graph
 }
 
+// Creates a new GraphSet from the map of rule sets, a specified "main"
+// ruleset, a target within that ruleset, and a list of files to force as
+// updated.
 func NewGraphSet(rules map[string]*RuleSet, main string, target string, updated map[string]bool) (*GraphSet, error) {
 	if rs, ok := rules[main]; ok {
 		gs := &GraphSet{
 			rules: rules,
 		}
-		g, err := NewGraph(rs, target, gs, main, ".", updated)
+		g, err := NewGraph(rs, target, gs, ".", updated)
 		if err != nil {
 			return nil, err
 		}
@@ -40,13 +44,22 @@ func NewGraphSet(rules map[string]*RuleSet, main string, target string, updated 
 type Graph struct {
 	base      *node
 	rs        *RuleSet
-	nodes     map[string]*node
-	fullNodes map[string]*node
+	nodes     map[string]*node // map of targets to nodes
+	fullNodes map[string]*node // map of all targets, including incidental ones, to nodes
 	// Directory this graph is executed in, can be relative to the main graph.
 	dir string
 }
 
-type inner struct {
+// Each node represents a build step. Certain nodes share information (e.g., if
+// the two nodes build different files but use the same command), but still
+// must track separate targets/prereqs, as well as the combined ones.
+type node struct {
+	*info
+	myTarget  string
+	myPrereqs []string
+}
+
+type info struct {
 	outputs map[string]*file
 	rule    *DirectRule
 	recipe  []string
@@ -58,25 +71,18 @@ type inner struct {
 	// for cycle checking
 	visited bool
 
-	// for meta rules
-	meta    bool
-	match   string
-	matches []string
-
 	// for concurrent graph execution
 	cond   *sync.Cond
 	done   bool
 	queued bool
 
-	// for build step count estimate
-	counted bool
+	// for meta rules
+	meta    bool
+	match   string
+	matches []string
 }
 
-type node struct {
-	*inner
-	myPrereqs []string
-}
-
+// Wait until this node's condition variable is signaled.
 func (n *node) wait() {
 	n.cond.L.Lock()
 	for !n.done {
@@ -85,6 +91,9 @@ func (n *node) wait() {
 	n.cond.L.Unlock()
 }
 
+// Set this node's status to done, and signal all threads waiting on the
+// condition variable. This function runs when a node completes execution,
+// either by finishing normally or with an error.
 func (n *node) setDoneOrErr() {
 	n.cond.L.Lock()
 	n.done = true
@@ -92,6 +101,7 @@ func (n *node) setDoneOrErr() {
 	n.cond.L.Unlock()
 }
 
+// This function is run when the node completes execution without error.
 func (n *node) setDone(db *Database, noexec bool) {
 	if !noexec {
 		for _, p := range n.prereqs {
@@ -104,6 +114,9 @@ func (n *node) setDone(db *Database, noexec bool) {
 	n.setDoneOrErr()
 }
 
+// Some prereqs specify nodes from sub-builds, with the syntax
+// '[ruleset][dir]prereq'. If ruleset is not empty, then this is a special
+// sub-build prereq. Otherwise it is a normal prereq stored in 'name'.
 type prereq struct {
 	name    string
 	ruleset string
@@ -147,6 +160,8 @@ func parsePrereq(ps string) prereq {
 	return p
 }
 
+// A file on the system. The updated field indicates that the file should be
+// treated as if it was recently updated, even if it was not.
 type file struct {
 	name    string
 	t       time.Time
@@ -185,9 +200,10 @@ func (f *file) remove() error {
 	return os.RemoveAll(f.name)
 }
 
+// Creates a new node that builds 'target'.
 func (g *Graph) newNode(target string, updated map[string]bool) *node {
 	n := &node{
-		inner: &inner{
+		info: &info{
 			outputs: map[string]*file{
 				target: newFile(g.dir, target, updated),
 			},
@@ -202,12 +218,7 @@ func (g *Graph) Size() int {
 	return len(g.nodes)
 }
 
-type VM interface {
-	ExpandFuncs() (func(string) (string, error), func(string) (string, error))
-	SetVar(name string, val interface{})
-}
-
-func NewGraph(rs *RuleSet, target string, gs *GraphSet, name string, dir string, updated map[string]bool) (g *Graph, err error) {
+func NewGraph(rs *RuleSet, target string, gs *GraphSet, dir string, updated map[string]bool) (g *Graph, err error) {
 	g = &Graph{
 		rs:        rs,
 		nodes:     make(map[string]*node),
@@ -223,29 +234,29 @@ func NewGraph(rs *RuleSet, target string, gs *GraphSet, name string, dir string,
 	return g, checkCycles(g.base)
 }
 
-func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet, updated map[string]bool) (*node, error) {
-	p := parsePrereq(target)
+// resolveTarget returns a node that builds 'prereq'.
+func (g *Graph) resolveTarget(prereq string, visits []int, gs *GraphSet, updated map[string]bool) (*node, error) {
+	p := parsePrereq(prereq)
 	if rs, ok := gs.rules[p.ruleset]; ok {
-		// if this target uses a separate ruleset, create a subgraph and
-		// use that to resolve the target.
-		subg, err := NewGraph(rs, p.name, gs, p.ruleset, pathJoin(g.dir, p.dir), updated)
+		// if this target uses a separate ruleset, create a subgraph and use
+		// that to resolve the target.
+		subg, err := NewGraph(rs, p.name, gs, pathJoin(g.dir, p.dir), updated)
 		if err != nil {
 			return nil, err
 		}
 		return subg.base, nil
 	}
-	target = p.name
+	target := p.name
 
 	// do we have a node that builds target already
-	n, ok := g.nodes[target]
-	if ok {
-		// make sure the node knows that it builds target too
+	if n, ok := g.nodes[target]; ok {
+		// make sure the node knows that it now builds target too
 		if _, ok := n.outputs[target]; !ok && !n.rule.attrs.Virtual {
 			n.outputs[target] = newFile(g.dir, target, updated)
 		}
 		return n, nil
 	}
-	n = g.newNode(target, updated)
+	n := g.newNode(target, updated)
 
 	var rule DirectRule
 	var ri = -1
@@ -253,30 +264,40 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet, updated
 	ris, ok := g.rs.targets[target]
 	if ok && len(ris) > 0 {
 		var prereqs []string
-		var recipe []string
 		// Go through all the rules and accumulate all the prereqs. If multiple
-		// rules have targets then we have some ambiguity.
+		// rules have targets then we have some ambiguity, but we select the
+		// last one.
 		for _, ri := range ris {
 			r := &g.rs.directRules[ri]
 			if len(r.recipe) != 0 {
-				recipe = r.recipe
+				// recipe exists -- overwrite prereqs
 				prereqs = r.prereqs
 			} else {
+				// recipe is empty -- only add the prereqs
 				prereqs = append(prereqs, r.prereqs...)
 			}
-			rule = *r
+			// copy over the attrs/targets/recipe into 'rule' if the currently
+			// matched rule has a recipe (it is a full rule), or the
+			// accumulated rule is empty.
+			if len(r.recipe) != 0 || len(rule.recipe) == 0 {
+				rule = *r
+			}
 		}
-		rule.recipe = recipe
 		rule.prereqs = prereqs
 	} else if ok {
+		// should not happen
 		return nil, fmt.Errorf("internal error: target %s exists but has no rules", target)
 	}
+
 	// if we did not find a recipe from the direct rules and this target can
 	// use meta-rules, then search all meta-rules for a match
 	if len(rule.recipe) == 0 && !rule.attrs.NoMeta {
+		// search backwards so that we get the last rule to match first, and
+		// then can skip subsequent full rules, and add subsequent prereq
+		// rules.
 		for mi := len(g.rs.metaRules) - 1; mi >= 0; mi-- {
 			mr := g.rs.metaRules[mi]
-			// a meta-rule can only be used maxVisits times
+			// a meta-rule can only be used maxVisits times (in one dependency path)
 			if visits[mi] >= maxVisits {
 				continue
 			}
@@ -290,6 +311,8 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet, updated
 				metarule.attrs = mr.attrs
 				metarule.recipe = mr.recipe
 
+				// there should be exactly 1 submatch (2 indices for full
+				// match, 2 for the submatch) for a % match.
 				if pat.Suffix && len(sub) == 4 {
 					// %-metarule -- the match is the submatch and all %s in the
 					// prereqs get expanded to the submatch
@@ -312,7 +335,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet, updated
 				// Only use this rule if its prereqs can also be resolved.
 				failed := false
 				visits[mi]++
-				// TODO: measure the performance impact of this, and optimize if necessary
+				// Is there significant performance impact from this?
 				for _, p := range metarule.prereqs {
 					_, err := g.resolveTarget(p, visits, gs, updated)
 					if err != nil {
@@ -326,11 +349,16 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet, updated
 					continue
 				}
 
+				// success -- add the prereqs
 				rule.prereqs = append(rule.prereqs, metarule.prereqs...)
-				rule.attrs = metarule.attrs
-				rule.recipe = metarule.recipe
+				// overwrite the recipe/attrs/targets if the matched rule has a
+				// recipe, or we don't yet have a recipe
+				if len(mr.recipe) > 0 || len(rule.recipe) == 0 {
+					rule.attrs = metarule.attrs
+					rule.recipe = metarule.recipe
+					rule.targets = []string{target}
+				}
 
-				rule.targets = []string{target}
 				n.meta = true
 				ri = mi // for visit tracking
 			}
@@ -347,7 +375,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet, updated
 				return nil, fmt.Errorf("%sno rule to make target '%s'", g.subdir(), o)
 			}
 		}
-		// If this rule had no targets, the target is the requested one.  For
+		// If this rule had no targets, the target is the requested one. For
 		// example, maybe we didn't find a rule, and the requested target was
 		// foo.c. If foo.c exists, then this is an empty rule to "build" it.
 		rule.targets = []string{target}
@@ -362,8 +390,8 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet, updated
 		if _, ok := n.outputs[target]; !ok && !rule.attrs.Virtual {
 			n.outputs[target] = newFile(g.dir, target, updated)
 		}
-		n.inner = gn.inner
-		n.rule.targets = append(n.rule.targets, target)
+		n.info = gn.info
+		n.myTarget = target
 		g.nodes[target] = n
 		return n, nil
 	}
@@ -381,7 +409,7 @@ func (g *Graph) resolveTarget(target string, visits []int, gs *GraphSet, updated
 		g.fullNodes[t] = n
 	}
 
-	n.rule.targets = []string{target}
+	n.myTarget = target
 
 	// associate this node with only the requested target
 	g.nodes[target] = n
@@ -409,6 +437,11 @@ func (g *Graph) subdir() string {
 	return ""
 }
 
+type VM interface {
+	ExpandFuncs() (func(string) (string, error), func(string) (string, error))
+	SetVar(name string, val interface{})
+}
+
 // ExpandRecipes evaluates all variables and expressions in the recipes for the
 // build
 func (g *Graph) ExpandRecipes(vm VM) error {
@@ -425,8 +458,8 @@ func (n *node) prereqsSub() []string {
 		if p.graph.dir != n.graph.dir {
 			relpath, err := filepath.Rel(n.graph.dir, p.graph.dir)
 			if err != nil {
-				// TODO
-				panic(err)
+				relpath = p.graph.dir
+				log.Printf("error calculating relative path: %v\n", err)
 			}
 			ps = append(ps, pathJoin(relpath, parsePrereq(prereq).name))
 		} else {
@@ -548,52 +581,19 @@ func (n *node) outOfDate(db *Database, hash bool) bool {
 	return false
 }
 
-func (g *Graph) VisualizeDot(w io.Writer) {
-	fmt.Fprintln(w, "digraph take {")
-	g.base.visualizeDot(w)
-	fmt.Fprintln(w, "}")
-}
-
-func (n *node) String() string {
-	if n.graph.dir == "" || n.graph.dir == "." {
-		return strings.Join(n.rule.targets, ", ")
-	}
-	return fmt.Sprintf("[%s]%s", n.graph.dir, strings.Join(n.rule.targets, ", "))
-}
-
-func (n *node) visualizeDot(w io.Writer) {
-	for _, p := range n.prereqs {
-		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", n, p)
-		p.visualizeDot(w)
-	}
-}
-
-func (g *Graph) VisualizeText(w io.Writer) {
-	g.base.visualizeText(w)
-}
-
-func (n *node) visualizeText(w io.Writer) {
-	for _, p := range n.prereqs {
-		fmt.Fprintf(w, "%s -> %s\n", n, p)
-		p.visualizeText(w)
-	}
-}
-
-// don't want to count virtual rules for clean counts
-func (n *node) count(virtual bool) int {
+func (n *node) count(counted map[*info]bool) int {
 	s := 0
-	if !n.counted && len(n.rule.recipe) != 0 {
-		if virtual || (!virtual && !n.rule.attrs.Virtual) {
-			s++
-		}
+	if !counted[n.info] && len(n.rule.recipe) != 0 {
+		s++
 	}
-	n.counted = true
+	counted[n.info] = true
 	for _, p := range n.prereqs {
-		s += p.count(virtual)
+		s += p.count(counted)
 	}
 	return s
 }
 
-func (g *Graph) Steps(virtual bool) int {
-	return g.base.count(virtual)
+func (g *Graph) steps() int {
+	counted := make(map[*info]bool)
+	return g.base.count(counted)
 }

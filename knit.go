@@ -1,13 +1,10 @@
 package knit
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -39,6 +36,24 @@ type Flags struct {
 	Hash     bool
 	Commands bool
 	Updated  []string
+	Tool     string
+	ToolArgs []string
+}
+
+type UserFlags struct {
+	Knitfile *string
+	Ncpu     *int
+	Graph    *string
+	DryRun   *bool
+	RunDir   *string
+	Always   *bool
+	Quiet    *bool
+	Clean    *bool
+	Style    *string
+	CacheDir *string
+	Hash     *bool
+	Commands *bool
+	Updated  *[]string
 }
 
 type assign struct {
@@ -104,10 +119,6 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		os.Chdir(flags.RunDir)
 	}
 
-	if flags.Ncpu <= 0 {
-		return errors.New("you must enable at least 1 core")
-	}
-
 	if exists(title(flags.Knitfile)) {
 		flags.Knitfile = title(flags.Knitfile)
 	}
@@ -155,6 +166,8 @@ func Run(out io.Writer, args []string, flags Flags) error {
 
 	rs := rulesets[lruleset.name]
 
+	alltargets := rs.AllTargets()
+
 	if len(targets) == 0 {
 		targets = []string{rs.MainTarget()}
 	}
@@ -163,7 +176,13 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		return errors.New("no targets")
 	}
 
-	rs.Add(rules.NewDirectRule([]string{":all"}, targets, nil, rules.AttrSet{
+	rs.Add(rules.NewDirectRule([]string{"_build"}, targets, nil, rules.AttrSet{
+		Virtual: true,
+		NoMeta:  true,
+		Rebuild: true,
+	}))
+
+	rs.Add(rules.NewDirectRule([]string{"_all"}, alltargets, nil, rules.AttrSet{
 		Virtual: true,
 		NoMeta:  true,
 		Rebuild: true,
@@ -174,7 +193,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		updated[u] = true
 	}
 
-	graph, err := rules.NewGraphSet(rulesets, lruleset.name, ":all", updated)
+	graph, err := rules.NewGraphSet(rulesets, lruleset.name, "_build", updated)
 	if err != nil {
 		return err
 	}
@@ -183,28 +202,9 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		return fmt.Errorf("target not found: %s", targets)
 	}
 
-	if flags.Graph != "" {
-		err := visualize(out, flags.Graph, graph)
-		if err != nil {
-			return err
-		}
-	}
-
 	err = graph.ExpandRecipes(vm)
 	if err != nil {
 		return err
-	}
-
-	if flags.Commands {
-		f, err := os.Create("compile_commands.json")
-		if err != nil {
-			return err
-		}
-		err = writeCompileCommands(f, graph)
-		if err != nil {
-			return err
-		}
-		f.Close()
 	}
 
 	var db *rules.Database
@@ -227,6 +227,34 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		w = io.Discard
 	}
 
+	if flags.Tool != "" {
+		var t rules.Tool
+		switch flags.Tool {
+		case "list":
+			t = &rules.ListTool{}
+		case "graph":
+			t = &rules.GraphTool{W: w}
+		case "clean":
+			t = &rules.CleanTool{}
+		case "rules":
+			t = &rules.RulesTool{}
+		case "targets":
+			t = &rules.TargetsTool{}
+		case "compdb":
+			t = &rules.CompileDbTool{W: w}
+		case "builddb":
+			t = &rules.BuildDbTool{W: w}
+		default:
+			return fmt.Errorf("unknown tool: %s", flags.Tool)
+		}
+
+		return t.Run(graph.Graph, flags.ToolArgs)
+	}
+
+	if flags.Ncpu <= 0 {
+		return errors.New("you must enable at least 1 core")
+	}
+
 	var printer rules.Printer
 	switch flags.Style {
 	case "steps":
@@ -243,8 +271,8 @@ func Run(out io.Writer, args []string, flags Flags) error {
 	lock := sync.Mutex{}
 	ex := rules.NewExecutor(".", db, flags.Ncpu, printer, func(msg string) {
 		lock.Lock()
-		defer lock.Unlock()
 		fmt.Fprintln(out, msg)
+		lock.Unlock()
 	}, rules.Options{
 		NoExec:       flags.DryRun,
 		Shell:        "sh",
@@ -252,11 +280,6 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		BuildAll:     flags.Always,
 		Hash:         flags.Hash,
 	})
-
-	if flags.Clean {
-		ex.Clean(graph.Graph)
-		return nil
-	}
 
 	rebuilt, execerr := ex.Exec(graph.Graph)
 
@@ -271,44 +294,5 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		return fmt.Errorf("'%s': %w", strings.Join(targets, " "), ErrNothingToDo)
 	}
 	return nil
-}
 
-func visualize(out io.Writer, file string, g *rules.GraphSet) error {
-	var f io.Writer
-	if file == "-" {
-		f = out
-	} else {
-		fi, err := os.Create(file)
-		if err != nil {
-			return err
-		}
-		defer fi.Close()
-		f = fi
-	}
-	if strings.HasSuffix(file, ".dot") {
-		g.VisualizeDot(f)
-	} else if strings.HasSuffix(file, ".pdf") {
-		buf := &bytes.Buffer{}
-		g.VisualizeDot(buf)
-		cmd := exec.Command("dot", "-Tpdf")
-		cmd.Stdout = f
-		cmd.Stdin = buf
-		cmd.Stderr = Stderr
-		err := cmd.Run()
-		if err != nil {
-			return err
-		}
-	} else {
-		g.VisualizeText(f)
-	}
-	return nil
-}
-
-func writeCompileCommands(out io.Writer, gs *rules.GraphSet) error {
-	data, err := json.Marshal(rules.Commands(gs))
-	if err != nil {
-		return err
-	}
-	_, err = out.Write(data)
-	return err
 }

@@ -3,20 +3,17 @@ name = "Later rules override earlier ones"
 [flags]
 
 knitfile = "Knitfile"
-ncpu = 1
-dryrun = true
-graph = "-"
+tool = "graph"
 
 [[builds]]
 
 args = ["o.out"]
 output = """\
-:all -> o.out
+_build -> o.out
 o.out -> f1.o
 f1.o -> f1.c
 o.out -> f2.o
 f2.o -> f2.c
 o.out -> f3.o
 f3.o -> f3.c
-ld -l f1.o f2.o f3.o -lbio -lc
 """

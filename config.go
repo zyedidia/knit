@@ -31,22 +31,6 @@ func DefaultBuildFile() (string, bool) {
 	return "", false
 }
 
-type UserFlags struct {
-	Knitfile *string
-	Ncpu     *int
-	Graph    *string
-	DryRun   *bool
-	RunDir   *string
-	Always   *bool
-	Quiet    *bool
-	Clean    *bool
-	Style    *string
-	CacheDir *string
-	Hash     *bool
-	Commands *bool
-	Updated  *[]string
-}
-
 const configFile = ".knit.toml"
 
 func UserDefaults() (UserFlags, error) {

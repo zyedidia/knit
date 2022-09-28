@@ -23,6 +23,16 @@ type Printer interface {
 	Clear()
 }
 
+type InfoFn func(msg string)
+
+type Options struct {
+	NoExec       bool   // don't execute recipes
+	Shell        string // use shell for executing commands
+	AbortOnError bool   // stop if an error happens in a recipe
+	BuildAll     bool   // build all rules even if they are up-to-date
+	Hash         bool   // use hashes to determine whether a file has been modified
+}
+
 type Executor struct {
 	printer Printer
 	info    InfoFn
@@ -40,17 +50,6 @@ type Executor struct {
 	err     error
 
 	opts Options
-}
-
-type PrintCmdFn func(cmd string, dir string, step int, nsteps int)
-type InfoFn func(msg string)
-
-type Options struct {
-	NoExec       bool   // don't execute recipes
-	Shell        string // use shell for executing commands
-	AbortOnError bool   // stop if an error happens in a recipe
-	BuildAll     bool   // build all rules even if they are up-to-date
-	Hash         bool   // use hashes to determine whether a file has been modified
 }
 
 func NewExecutor(basedir string, db *Database, threads int, printer Printer, info InfoFn, opts Options) *Executor {
@@ -77,7 +76,7 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 
-	e.steps = g.Steps(true)
+	e.steps = g.steps()
 	e.printer.SetSteps(e.steps)
 
 	for i := 0; i < e.threads; i++ {
@@ -94,41 +93,6 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 	close(e.jobs)
 
 	return e.rebuilt.Load(), e.err
-}
-
-func (e *Executor) Clean(g *Graph) {
-	e.steps = g.Steps(false)
-	e.printer.SetSteps(e.steps)
-	e.cleanNode(g.base)
-}
-
-func (e *Executor) cleanNode(n *node) {
-	for _, p := range n.prereqs {
-		e.cleanNode(p)
-	}
-
-	if n.done {
-		return
-	}
-
-	// don't clean virtual rules or rules without a recipe to rebuild the outputs
-	if len(n.rule.recipe) != 0 && !n.rule.attrs.Virtual {
-		step := e.step.Add(1)
-		for _, o := range n.outputs {
-			if !o.exists && !e.opts.BuildAll {
-				continue
-			}
-			if !e.opts.NoExec {
-				err := o.remove()
-				if err != nil {
-					e.info(err.Error())
-				}
-			}
-			e.printer.Print(fmt.Sprintf("remove %s", o.name), n.graph.dir, o.name, int(step))
-			e.printer.Done(o.name)
-		}
-	}
-	n.done = true
 }
 
 func (e *Executor) execNode(n *node) {

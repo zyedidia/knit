@@ -6,7 +6,7 @@ knitfile = "Knitfile"
 ncpu = 1
 dryrun = true
 always = true
-clean = true
+tool = "clean"
 
 [[builds]]
 

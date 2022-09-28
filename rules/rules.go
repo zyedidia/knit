@@ -138,6 +138,14 @@ func (rs *RuleSet) MainTarget() string {
 	return rs.directRules[0].targets[0]
 }
 
+func (rs *RuleSet) AllTargets() []string {
+	targets := make([]string, 0, len(rs.targets))
+	for k := range rs.targets {
+		targets = append(targets, k)
+	}
+	return targets
+}
+
 type attrError struct {
 	found rune
 }
