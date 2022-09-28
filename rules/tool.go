@@ -17,7 +17,7 @@ var tools = []Tool{
 	&CleanTool{},
 	&TargetsTool{},
 	&CompileDbTool{},
-	&BuildTool{},
+	&CommandsTool{},
 }
 
 type Tool interface {
@@ -251,7 +251,7 @@ func (t *CompileDbTool) String() string {
 	return "compdb - output a compile commands database"
 }
 
-type BuildTool struct {
+type CommandsTool struct {
 	W io.Writer
 }
 
@@ -355,7 +355,7 @@ func (c *BuildCommand) toNinja(w io.Writer) {
 	fmt.Fprintf(w, "build %s: %s %s\n", out, rule, strings.Join(c.Prereqs, " "))
 }
 
-func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) BuildRules {
+func (t *CommandsTool) commands(n *node, visited map[*info]bool, cmds BuildRules) BuildRules {
 	if visited[n.info] || len(n.rule.prereqs) == 0 && len(n.rule.recipe) == 0 {
 		return cmds
 	}
@@ -389,7 +389,7 @@ func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) B
 	return cmds
 }
 
-func (t *BuildTool) shell(n *node, visited map[*info]bool, w io.Writer) {
+func (t *CommandsTool) shell(n *node, visited map[*info]bool, w io.Writer) {
 	if visited[n.info] {
 		return
 	}
@@ -413,7 +413,7 @@ func (t *BuildTool) shell(n *node, visited map[*info]bool, w io.Writer) {
 	}
 }
 
-func (t *BuildTool) Run(g *Graph, args []string) error {
+func (t *CommandsTool) Run(g *Graph, args []string) error {
 	choice := "knit"
 	if len(args) > 0 {
 		choice = args[0]
@@ -444,8 +444,8 @@ func (t *BuildTool) Run(g *Graph, args []string) error {
 	return nil
 }
 
-func (t *BuildTool) String() string {
-	return "build - output the build commands (formats: knit, json, make, ninja, shell)"
+func (t *CommandsTool) String() string {
+	return "commands - output the build commands (formats: knit, json, make, ninja, shell)"
 }
 
 // TODO: status tool
