@@ -14,10 +14,9 @@ var tools = []Tool{
 	&ListTool{},
 	&GraphTool{},
 	&CleanTool{},
-	&RulesTool{},
 	&TargetsTool{},
 	&CompileDbTool{},
-	&BuildDbTool{},
+	&BuildTool{},
 }
 
 type Tool interface {
@@ -54,25 +53,33 @@ func (t *GraphTool) str(n *node) string {
 
 func (t *GraphTool) dot(g *Graph, w io.Writer) {
 	fmt.Fprintln(w, "digraph take {")
-	t.dotNode(g.base, w)
+	t.dotNode(g.base, w, make(map[*info]bool))
 	fmt.Fprintln(w, "}")
 }
 
-func (t *GraphTool) dotNode(n *node, w io.Writer) {
+func (t *GraphTool) dotNode(n *node, w io.Writer, visited map[*info]bool) {
+	if visited[n.info] {
+		return
+	}
+	visited[n.info] = true
 	for _, p := range n.prereqs {
 		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", t.str(n), t.str(p))
-		t.dotNode(p, w)
+		t.dotNode(p, w, visited)
 	}
 }
 
 func (t *GraphTool) text(g *Graph, w io.Writer) {
-	t.textNode(g.base, w)
+	t.textNode(g.base, w, make(map[*info]bool))
 }
 
-func (t *GraphTool) textNode(n *node, w io.Writer) {
+func (t *GraphTool) textNode(n *node, w io.Writer, visited map[*info]bool) {
+	if visited[n.info] {
+		return
+	}
+	visited[n.info] = true
 	for _, p := range n.prereqs {
 		fmt.Fprintf(w, "%s -> %s\n", t.str(n), t.str(p))
-		t.textNode(p, w)
+		t.textNode(p, w, visited)
 	}
 }
 
@@ -98,7 +105,7 @@ func (t *GraphTool) Run(g *Graph, args []string) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("invalid argument '%s', must be one of 'text', 'dot', 'pdf'", choice)
+		return fmt.Errorf("invalid argument '%s', must be one of: text, dot, pdf", choice)
 	}
 	return nil
 }
@@ -155,32 +162,6 @@ func (t *CleanTool) String() string {
 	return "clean - remove all files produced by the build"
 }
 
-type RulesTool struct {
-	W io.Writer
-}
-
-func (t *RulesTool) visit(n *node, visited map[*info]bool) {
-	if visited[n.info] || len(n.rule.recipe) == 0 && len(n.rule.prereqs) == 0 {
-		return
-	}
-
-	fmt.Fprintf(t.W, "%s: %s\n\t%s\n", strings.Join(n.rule.targets, " "), strings.Join(n.rule.prereqs, " "), strings.Join(n.recipe, "\n\t"))
-
-	visited[n.info] = true
-	for _, p := range n.prereqs {
-		t.visit(p, visited)
-	}
-}
-
-func (t *RulesTool) Run(g *Graph, args []string) error {
-	t.visit(g.base, make(map[*info]bool))
-	return nil
-}
-
-func (t *RulesTool) String() string {
-	return "rules - print rules for the build"
-}
-
 type TargetsTool struct {
 	W io.Writer
 }
@@ -212,7 +193,7 @@ func (t *TargetsTool) Run(g *Graph, args []string) error {
 	case "virtual":
 		t.targets(g.base, true, visited)
 	default:
-		return fmt.Errorf("invalid argument '%s', must be one of 'all', 'virtual'", choice)
+		return fmt.Errorf("invalid argument '%s', must be one of: all, virtual", choice)
 	}
 	return nil
 }
@@ -269,20 +250,85 @@ func (t *CompileDbTool) String() string {
 	return "compdb - output a compile commands database"
 }
 
-type BuildDbTool struct {
+type BuildTool struct {
 	W io.Writer
+}
+
+type BuildRules []BuildCommand
+
+func (r BuildRules) toMake(w io.Writer) {
+	for _, c := range r {
+		c.toMake(w)
+	}
+}
+
+func (r BuildRules) toKnit(w io.Writer) {
+	for _, c := range r {
+		c.toKnit(w)
+	}
 }
 
 type BuildCommand struct {
 	Directory string   `json:"directory"`
 	Inputs    []string `json:"inputs"`
 	Outputs   []string `json:"outputs"`
-	Command   string   `json:"command"`
+	Commands  []string `json:"command"`
 	Name      string   `json:"name"`
 }
 
-func (t *BuildDbTool) visit(n *node, visited map[*node]bool, cmds []BuildCommand) []BuildCommand {
-	if visited[n] || len(n.rule.prereqs) == 0 && len(n.rule.recipe) == 0 {
+func (c *BuildCommand) toMake(w io.Writer) {
+	buf := &bytes.Buffer{}
+
+	if len(c.Outputs) == 0 {
+		buf.WriteString(c.Name)
+	} else {
+		buf.WriteString(strings.Join(c.Outputs, " "))
+		if len(c.Outputs) > 1 {
+			buf.WriteString(" &")
+		}
+	}
+	buf.WriteString(": ")
+	buf.WriteString(strings.Join(c.Inputs, " "))
+	buf.WriteByte('\n')
+
+	cd := ""
+	if c.Directory != "." && c.Directory != "" {
+		cd = "cd " + c.Directory + "; "
+	}
+	for _, cmd := range c.Commands {
+		buf.WriteByte('\t')
+		buf.WriteString(cd + cmd)
+		buf.WriteByte('\n')
+	}
+	w.Write(buf.Bytes())
+}
+
+func (c *BuildCommand) toKnit(w io.Writer) {
+	buf := &bytes.Buffer{}
+
+	if len(c.Outputs) == 0 {
+		buf.WriteString(c.Name)
+	} else {
+		buf.WriteString(strings.Join(c.Outputs, " "))
+	}
+	buf.WriteString(": ")
+	buf.WriteString(strings.Join(c.Inputs, " "))
+	buf.WriteByte('\n')
+
+	cd := ""
+	if c.Directory != "." && c.Directory != "" {
+		cd = "cd " + c.Directory + "; "
+	}
+	for _, cmd := range c.Commands {
+		buf.WriteByte('\t')
+		buf.WriteString(cd + cmd)
+		buf.WriteByte('\n')
+	}
+	w.Write(buf.Bytes())
+}
+
+func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) BuildRules {
+	if visited[n.info] || len(n.rule.prereqs) == 0 && len(n.rule.recipe) == 0 {
 		return cmds
 	}
 
@@ -296,30 +342,48 @@ func (t *BuildDbTool) visit(n *node, visited map[*node]bool, cmds []BuildCommand
 		Inputs:    prs,
 		Outputs:   outputs,
 		Name:      n.myTarget,
-		Command:   strings.Join(n.recipe, ";"),
+		Commands:  n.recipe,
 	})
 
-	visited[n] = true
+	visited[n.info] = true
 
 	for _, p := range n.prereqs {
-		cmds = t.visit(p, visited, cmds)
+		cmds = t.commands(p, visited, cmds)
 	}
 	return cmds
 }
 
-func (t *BuildDbTool) Run(g *Graph, args []string) error {
-	cmds := t.visit(g.base, make(map[*node]bool), []BuildCommand{})
-	data, err := json.Marshal(cmds)
-	if err != nil {
-		return err
+func (t *BuildTool) Run(g *Graph, args []string) error {
+	choice := "knit"
+	if len(args) > 0 {
+		choice = args[0]
 	}
-	t.W.Write(data)
-	_, err = t.W.Write([]byte{'\n'})
-	return err
+
+	cmds := t.commands(g.base, make(map[*info]bool), []BuildCommand{})
+
+	switch choice {
+	case "knit":
+		cmds.toKnit(t.W)
+	case "make":
+		cmds.toMake(t.W)
+	case "ninja":
+	case "json":
+		data, err := json.Marshal(cmds)
+		if err != nil {
+			return err
+		}
+		t.W.Write(data)
+		_, err = t.W.Write([]byte{'\n'})
+		return err
+	case "shell":
+	default:
+		return fmt.Errorf("invalid argument '%s', must be one of: knit, json, make, ninja, shell", choice)
+	}
+	return nil
 }
 
-func (t *BuildDbTool) String() string {
-	return "builddb - output a build information database"
+func (t *BuildTool) String() string {
+	return "build - output the build commands (formats: knit, json, make, ninja, shell)"
 }
 
 // TODO: status tool

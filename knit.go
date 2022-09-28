@@ -231,19 +231,17 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		var t rules.Tool
 		switch flags.Tool {
 		case "list":
-			t = &rules.ListTool{}
+			t = &rules.ListTool{W: w}
 		case "graph":
 			t = &rules.GraphTool{W: w}
 		case "clean":
 			t = &rules.CleanTool{W: w, NoExec: flags.DryRun, All: flags.Always}
-		case "rules":
-			t = &rules.RulesTool{}
 		case "targets":
-			t = &rules.TargetsTool{}
+			t = &rules.TargetsTool{W: w}
 		case "compdb":
 			t = &rules.CompileDbTool{W: w}
-		case "builddb":
-			t = &rules.BuildDbTool{W: w}
+		case "build":
+			t = &rules.BuildTool{W: w}
 		default:
 			return fmt.Errorf("unknown tool: %s", flags.Tool)
 		}
