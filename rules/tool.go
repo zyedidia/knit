@@ -323,23 +323,23 @@ func (t *BuildDbTool) String() string {
 }
 
 // TODO: status tool
-type StatusTool struct{}
-
-func (t *StatusTool) visit(n *node, visited map[*info]bool) {
-	if visited[n.info] {
-		return
-	}
-
-	visited[n.info] = true
-	for _, p := range n.prereqs {
-		t.visit(p, visited)
-	}
-}
-
-func (t *StatusTool) Run(g *Graph, args []string) error {
-	return nil
-}
-
-func (t *StatusTool) String() string {
-	return "status - output dependency status information"
-}
+// type StatusTool struct{}
+//
+// func (t *StatusTool) visit(n *node, visited map[*info]bool) {
+// 	if visited[n.info] {
+// 		return
+// 	}
+//
+// 	visited[n.info] = true
+// 	for _, p := range n.prereqs {
+// 		t.visit(p, visited)
+// 	}
+// }
+//
+// func (t *StatusTool) Run(g *Graph, args []string) error {
+// 	return nil
+// }
+//
+// func (t *StatusTool) String() string {
+// 	return "status - output dependency status information"
+// }
