@@ -564,8 +564,10 @@ func (n *node) outOfDate(db *Database, hash bool) bool {
 		}
 
 		if hash {
-			if !db.Prereqs.has(n.rule.targets, p.myOutput.name, n.graph.dir) {
-				return true
+			if p.myOutput != nil {
+				if !db.Prereqs.has(n.rule.targets, p.myOutput.name, n.graph.dir) {
+					return true
+				}
 			}
 		} else if p.time().After(n.time()) {
 			return true
