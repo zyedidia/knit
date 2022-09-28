@@ -75,7 +75,7 @@ func main() {
 	hash := optBool(main, "hash", "", true, user.Hash, "hash files to determine if they are out-of-date")
 	updated := optStringSlice(main, "updated", "u", nil, user.Updated, "treat files as updated")
 
-	tool := main.StringP("tool", "t", "", "tool to invoke; further flags are passed to the tool")
+	tool := main.StringP("tool", "t", "", "subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool")
 	version := main.BoolP("version", "v", false, "show version information")
 	help := main.BoolP("help", "h", false, "show this help message")
 

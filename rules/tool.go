@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -225,7 +226,7 @@ func (t *CompileDbTool) visit(n *node, visited map[*info]bool, cmds []CompComman
 				cmds = append(cmds, CompCommand{
 					Directory: p.graph.dir,
 					File:      o.name,
-					Command:   strings.Join(n.recipe, ";"),
+					Command:   strings.Join(n.recipe, "; "),
 				})
 			}
 		} else {
@@ -342,7 +343,7 @@ func (c *BuildCommand) toNinja(w io.Writer) {
 	if c.Directory != "." && c.Directory != "" {
 		cd = "cd " + c.Directory + "; "
 	}
-	fmt.Fprintf(w, "  command = %s%s\n", cd, strings.Join(c.Commands, ";"))
+	fmt.Fprintf(w, "  command = %s%s\n", cd, strings.Join(c.Commands, "; "))
 	out := c.Name
 	if len(c.Outputs) > 1 {
 		out = strings.Join(c.Outputs, " ")
@@ -356,9 +357,12 @@ func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) B
 	}
 
 	prs := n.prereqsSub()
+	for i, p := range prs {
+		prs[i] = filepath.Clean(p)
+	}
 	outputs := []string{}
 	for _, o := range n.outputs {
-		outputs = append(outputs, o.name)
+		outputs = append(outputs, filepath.Clean(o.name))
 	}
 	cmds = append(cmds, BuildCommand{
 		Directory: n.graph.dir,
