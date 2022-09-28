@@ -335,20 +335,23 @@ func (c *BuildCommand) toKnit(w io.Writer) {
 }
 
 func (c *BuildCommand) toNinja(w io.Writer) {
-	if len(c.Commands) == 0 {
-		return
+	if len(c.Commands) > 0 {
+		fmt.Fprintf(w, "rule %s\n", c.Name)
+		cd := ""
+		if c.Directory != "." && c.Directory != "" {
+			cd = "cd " + c.Directory + "; "
+		}
+		fmt.Fprintf(w, "  command = %s%s\n", cd, strings.Join(c.Commands, "; "))
 	}
-	fmt.Fprintf(w, "rule %s\n", c.Name)
-	cd := ""
-	if c.Directory != "." && c.Directory != "" {
-		cd = "cd " + c.Directory + "; "
-	}
-	fmt.Fprintf(w, "  command = %s%s\n", cd, strings.Join(c.Commands, "; "))
 	out := c.Name
 	if len(c.Outputs) > 1 {
 		out = strings.Join(c.Outputs, " ")
 	}
-	fmt.Fprintf(w, "build %s: %s %s\n", out, c.Name, strings.Join(c.Inputs, " "))
+	rule := c.Name
+	if len(c.Commands) == 0 {
+		rule = "phony"
+	}
+	fmt.Fprintf(w, "build %s: %s %s\n", out, rule, strings.Join(c.Inputs, " "))
 }
 
 func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) BuildRules {
@@ -368,7 +371,7 @@ func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) B
 		Directory: n.graph.dir,
 		Inputs:    prs,
 		Outputs:   outputs,
-		Name:      n.myTarget,
+		Name:      filepath.Clean(n.myTarget),
 		Commands:  n.recipe,
 	})
 
