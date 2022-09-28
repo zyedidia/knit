@@ -219,6 +219,9 @@ specify a sub-tool to run instead of building:
 * `compdb` - output a compile commands database
 * `commands` - output the build commands (formats: knit, json, make, ninja, shell)
 
+The special target `_all` depends on every target in the build. Thus `knit _all
+-t targets` will list all targets.
+
 Some examples are shown below.
 
 ### Automatic cleaning
