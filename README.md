@@ -89,12 +89,9 @@ prog := hello
 return r{
 $ $prog: $obj
     $cc $cflags $input -o $output
-
 $ %.o: %.c
     $cc $cflags -c $input -o $output
-
-$ clean:VB:
-    rm -f $obj $prog
+$ build:V: $prog
 }
 ```
 
