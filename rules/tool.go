@@ -341,7 +341,7 @@ func (c *BuildCommand) toKnit(w io.Writer) {
 
 func (c *BuildCommand) toNinja(w io.Writer) {
 	if len(c.Commands) > 0 {
-		fmt.Fprintf(w, "rule %s\n", c.Name)
+		fmt.Fprintf(w, "rule %s\n", strings.Replace(c.Name, "/", "_", -1))
 		cd := ""
 		if c.Directory != "." && c.Directory != "" {
 			cd = "cd " + c.Directory + "; "
@@ -352,7 +352,7 @@ func (c *BuildCommand) toNinja(w io.Writer) {
 	if len(c.Outputs) > 1 {
 		out = strings.Join(c.Outputs, " ")
 	}
-	rule := c.Name
+	rule := strings.Replace(c.Name, "/", "_", -1)
 	if len(c.Commands) == 0 {
 		rule = "phony"
 	}

@@ -14,4 +14,7 @@ knit-*
 *.cov
 test/scratch
 
+build.ninja
+.ninja*
+
 tools/version/version
