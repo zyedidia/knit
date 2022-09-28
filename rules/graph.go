@@ -57,6 +57,7 @@ type node struct {
 	*info
 	myTarget  string
 	myPrereqs []string
+	myOutput  *file
 }
 
 type info struct {
@@ -392,6 +393,9 @@ func (g *Graph) resolveTarget(prereq string, visits []int, gs *GraphSet, updated
 		}
 		n.info = gn.info
 		n.myTarget = target
+		if !rule.attrs.Virtual {
+			n.myOutput = newFile(g.dir, target, updated)
+		}
 		g.nodes[target] = n
 		return n, nil
 	}
@@ -410,6 +414,9 @@ func (g *Graph) resolveTarget(prereq string, visits []int, gs *GraphSet, updated
 	}
 
 	n.myTarget = target
+	if !n.rule.attrs.Virtual {
+		n.myOutput = newFile(g.dir, target, updated)
+	}
 
 	// associate this node with only the requested target
 	g.nodes[target] = n
@@ -448,11 +455,11 @@ func (g *Graph) ExpandRecipes(vm VM) error {
 	return g.base.expandRecipe(vm)
 }
 
-func (n *node) prereqsSub() []string {
+func (n *node) prereqsSub(virtual bool) []string {
 	ps := make([]string, 0, len(n.rule.prereqs))
 	for i, prereq := range n.myPrereqs {
 		p := n.prereqs[i]
-		if p.rule.attrs.Virtual {
+		if !virtual && p.rule.attrs.Virtual {
 			continue
 		}
 		if p.graph.dir != n.graph.dir {
@@ -473,7 +480,7 @@ func (n *node) prereqsSub() []string {
 // function will assign the appropriate variables in the Lua VM and then
 // evaluate the variables and expressions that must be expanded.
 func (n *node) expandRecipe(vm VM) error {
-	prs := n.prereqsSub()
+	prs := n.prereqsSub(false)
 	vm.SetVar("inputs", prs)
 	vm.SetVar("input", strings.Join(prs, " "))
 	vm.SetVar("outputs", n.rule.targets)
@@ -557,10 +564,8 @@ func (n *node) outOfDate(db *Database, hash bool) bool {
 		}
 
 		if hash {
-			for _, f := range p.outputs {
-				if !db.Prereqs.has(n.rule.targets, f.name, n.graph.dir) {
-					return true
-				}
+			if !db.Prereqs.has(n.rule.targets, p.myOutput.name, n.graph.dir) {
+				return true
 			}
 		} else if p.time().After(n.time()) {
 			return true

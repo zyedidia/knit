@@ -277,6 +277,7 @@ func (r BuildRules) toNinja(w io.Writer) {
 
 type BuildCommand struct {
 	Directory string   `json:"directory"`
+	Prereqs   []string `json:"prereqs"`
 	Inputs    []string `json:"inputs"`
 	Outputs   []string `json:"outputs"`
 	Commands  []string `json:"command"`
@@ -295,7 +296,7 @@ func (c *BuildCommand) toMake(w io.Writer) {
 		}
 	}
 	buf.WriteString(": ")
-	buf.WriteString(strings.Join(c.Inputs, " "))
+	buf.WriteString(strings.Join(c.Prereqs, " "))
 	buf.WriteByte('\n')
 
 	cd := ""
@@ -319,7 +320,7 @@ func (c *BuildCommand) toKnit(w io.Writer) {
 		buf.WriteString(strings.Join(c.Outputs, " "))
 	}
 	buf.WriteString(": ")
-	buf.WriteString(strings.Join(c.Inputs, " "))
+	buf.WriteString(strings.Join(c.Prereqs, " "))
 	buf.WriteByte('\n')
 
 	cd := ""
@@ -351,7 +352,7 @@ func (c *BuildCommand) toNinja(w io.Writer) {
 	if len(c.Commands) == 0 {
 		rule = "phony"
 	}
-	fmt.Fprintf(w, "build %s: %s %s\n", out, rule, strings.Join(c.Inputs, " "))
+	fmt.Fprintf(w, "build %s: %s %s\n", out, rule, strings.Join(c.Prereqs, " "))
 }
 
 func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) BuildRules {
@@ -359,9 +360,13 @@ func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) B
 		return cmds
 	}
 
-	prs := n.prereqsSub()
+	inputs := n.prereqsSub(false)
+	for i, p := range inputs {
+		inputs[i] = filepath.Join(n.graph.dir, p)
+	}
+	prs := n.prereqsSub(true)
 	for i, p := range prs {
-		prs[i] = filepath.Clean(p)
+		prs[i] = filepath.Join(n.graph.dir, p)
 	}
 	outputs := []string{}
 	for _, o := range n.outputs {
@@ -369,9 +374,10 @@ func (t *BuildTool) commands(n *node, visited map[*info]bool, cmds BuildRules) B
 	}
 	cmds = append(cmds, BuildCommand{
 		Directory: n.graph.dir,
-		Inputs:    prs,
+		Prereqs:   prs,
+		Inputs:    inputs,
 		Outputs:   outputs,
-		Name:      filepath.Clean(n.myTarget),
+		Name:      filepath.Join(n.graph.dir, n.myTarget),
 		Commands:  n.recipe,
 	})
 
