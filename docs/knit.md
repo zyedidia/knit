@@ -1,5 +1,3 @@
-Note: this documentation is out of date.
-
 # Rules
 
 A rule consists of four parts:
@@ -17,7 +15,8 @@ targets:attributes: prereqs
     recipe
 ```
 
-If the rule has no attributes, it may be omitted, leaving just `targets: prereqs`.
+If the rule has no attributes, it may be omitted, leaving just `targets:
+prereqs` on the first line.
 
 When a rule is embedded in Lua, it is prefixed with a `$`:
 
@@ -27,7 +26,15 @@ $ targets:attributes: prereqs
 ```
 
 Direct rules are rules where the targets and prereqs are explicit names of
-values.
+values. For example,
+
+```
+foo.o: foo.c
+    gcc -c foo.c -o foo.o
+```
+
+Specifies that the file `foo.o` is built from `foo.c`, using the command `gcc
+-c foo.c -o foo.o`.
 
 ## Meta rules
 
@@ -76,16 +83,20 @@ Knit supports the following attributes:
 * `R` (regex): this meta rule uses regular expression matching.
 * `V` (virtual): the value this rule generates is not a file, just a name.
 * `M` (no meta): this rule's targets cannot be matched by meta rules.
-* `X` (exclusive): this rule cannot execute in parallel with any other rules.
 * `E` (non-stop): this rule does not stop if one of its commands fails.
+* `B` (build): this rule must always be built (it is always out-of-date).
+* `L` (linked): this rule always runs if an out-of-date sub-rule requires it as
+  a prereq.
 
 ## Recipes
 
 A recipe is a list of commands to execute. They are executed within the `sh`
 shell. Recipes may use variables that will be expanded before the recipe
 executes. Variables are written with `$var`, or full Lua expressions can be
-written with `$(expr)`. Expressions and variables are evaluated in the global
-scope, meaning local variables are not available during this expansion.
+written with `$(expr)`. Variables/expressions are expanded eagerly when the
+rule is created. If expansion causes an error, the expansion is delayed until
+rule evaluation (when special build variables are available). During rule
+evaluation, only global variables (and special variables) are available.
 
 Some special variables are available during recipe expansion:
 
@@ -98,28 +109,147 @@ Some special variables are available during recipe expansion:
 
 # Knitfiles
 
-A Knitfile is a Lua 5.1 program that may also contain inline rule declarations using the syntax
+A Knitfile is a Lua 5.1 program with additional support for rule expressions.
+The Knitfile ultimately must return a "ruleset" -- a list of build rules that
+are used to construct the build graph.
 
 ```
 $ targets:attributes: prereqs
     ...
 ```
 
-This means, for example, that rules can be dynamically created:
+A rule expression may be assigned to a variable
 
 ```
-if condition then
-$ targets:attributes: prereqs
-    ...
-end
+local rule = $ foo.o: foo.c
+    gcc -c $input -o $output
 ```
 
-This rule is only created if the Lua expression `condition` is true.
+More often, rule expressions are gathered together in a Lua table:
+
+```
+local rules = {
+$ foo.o: foo.c
+    gcc -c $input -o $output
+$ foo: foo.o
+    gcc $input -o $output
+}
+```
+
+## Rulesets
+
+A table of rules can be converted into a "ruleset" by using the special `r`
+function, which converts the table into a Lua "userdata" object representing a
+list of build rules.
+
+
+```
+local ruleset = r{
+$ foo.o: foo.c
+    gcc -c $input -o $output
+$ foo: foo.o
+    gcc $input -o $output
+}
+```
+
+If the Knitfile returns this ruleset, then it will be used as the main set of
+rules for the build.
+
+Note that two rulesets may be combined with the `+` operator.
+
+```
+ruleset = ruleset + r{
+$ build:V: foo
+}
+```
+
+## Sub-builds
+
+A build may use several rulesets. In addition, when depending on another ruleset,
+you may specify the directory the ruleset should be executed in. The ruleset dependency
+is specified in the form `[ruleset][directory]rule`.
+
+For example:
+
+```
+local foorules = r{
+$ foo.o: foo.c
+    gcc -c $input -o $output
+}
+
+return r{
+$ prog.o: prog.c
+    gcc -c $input -o $output
+$ prog: prog.o [foorules][libfoo]foo.o
+    gcc $input -o $output
+}
+```
+
+This Knitfile assumes the build consists of `prog.c` and `libfoo/foo.c`. It
+builds `libfoo/foo.o` using a sub-build and a separate ruleset that is executed
+from within the `libfoo` directory.
+
+It is also useful to combine sub-builds with the `include(kf)` function, which
+runs the Knitfile `kf` from the directory where it exists, and returns the
+ruleset that the Knitfile produces. This means you can easily use a sub-directory's
+Knitfile to create a ruleset for use in a sub-build.
+
+# Options
 
 Knit will search the current directory for a Knitfile called `knitfile` or
 `Knitfile`. If one is not found, it will use the Knitfile in
 `~/.config/knit/Knitfile.def`, or if that does not exist it will throw an
 error.
+
+Several options are available as command-line flags. They may also be specified
+in a `.knit.toml` file. Knit will search upwards from the current directory
+for `.knit.toml` files, and use the options set in those files. It will also
+search `~/.config/knit/.knit.toml`.
+
+## Sub-tools
+
+Running `knit [TARGET]` will create a build graph for the target. By default,
+knit will then execute that build graph. Using the `-t TOOL` option, you may
+specify a sub-tool to run instead of building:
+
+* `list` - list all available tools
+* `graph` - print build graph in specified format: text, dot, pdf
+* `clean` - remove all files produced by the build
+* `targets` - list all targets (pass 'virtual' for just virtual targets)
+* `compdb` - output a compile commands database
+* `commands` - output the build commands (formats: knit, json, make, ninja, shell)
+
+Some examples are shown below.
+
+### Automatic cleaning
+
+```
+knit target -t clean
+```
+
+### Output a shell script for the build
+
+```
+knit target -t commands shell
+```
+
+### Output a Ninja build file
+
+```
+knit target -t commands ninja
+```
+
+### Output a compile commands database
+
+```
+knit target -t compdb
+```
+
+### Output a PDF build graph
+
+```
+knit target -t graph pdf > graph.pdf
+```
 
 # Built-in Lua functions
 
@@ -127,7 +257,11 @@ error.
 
 * `rule(rule string)`: define a rule. The `$` syntax is shorthand for this function.
 
-* `include(file string)`: include a rule from a file if it exists.
+* `include(file string)`: run a Knitfile from its directory and return the generated ruleset.
+
+* `rulefile(file string) Rule`: read a rule from a separate file and return it.
+
+* `r{$ ...}`, `r(rules []Rule) RuleSet`: turn a table of rules into a ruleset.
 
 * `tostring(value) string`: convert an arbitrary value to a string.
 
@@ -139,6 +273,8 @@ error.
 
 * `f"..."`, `f(s string) string`: formats a string using `$var` or `$(var)` to
   expand variables. Does not expand expressions.
+
+* `r{} + r{}`: you may use the `+` operator to combine rulesets together.
 
 # The `knit` Lua package
 
