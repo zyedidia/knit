@@ -18,25 +18,26 @@ because Knit can see that the recipe depends on the variable.
 Knit is in-progress -- backwards-incompatible changes will be made until a
 version 1.0 is released.
 
-# Improvements over Make
+# Features
 
-* Knit uses Lua for customization, rather than the Make custom language. This
-  makes is possible to write reusable build libraries.
-* Knit has direct support for sub-builds, while make requires you to spawn a
-  make sub-process to perform a sub-build.
+* Knit uses Lua for customization. This makes is possible to write reusable
+  build libraries.
+* Knit has direct support for sub-builds, (compared to make, which requires you
+  to spawn a make sub-process to perform a sub-build).
+* Knit can automatically convert your build to a Ninja file, a Makefile, or a
+  Shell script.
 * Knit can hash files to determine if they are out-of-date, rather than just
   relying on file modification times.
 * Knit tracks recipe changes, so if you update a variable (in the Knitfile or
   at the command-line), any dependent rules will be automatically rebuilt.
+* Knit can automatically clean all files generated during a build.
 * Knit can export a compile commands database for use with a language server.
-* Knit supports `%` meta-rules and regular expression meta-rules. Make only
-  supports `%` meta-rules.
-* Make requires tab characters for indentation, Knit does not.
-* Make uses special targets such as `.SECONDARY` to indicate special
-  processing. Knit uses rule attributes.
+* Knit supports `%` meta-rules and regular expression meta-rules.
+* Knit uses rule attributes instead of using targets such as `.SECONDARY` to
+  indicate special processing.
 * Knit supports virtual attributes that are independent of the file system.
 * Knit uses sane variable names like `$input`, `$output`, and `$match` instead
-  of `$^`, `$@`, and `$*`.
+  of Make's `$^`, `$@`, and `$*`.
 * Knit builds using all cores by default.
 * Knit can generate a build graph visualization using graphviz (dot).
 
