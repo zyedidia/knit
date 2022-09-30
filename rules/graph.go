@@ -551,11 +551,49 @@ func (n *node) time() time.Time {
 	return t
 }
 
+type UpdateReason int
+
+const (
+	UpToDate UpdateReason = iota
+	Rebuild
+	NoExist
+	ForceUpdate
+	HashModified
+	TimeModified
+	RecipeModified
+	Untracked
+	Prereq
+)
+
+func (u UpdateReason) String() string {
+	switch u {
+	case UpToDate:
+		return "up-to-date"
+	case Rebuild:
+		return "rebuild attribute"
+	case NoExist:
+		return "does not exist"
+	case ForceUpdate:
+		return "forced update"
+	case HashModified:
+		return "hash modified"
+	case TimeModified:
+		return "time modified"
+	case RecipeModified:
+		return "recipe modified"
+	case Untracked:
+		return "not in db"
+	case Prereq:
+		return "prereq is out-of-date"
+	}
+	panic("unreachable")
+}
+
 // returns true if this node should be rebuilt during the build
-func (n *node) outOfDate(db *Database, hash bool) bool {
+func (n *node) outOfDate(db *Database, hash bool) UpdateReason {
 	// rebuild rules are always out of date
 	if n.rule.attrs.Rebuild {
-		return true
+		return Rebuild
 	}
 
 	// virtual rules don't have outputs
@@ -563,7 +601,7 @@ func (n *node) outOfDate(db *Database, hash bool) bool {
 		// if an output does not exist, it is out of date
 		for _, o := range n.outputs {
 			if !o.exists {
-				return true
+				return NoExist
 			}
 		}
 	}
@@ -572,33 +610,41 @@ func (n *node) outOfDate(db *Database, hash bool) bool {
 	for _, p := range n.prereqs {
 		for _, f := range p.outputs {
 			if f.updated {
-				return true
+				return ForceUpdate
 			}
 		}
 
 		if hash {
 			if p.myOutput != nil {
-				if !db.Prereqs.has(n.rule.targets, p.myOutput.name, n.graph.dir) {
-					return true
+				has := db.Prereqs.has(n.rule.targets, p.myOutput.name, n.graph.dir)
+				if has == noHash {
+					return HashModified
+				} else if has == noTargets {
+					return Untracked
 				}
 			}
 		} else if p.time().After(n.time()) {
-			return true
+			return TimeModified
 		}
 	}
 
 	// database doesn't have an entry for this recipe
-	if !db.Recipes.has(n.rule.targets, n.recipe, n.graph.dir) {
-		return true
+	if len(n.rule.recipe) != 0 {
+		has := db.Recipes.has(n.rule.targets, n.recipe, n.graph.dir)
+		if has == noHash {
+			return RecipeModified
+		} else if has == noTargets {
+			return Untracked
+		}
 	}
 
 	// if a prereq is out of date, this rule is out of date
 	for _, p := range n.prereqs {
-		if p.outOfDate(db, hash) {
-			return true
+		if p.outOfDate(db, hash) != UpToDate {
+			return Prereq
 		}
 	}
-	return false
+	return UpToDate
 }
 
 func (n *node) count(counted map[*info]bool) int {

@@ -126,13 +126,22 @@ type Recipes struct {
 	Hashes map[uint64]uint64
 }
 
-func (r *Recipes) has(targets, recipe []string, dir string) bool {
+const (
+	noTargets = iota
+	noHash
+	hasAll
+)
+
+func (r *Recipes) has(targets, recipe []string, dir string) int {
 	rhash := hashSlice(recipe)
 	thash := hashSliceAndString(targets, dir)
 	if h, ok := r.Hashes[thash]; ok {
-		return rhash == h
+		if rhash == h {
+			return hasAll
+		}
+		return noHash
 	}
-	return false
+	return noTargets
 }
 
 func (r *Recipes) insert(targets, recipe []string, dir string) {
@@ -157,13 +166,16 @@ func (p *Prereqs) insert(targets []string, prereq, dir string) {
 	p.Hashes[thash].insert(filepath.Join(dir, prereq))
 }
 
-func (p *Prereqs) has(targets []string, prereq, dir string) bool {
+func (p *Prereqs) has(targets []string, prereq, dir string) int {
 	thash := hashSliceAndString(targets, dir)
 	files, ok := p.Hashes[thash]
 	if !ok {
-		return false
+		return noTargets
 	}
-	return files.matches(filepath.Join(dir, prereq))
+	if files.matches(filepath.Join(dir, prereq)) {
+		return hasAll
+	}
+	return noHash
 }
 
 type Files struct {

@@ -97,7 +97,7 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 
 func (e *Executor) execNode(n *node) {
 	e.lock.Lock()
-	if !e.opts.BuildAll && !n.rule.attrs.Linked && !n.outOfDate(e.db, e.opts.Hash) {
+	if !e.opts.BuildAll && !n.rule.attrs.Linked && n.outOfDate(e.db, e.opts.Hash) == UpToDate {
 		n.setDone(e.db, e.opts.NoExec)
 		e.lock.Unlock()
 		return
