@@ -25,6 +25,7 @@ var tools = []Tool{
 	&TargetsTool{},
 	&CompileDbTool{},
 	&CommandsTool{},
+	&StatusTool{},
 }
 
 type Tool interface {
@@ -119,7 +120,7 @@ func (t *GraphTool) Run(g *Graph, args []string) error {
 }
 
 func (t *GraphTool) String() string {
-	return "graph - print build graph in specified format: text, dot, pdf"
+	return "graph - print build graph in specified format: text, tree, dot, pdf"
 }
 
 type CleanTool struct {
