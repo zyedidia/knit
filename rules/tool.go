@@ -467,7 +467,7 @@ type StatusTool struct {
 
 func (t *StatusTool) visit(indent string, n *node, visited map[*node]bool) {
 	fmt.Fprintf(t.W, "%s%s: [%s]\n", indent, n2str(n), n.outOfDate(t.Db, t.Hash))
-	if visited[n] {
+	if visited[n] && len(n.prereqs) > 0 {
 		fmt.Fprintf(t.W, "%s  ...\n", indent)
 		return
 	}

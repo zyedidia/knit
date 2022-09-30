@@ -419,10 +419,6 @@ func (g *Graph) resolveTarget(prereq string, visits []int, gs *GraphSet, updated
 	n.rule = &rule
 
 	for _, t := range n.rule.targets {
-		// TODO: maybe we should have a separate outputs map for outputs that
-		// are incidentally created vs outputs that were meant to be created as
-		// part of the build (incidental ones should be auto-cleaned, but only
-		// actual ones should be used for build timestamping).
 		if !n.rule.attrs.Virtual {
 			n.outputs[t] = newFile(g.dir, t, updated)
 		}
@@ -579,9 +575,9 @@ func (u UpdateReason) String() string {
 	case ForceUpdate:
 		return "forced update"
 	case HashModified:
-		return "hash modified"
+		return "prereq hash modified"
 	case TimeModified:
-		return "time modified"
+		return "prereq time modified"
 	case RecipeModified:
 		return "recipe modified"
 	case Untracked:
