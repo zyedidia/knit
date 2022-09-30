@@ -242,6 +242,8 @@ func Run(out io.Writer, args []string, flags Flags) error {
 			t = &rules.CompileDbTool{W: w}
 		case "commands":
 			t = &rules.CommandsTool{W: w}
+		case "status":
+			t = &rules.StatusTool{W: w, Db: db, Hash: flags.Hash}
 		default:
 			return fmt.Errorf("unknown tool: %s", flags.Tool)
 		}

@@ -11,6 +11,13 @@ import (
 	"strings"
 )
 
+func n2str(n *node) string {
+	if n.graph.dir == "" || n.graph.dir == "." {
+		return n.myTarget
+	}
+	return fmt.Sprintf("[%s] %s", n.graph.dir, n.myTarget)
+}
+
 var tools = []Tool{
 	&ListTool{},
 	&GraphTool{},
@@ -45,13 +52,6 @@ type GraphTool struct {
 	W io.Writer
 }
 
-func (t *GraphTool) str(n *node) string {
-	if n.graph.dir == "" || n.graph.dir == "." {
-		return n.myTarget
-	}
-	return fmt.Sprintf("[%s] %s", n.graph.dir, n.myTarget)
-}
-
 func (t *GraphTool) dot(g *Graph, w io.Writer) {
 	fmt.Fprintln(w, "digraph take {")
 	fmt.Fprintln(w, "rankdir=\"LR\";")
@@ -65,23 +65,27 @@ func (t *GraphTool) dotNode(n *node, w io.Writer, visited map[*info]bool) {
 	}
 	visited[n.info] = true
 	for _, p := range n.prereqs {
-		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", t.str(p), t.str(n))
+		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", n2str(p), n2str(n))
 		t.dotNode(p, w, visited)
 	}
 }
 
-func (t *GraphTool) text(g *Graph, w io.Writer) {
-	t.textNode(g.base, w, make(map[*info]bool))
-}
-
-func (t *GraphTool) textNode(n *node, w io.Writer, visited map[*info]bool) {
+func (t *GraphTool) text(n *node, w io.Writer, visited map[*info]bool) {
 	if visited[n.info] {
 		return
 	}
 	visited[n.info] = true
 	for _, p := range n.prereqs {
-		fmt.Fprintf(w, "%s -> %s\n", t.str(n), t.str(p))
-		t.textNode(p, w, visited)
+		fmt.Fprintf(w, "%s -> %s\n", n2str(n), n2str(p))
+		t.text(p, w, visited)
+	}
+}
+
+func (t *GraphTool) tree(indent string, n *node, w io.Writer, visited map[*info]bool) {
+	visited[n.info] = true
+	fmt.Fprintf(w, "%s%s\n", indent, n2str(n))
+	for _, p := range n.prereqs {
+		t.tree(indent+"| ", p, w, visited)
 	}
 }
 
@@ -92,7 +96,9 @@ func (t *GraphTool) Run(g *Graph, args []string) error {
 	}
 	switch choice {
 	case "text":
-		t.text(g, t.W)
+		t.text(g.base, t.W, make(map[*info]bool))
+	case "tree":
+		t.tree("", g.base, t.W, make(map[*info]bool))
 	case "dot":
 		t.dot(g, t.W)
 	case "pdf":
@@ -107,7 +113,7 @@ func (t *GraphTool) Run(g *Graph, args []string) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("invalid argument '%s', must be one of: text, dot, pdf", choice)
+		return fmt.Errorf("invalid argument '%s', must be one of: text, tree, dot, pdf", choice)
 	}
 	return nil
 }
@@ -453,24 +459,34 @@ func (t *CommandsTool) String() string {
 	return "commands - output the build commands (formats: knit, json, make, ninja, shell)"
 }
 
-// TODO: status tool
-// type StatusTool struct{}
-//
-// func (t *StatusTool) visit(n *node, visited map[*info]bool) {
-// 	if visited[n.info] {
-// 		return
-// 	}
-//
-// 	visited[n.info] = true
-// 	for _, p := range n.prereqs {
-// 		t.visit(p, visited)
-// 	}
-// }
-//
-// func (t *StatusTool) Run(g *Graph, args []string) error {
-// 	return nil
-// }
-//
-// func (t *StatusTool) String() string {
-// 	return "status - output dependency status information"
-// }
+type StatusTool struct {
+	W    io.Writer
+	Db   *Database
+	Hash bool
+}
+
+func (t *StatusTool) visit(indent string, n *node, visited map[*node]bool) {
+	fmt.Fprintf(t.W, "%s%s", indent, n2str(n))
+	if n.outOfDate(t.Db, t.Hash) {
+		fmt.Fprint(t.W, ": [out of date]\n")
+	} else {
+		fmt.Fprint(t.W, ": [good]\n")
+	}
+	if visited[n] {
+		fmt.Fprintf(t.W, "%s  ...\n", indent)
+		return
+	}
+	visited[n] = true
+	for _, p := range n.prereqs {
+		t.visit(indent+"  ", p, visited)
+	}
+}
+
+func (t *StatusTool) Run(g *Graph, args []string) error {
+	t.visit("", g.base, make(map[*node]bool))
+	return nil
+}
+
+func (t *StatusTool) String() string {
+	return "status - output dependency status information"
+}

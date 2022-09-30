@@ -213,11 +213,12 @@ knit will then execute that build graph. Using the `-t TOOL` option, you may
 specify a sub-tool to run instead of building:
 
 * `list` - list all available tools
-* `graph` - print build graph in specified format: text, dot, pdf
+* `graph` - print build graph in specified format: text, tree, dot, pdf
 * `clean` - remove all files produced by the build
 * `targets` - list all targets (pass 'virtual' for just virtual targets)
 * `compdb` - output a compile commands database
 * `commands` - output the build commands (formats: knit, json, make, ninja, shell)
+* `status` - lists dependencies and whether they are up-to-date
 
 The special target `_all` depends on every target in the build. Thus `knit _all
 -t targets` will list all targets.

@@ -221,19 +221,22 @@ func (g *Graph) Size() int {
 }
 
 func NewGraph(rs *RuleSet, target, rsname string, gs *GraphSet, dir string, updated map[string]bool) (g *Graph, err error) {
+	nodes := make(map[string]*node)
+	fullNodes := make(map[string]*node)
 	for _, g := range gs.graphs {
 		// if the graph is already in the graphset, return it instead of
 		// creating a new one
 		if g.dir == dir && g.rsname == rsname {
-			return g, nil
+			fullNodes = g.fullNodes
+			nodes = g.nodes
 		}
 	}
 
 	g = &Graph{
 		rs:        rs,
 		rsname:    rsname,
-		nodes:     make(map[string]*node),
-		fullNodes: make(map[string]*node),
+		nodes:     nodes,
+		fullNodes: fullNodes,
 		dir:       dir,
 	}
 	gs.graphs = append(gs.graphs, g)
