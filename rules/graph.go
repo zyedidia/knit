@@ -59,6 +59,9 @@ type node struct {
 	myTarget  string
 	myPrereqs []string
 	myOutput  *file
+
+	memoized   bool
+	memoUpdate UpdateReason
 }
 
 type info struct {
@@ -589,8 +592,16 @@ func (u UpdateReason) String() string {
 	panic("unreachable")
 }
 
-// returns true if this node should be rebuilt during the build
 func (n *node) outOfDate(db *Database, hash bool) UpdateReason {
+	if !n.memoized {
+		n.memoUpdate = n.outOfDateNoMemo(db, hash)
+		n.memoized = true
+	}
+	return n.memoUpdate
+}
+
+// returns true if this node should be rebuilt during the build
+func (n *node) outOfDateNoMemo(db *Database, hash bool) UpdateReason {
 	// rebuild rules are always out of date
 	if n.rule.attrs.Rebuild {
 		return Rebuild
