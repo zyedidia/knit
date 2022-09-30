@@ -31,7 +31,7 @@ func NewGraphSet(rules map[string]*RuleSet, main string, target string, updated 
 		gs := &GraphSet{
 			rules: rules,
 		}
-		g, err := NewGraph(rs, target, gs, ".", updated)
+		g, err := NewGraph(rs, target, main, gs, ".", updated)
 		if err != nil {
 			return nil, err
 		}
@@ -44,6 +44,7 @@ func NewGraphSet(rules map[string]*RuleSet, main string, target string, updated 
 type Graph struct {
 	base      *node
 	rs        *RuleSet
+	rsname    string
 	nodes     map[string]*node // map of targets to nodes
 	fullNodes map[string]*node // map of all targets, including incidental ones, to nodes
 	// Directory this graph is executed in, can be relative to the main graph.
@@ -219,9 +220,18 @@ func (g *Graph) Size() int {
 	return len(g.nodes)
 }
 
-func NewGraph(rs *RuleSet, target string, gs *GraphSet, dir string, updated map[string]bool) (g *Graph, err error) {
+func NewGraph(rs *RuleSet, target, rsname string, gs *GraphSet, dir string, updated map[string]bool) (g *Graph, err error) {
+	for _, g := range gs.graphs {
+		// if the graph is already in the graphset, return it instead of
+		// creating a new one
+		if g.dir == dir && g.rsname == rsname {
+			return g, nil
+		}
+	}
+
 	g = &Graph{
 		rs:        rs,
+		rsname:    rsname,
 		nodes:     make(map[string]*node),
 		fullNodes: make(map[string]*node),
 		dir:       dir,
@@ -241,7 +251,7 @@ func (g *Graph) resolveTarget(prereq string, visits []int, gs *GraphSet, updated
 	if rs, ok := gs.rules[p.ruleset]; ok {
 		// if this target uses a separate ruleset, create a subgraph and use
 		// that to resolve the target.
-		subg, err := NewGraph(rs, p.name, gs, pathJoin(g.dir, p.dir), updated)
+		subg, err := NewGraph(rs, p.name, p.ruleset, gs, pathJoin(g.dir, p.dir), updated)
 		if err != nil {
 			return nil, err
 		}
