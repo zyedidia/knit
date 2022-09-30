@@ -465,20 +465,24 @@ type StatusTool struct {
 	Hash bool
 }
 
-func (t *StatusTool) visit(indent string, n *node, visited map[*node]bool) {
-	fmt.Fprintf(t.W, "%s%s: [%s]\n", indent, n2str(n), n.outOfDate(t.Db, t.Hash))
+func (t *StatusTool) visit(prev UpdateReason, indent string, n *node, visited map[*node]bool) {
+	status := n.outOfDate(t.Db, t.Hash)
+	if n.rule.attrs.Linked && status == UpToDate && prev != UpToDate {
+		status = LinkedUpdate
+	}
+	fmt.Fprintf(t.W, "%s%s: [%s]\n", indent, n2str(n), status)
 	if visited[n] && len(n.prereqs) > 0 {
 		fmt.Fprintf(t.W, "%s  ...\n", indent)
 		return
 	}
 	visited[n] = true
 	for _, p := range n.prereqs {
-		t.visit(indent+"  ", p, visited)
+		t.visit(status, indent+"  ", p, visited)
 	}
 }
 
 func (t *StatusTool) Run(g *Graph, args []string) error {
-	t.visit("", g.base, make(map[*node]bool))
+	t.visit(Rebuild, "", g.base, make(map[*node]bool))
 	return nil
 }
 

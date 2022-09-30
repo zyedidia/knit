@@ -562,6 +562,7 @@ const (
 	RecipeModified
 	Untracked
 	Prereq
+	LinkedUpdate
 )
 
 func (u UpdateReason) String() string {
@@ -584,6 +585,8 @@ func (u UpdateReason) String() string {
 		return "not in db"
 	case Prereq:
 		return "prereq is out-of-date"
+	case LinkedUpdate:
+		return "linked update"
 	}
 	panic("unreachable")
 }
