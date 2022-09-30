@@ -49,11 +49,12 @@ func (t *GraphTool) str(n *node) string {
 	if n.graph.dir == "" || n.graph.dir == "." {
 		return n.myTarget
 	}
-	return fmt.Sprintf("[%s]%s", n.graph.dir, n.myTarget)
+	return fmt.Sprintf("[%s] %s", n.graph.dir, n.myTarget)
 }
 
 func (t *GraphTool) dot(g *Graph, w io.Writer) {
 	fmt.Fprintln(w, "digraph take {")
+	fmt.Fprintln(w, "rankdir=\"LR\";")
 	t.dotNode(g.base, w, make(map[*info]bool))
 	fmt.Fprintln(w, "}")
 }
@@ -64,7 +65,7 @@ func (t *GraphTool) dotNode(n *node, w io.Writer, visited map[*info]bool) {
 	}
 	visited[n.info] = true
 	for _, p := range n.prereqs {
-		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", t.str(n), t.str(p))
+		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", t.str(p), t.str(n))
 		t.dotNode(p, w, visited)
 	}
 }

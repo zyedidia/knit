@@ -24,7 +24,7 @@ func (p *BasicPrinter) Print(cmd, dir string, name string, step int) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	if dir != "." {
-		fmt.Fprintf(p.w, "[in %s] ", dir)
+		fmt.Fprintf(p.w, "[%s] ", dir)
 	}
 	fmt.Fprintln(p.w, cmd)
 }
@@ -48,7 +48,7 @@ func (p *StepPrinter) Print(cmd, dir string, name string, step int) {
 	defer p.lock.Unlock()
 	fmt.Fprintf(p.w, "[%d/%d] ", step, p.steps)
 	if dir != "." {
-		fmt.Fprintf(p.w, "[in %s] ", dir)
+		fmt.Fprintf(p.w, "[%s] ", dir)
 	}
 	fmt.Fprintln(p.w, cmd)
 }
@@ -107,7 +107,7 @@ func (p *ProgressPrinter) Print(cmd, dir string, name string, step int) {
 		p.bar.Clear()
 		fmt.Fprint(p.w, "\r")
 		if dir != "." {
-			fmt.Fprintf(p.w, "[in %s] ", dir)
+			fmt.Fprintf(p.w, "[%s] ", dir)
 		}
 		fmt.Fprintln(p.w, cmd)
 	}

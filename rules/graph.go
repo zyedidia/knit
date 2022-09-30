@@ -439,7 +439,7 @@ func (g *Graph) resolveTarget(prereq string, visits []int, gs *GraphSet, updated
 
 func (g *Graph) subdir() string {
 	if g.dir != "." && g.dir != "" {
-		return fmt.Sprintf("in %s: ", g.dir)
+		return fmt.Sprintf("%s: ", g.dir)
 	}
 	return ""
 }
