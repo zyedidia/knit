@@ -20,9 +20,9 @@ version 1.0 is released.
 
 # Features
 
-* Knit uses Lua for customization. This makes is possible to write reusable
+* Knit uses Lua for customization. This makes it possible to write reusable
   build libraries.
-* Knit has direct support for sub-builds, (compared to make, which requires you
+* Knit has direct support for sub-builds (compared to make, which requires you
   to spawn a make sub-process to perform a sub-build).
 * Knit can automatically convert your build to a Ninja file, a Makefile, or a
   Shell script.
