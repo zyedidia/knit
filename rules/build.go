@@ -76,7 +76,7 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 
-	e.steps = g.steps()
+	e.steps = g.steps(e.db, e.opts.BuildAll, e.opts.Hash)
 	e.printer.SetSteps(e.steps)
 
 	for i := 0; i < e.threads; i++ {

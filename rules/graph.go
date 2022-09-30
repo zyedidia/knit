@@ -657,19 +657,22 @@ func (n *node) outOfDateNoMemo(db *Database, hash bool) UpdateReason {
 	return UpToDate
 }
 
-func (n *node) count(counted map[*info]bool) int {
+func (n *node) count(db *Database, full, hash bool, counted map[*info]bool) int {
 	s := 0
+	if !full && n.outOfDate(db, hash) == UpToDate {
+		return 0
+	}
 	if !counted[n.info] && len(n.rule.recipe) != 0 {
 		s++
 	}
 	counted[n.info] = true
 	for _, p := range n.prereqs {
-		s += p.count(counted)
+		s += p.count(db, full, hash, counted)
 	}
 	return s
 }
 
-func (g *Graph) steps() int {
+func (g *Graph) steps(db *Database, full, hash bool) int {
 	counted := make(map[*info]bool)
-	return g.base.count(counted)
+	return g.base.count(db, full, hash, counted)
 }
