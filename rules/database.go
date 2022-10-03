@@ -163,7 +163,7 @@ func (p *Prereqs) insert(targets []string, prereq, dir string) {
 			Data: make(map[string]File),
 		}
 	}
-	p.Hashes[thash].insert(filepath.Join(dir, prereq))
+	p.Hashes[thash].insert(prereq)
 }
 
 func (p *Prereqs) has(targets []string, prereq, dir string) int {
@@ -172,7 +172,7 @@ func (p *Prereqs) has(targets []string, prereq, dir string) int {
 	if !ok {
 		return noTargets
 	}
-	if files.matches(filepath.Join(dir, prereq)) {
+	if files.matches(prereq) {
 		return hasAll
 	}
 	return noHash
