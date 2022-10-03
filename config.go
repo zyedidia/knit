@@ -1,6 +1,7 @@
 package knit
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -29,6 +30,28 @@ func DefaultBuildFile() (string, bool) {
 		}
 	}
 	return "", false
+}
+
+var ErrBuildFileNotFound = errors.New("build file not found")
+
+func FindBuildFile(name string) (string, string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", "", err
+	}
+	dirs := []string{wd}
+	path := wd
+	for path != "/" {
+		if exists(filepath.Join(path, name)) {
+			return filepath.Join(path, name), path, nil
+		}
+		if exists(filepath.Join(path, title(name))) {
+			return filepath.Join(path, title(name)), path, nil
+		}
+		path = filepath.Dir(path)
+		dirs = append(dirs, path)
+	}
+	return "", "", nil
 }
 
 const configFile = ".knit.toml"

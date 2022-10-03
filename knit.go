@@ -115,28 +115,44 @@ func getRuleSets(vm *LuaVM, sets []string, rulesets map[string]*rules.RuleSet) e
 var ErrNothingToDo = errors.New("nothing to be done")
 
 func Run(out io.Writer, args []string, flags Flags) error {
-	if flags.RunDir != "" {
-		os.Chdir(flags.RunDir)
-	}
-
-	if exists(title(flags.Knitfile)) {
-		flags.Knitfile = title(flags.Knitfile)
-	}
-
-	def, ok := DefaultBuildFile()
-	if !exists(flags.Knitfile) && ok {
-		flags.Knitfile = def
-	}
-
-	f, err := os.Open(flags.Knitfile)
-	if err != nil {
-		return err
-	}
-
 	vm := NewLuaVM()
 
 	cliAssigns, targets := makeAssigns(args)
 	envAssigns, _ := makeAssigns(os.Environ())
+
+	if flags.RunDir != "" {
+		os.Chdir(flags.RunDir)
+	}
+
+	file, dir, err := FindBuildFile(flags.Knitfile)
+	if err != nil {
+		return err
+	}
+	if file == "" {
+		def, ok := DefaultBuildFile()
+		if ok {
+			file = def
+		}
+	} else if dir != "" && flags.RunDir == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		for i, t := range targets {
+			r, err := filepath.Rel(dir, wd)
+			if err != nil {
+				return err
+			}
+			targets[i] = filepath.Join(r, t)
+		}
+
+		os.Chdir(dir)
+	}
+
+	f, err := os.Open(file)
+	if err != nil {
+		return err
+	}
 
 	vm.MakeTable("cli")
 	for _, v := range cliAssigns {
