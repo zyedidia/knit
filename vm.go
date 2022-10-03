@@ -86,19 +86,17 @@ func NewLuaVM() *LuaVM {
 		return r3
 	}))
 	L.SetGlobal("r", luar.New(L, func(ruletbls ...[]LRule) LRuleSets {
+		if len(ruletbls) <= 0 {
+			return make(LRuleSets)
+		} else if len(ruletbls[0]) <= 0 {
+			return make(LRuleSets)
+		}
+
 		rules := make([]LRule, 0, len(ruletbls))
 		for _, rs := range ruletbls {
 			rules = append(rules, rs...)
 		}
-		dbg, ok := L.GetStack(1)
-		dir := "."
-		if ok {
-			L.GetInfo("nSl", dbg, nil)
-			abs, err := filepath.Abs(dbg.Source)
-			if err == nil {
-				dir = filepath.Dir(abs)
-			}
-		}
+		dir := filepath.Dir(ruletbls[0][0].File)
 		rs := LRuleSet{
 			Rules: rules,
 			Dir:   dir,
