@@ -41,6 +41,10 @@ func NewGraphSet(rules map[string]*RuleSet, main string, target string, updated 
 	return nil, fmt.Errorf("ruleset not found: %s", main)
 }
 
+func (gs *GraphSet) Empty() bool {
+	return len(gs.graphs) == 0 || len(gs.graphs) == 1 && gs.graphs[0].Size() <= 1
+}
+
 type Graph struct {
 	base      *node
 	rs        *RuleSet
@@ -125,14 +129,12 @@ func (n *node) setDone(db *Database, noexec bool) {
 type prereq struct {
 	name    string
 	ruleset string
-	dir     string
 }
 
 func parsePrereq(ps string) prereq {
 	var p prereq
 	buf := &bytes.Buffer{}
 	sawset := false
-	sawdir := false
 	sqn := 0
 
 	pos := 0
@@ -141,20 +143,17 @@ func parsePrereq(ps string) prereq {
 		switch r {
 		case '[':
 			sqn++
+			if sawset {
+				buf.WriteRune(r)
+			}
 		case ']':
 			sqn--
-			if sqn == 0 {
-				if sawset && sawdir {
-					buf.WriteRune(r)
-				} else if sawset {
-					p.dir = buf.String()
-					buf.Reset()
-					sawdir = true
-				} else {
-					p.ruleset = buf.String()
-					buf.Reset()
-					sawset = true
-				}
+			if sawset {
+				buf.WriteRune(r)
+			} else if sqn == 0 {
+				p.ruleset = buf.String()
+				buf.Reset()
+				sawset = true
 			}
 		default:
 			buf.WriteRune(r)
@@ -257,7 +256,7 @@ func (g *Graph) resolveTarget(prereq string, visits []int, gs *GraphSet, updated
 	if rs, ok := gs.rules[p.ruleset]; ok {
 		// if this target uses a separate ruleset, create a subgraph and use
 		// that to resolve the target.
-		subg, err := NewGraph(rs, p.name, p.ruleset, gs, pathJoin(g.dir, p.dir), updated)
+		subg, err := NewGraph(rs, p.name, p.ruleset, gs, pathJoin(g.dir, p.ruleset), updated)
 		if err != nil {
 			return nil, err
 		}

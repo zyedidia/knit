@@ -83,35 +83,6 @@ func exists(path string) bool {
 	return err == nil
 }
 
-func getRuleSets(vm *LuaVM, sets []string, rulesets map[string]*rules.RuleSet) error {
-	for _, set := range sets {
-		if _, ok := rulesets[set]; ok {
-			continue
-		}
-
-		lrs, ok := vm.GetRuleSet(set)
-		if !ok {
-			return fmt.Errorf("ruleset not found: %s", set)
-		}
-
-		var sets []string
-		rs := rules.NewRuleSet()
-		for _, lr := range lrs.Rules {
-			s, err := rules.ParseInto(lr.Contents, rs, lr.File, lr.Line)
-			if err != nil {
-				return err
-			}
-			sets = append(sets, s...)
-		}
-		rulesets[set] = rs
-		err := getRuleSets(vm, sets, rulesets)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 var ErrNothingToDo = errors.New("nothing to be done")
 
 func Run(out io.Writer, args []string, flags Flags) error {
@@ -143,7 +114,9 @@ func Run(out io.Writer, args []string, flags Flags) error {
 			if err != nil {
 				return err
 			}
-			targets[i] = filepath.Join(r, t)
+			if r != "" && r != "." {
+				targets[i] = fmt.Sprintf("[%s]%s", r, t)
+			}
 		}
 
 		os.Chdir(dir)
@@ -171,16 +144,24 @@ func Run(out io.Writer, args []string, flags Flags) error {
 
 	rulesets := make(map[string]*rules.RuleSet)
 
-	lruleset, ok := LToRuleSet(lval)
+	lsets, ok := LToRuleSets(lval)
 	if !ok {
 		return fmt.Errorf("eval returned %s, expected ruleset", lval.Type())
 	}
-	err = getRuleSets(vm, []string{lruleset.name}, rulesets)
-	if err != nil {
-		return err
+	wd, _ := filepath.Abs(".")
+	for _, lset := range lsets {
+		rs := rules.NewRuleSet()
+		for _, lr := range lset.Rules {
+			_, err := rules.ParseInto(lr.Contents, rs, lr.File, lr.Line)
+			if err != nil {
+				return err
+			}
+			dir, _ := filepath.Rel(wd, lset.Dir)
+			rulesets[dir] = rs
+		}
 	}
 
-	rs := rulesets[lruleset.name]
+	rs := rulesets["."]
 
 	alltargets := rs.AllTargets()
 
@@ -209,12 +190,12 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		updated[u] = true
 	}
 
-	graph, err := rules.NewGraphSet(rulesets, lruleset.name, "_build", updated)
+	graph, err := rules.NewGraphSet(rulesets, ".", "_build", updated)
 	if err != nil {
 		return err
 	}
 
-	if graph.Size() == 1 {
+	if graph.Empty() {
 		return fmt.Errorf("target not found: %s", targets)
 	}
 

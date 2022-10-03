@@ -37,8 +37,11 @@ type LRule struct {
 
 type LRuleSet struct {
 	Rules []LRule
+	Dir   string
 	name  string
 }
+
+type LRuleSets map[string]LRuleSet
 
 func NewLuaVM() *LuaVM {
 	L := lua.NewState()
@@ -67,29 +70,42 @@ func NewLuaVM() *LuaVM {
 		os.Chdir(wd)
 		return val
 	}))
-	mt := luar.MT(L, LRuleSet{})
-	L.SetField(mt.LTable, "__add", luar.New(L, func(r1, r2 LRuleSet) LRuleSet {
-		rules := make([]LRule, len(r1.Rules)+len(r2.Rules))
-		copy(rules, r1.Rules)
-		copy(rules[len(r1.Rules):], r2.Rules)
-		rs := LRuleSet{
-			Rules: rules,
-			name:  rulesName(),
+	mt := luar.MT(L, LRuleSets{})
+	L.SetField(mt.LTable, "__add", luar.New(L, func(r1, r2 LRuleSets) LRuleSets {
+		r3 := make(LRuleSets)
+		for dir, lset := range r1 {
+			r3[dir] = lset
 		}
-		vm.rsets[rs.name] = rs
-		return rs
+		for dir, lset := range r2 {
+			r3[dir] = LRuleSet{
+				Rules: append(r3[dir].Rules, lset.Rules...),
+				Dir:   dir,
+				name:  rulesName(),
+			}
+		}
+		return r3
 	}))
-	L.SetGlobal("r", luar.New(L, func(ruletbls ...[]LRule) LRuleSet {
+	L.SetGlobal("r", luar.New(L, func(ruletbls ...[]LRule) LRuleSets {
 		rules := make([]LRule, 0, len(ruletbls))
 		for _, rs := range ruletbls {
 			rules = append(rules, rs...)
 		}
+		dbg, ok := L.GetStack(1)
+		dir := "."
+		if ok {
+			L.GetInfo("nSl", dbg, nil)
+			abs, err := filepath.Abs(dbg.Source)
+			if err == nil {
+				dir = filepath.Dir(abs)
+			}
+		}
 		rs := LRuleSet{
 			Rules: rules,
+			Dir:   dir,
 			name:  rulesName(),
 		}
 		vm.rsets[rs.name] = rs
-		return rs
+		return map[string]LRuleSet{dir: rs}
 	}))
 	L.SetGlobal("_rule", luar.New(L, func(rule string, file string, line int) LRule {
 		return vm.makeRule(rule, file, line, rvar, rexpr)
@@ -273,15 +289,15 @@ func LToString(v lua.LValue) string {
 	}
 }
 
-func LToRuleSet(v lua.LValue) (LRuleSet, bool) {
+func LToRuleSets(v lua.LValue) (LRuleSets, bool) {
 	switch v := v.(type) {
 	case *lua.LUserData:
 		switch u := v.Value.(type) {
-		case LRuleSet:
+		case LRuleSets:
 			return u, true
 		}
 	}
-	return LRuleSet{}, false
+	return nil, false
 }
 
 func LTableToString(v *lua.LTable) string {
