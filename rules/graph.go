@@ -439,6 +439,12 @@ func (g *Graph) resolveTarget(prereq string, visits []int, gs *GraphSet, updated
 	for _, p := range n.rule.prereqs {
 		pn, err := g.resolveTarget(p, visits, gs, updated)
 		if err != nil {
+			// there was an error with a prereq, so this node is invalid and we
+			// must remove it from the maps
+			delete(g.nodes, target)
+			for _, t := range n.rule.targets {
+				delete(g.fullNodes, t)
+			}
 			return nil, err
 		}
 		n.prereqs = append(n.prereqs, pn)
