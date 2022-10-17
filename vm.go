@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/zyedidia/generic/stack"
 	lua "github.com/zyedidia/gopher-lua"
 	luar "github.com/zyedidia/gopher-luar"
 	"github.com/zyedidia/knit/expand"
@@ -26,6 +27,7 @@ type LuaVM struct {
 	L     *lua.LState
 	rsets map[string]LRuleSet
 	vars  map[string]*lua.LTable
+	from  *stack.Stack[string]
 }
 
 type LRule struct {
@@ -46,12 +48,22 @@ func NewLuaVM() *LuaVM {
 		L:     L,
 		vars:  make(map[string]*lua.LTable),
 		rsets: make(map[string]LRuleSet),
+		from:  stack.New[string](),
 	}
+	vm.from.Push(".")
 
 	rvar, rexpr := vm.ExpandFuncs()
 	lib := liblua.FromLibs(liblua.Knit)
 	L.SetGlobal("import", luar.New(L, func(pkg string) *lua.LTable {
 		return lib.Import(L, pkg)
+	}))
+	L.SetGlobal("rel", luar.New(L, func(files []string) []string {
+		ret := make([]string, 0, len(files))
+		for _, f := range files {
+			path := filepath.Join(vm.from.Peek(), f)
+			ret = append(ret, path)
+		}
+		return ret
 	}))
 	L.SetGlobal("include", luar.New(L, func(file string) lua.LValue {
 		dir := filepath.Dir(file)
@@ -60,10 +72,12 @@ func NewLuaVM() *LuaVM {
 			return luar.New(L, err)
 		}
 		os.Chdir(dir)
+		vm.from.Push(dir)
 		val, err := vm.DoFile(filepath.Base(file))
 		if err != nil {
 			return luar.New(L, err)
 		}
+		vm.from.Pop()
 		os.Chdir(wd)
 		return val
 	}))
