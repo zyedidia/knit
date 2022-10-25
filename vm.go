@@ -82,6 +82,13 @@ func NewLuaVM() *LuaVM {
 		return val
 	}))
 	mt := luar.MT(L, LRuleSet{})
+	L.SetField(mt.LTable, "__tostring", luar.New(L, func(rs LRuleSet) string {
+		buf := bytes.Buffer{}
+		for _, r := range rs.Rules {
+			buf.WriteString(strings.TrimSpace(r.Contents) + "\n")
+		}
+		return strings.TrimSpace(buf.String())
+	}))
 	L.SetField(mt.LTable, "__add", luar.New(L, func(r1, r2 LRuleSet) LRuleSet {
 		rules := make([]LRule, len(r1.Rules)+len(r2.Rules))
 		copy(rules, r1.Rules)
@@ -187,7 +194,10 @@ func NewLuaVM() *LuaVM {
 }
 
 func (vm *LuaVM) makeRule(rule string, file string, line int, rvar, rexpr expand.Resolver) LRule {
-	s, _ := expand.Expand(rule, rvar, rexpr)
+	s, err := expand.Expand(rule, rvar, rexpr)
+	if err != nil {
+		vm.L.Error(lua.LString(err.Error()), 1)
+	}
 	return LRule{
 		Contents: s,
 		File:     file,
