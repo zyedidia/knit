@@ -51,8 +51,7 @@ func (rs LRuleSet) String() string {
 	return buf.String()
 }
 
-// An LBuildSet is a list of rules associated with a directory, and possibly
-// referencing other buildsets.
+// An LBuildSet is a list of rules associated with a directory.
 type LBuildSet struct {
 	Dir  string
 	rset LRuleSet
@@ -157,7 +156,7 @@ func NewLuaVM() *LuaVM {
 				vm.Err(fmt.Errorf("invalid buildset item: %v", v))
 			}
 		})
-		b.Dir = filepath.Join(vm.wd.Peek(), dir)
+		b.Dir = filepath.Join(vm.Wd(), dir)
 		L.Push(luar.New(L, b))
 		return 1
 	}))
@@ -165,9 +164,7 @@ func NewLuaVM() *LuaVM {
 	// Directory management
 	L.SetGlobal("dcall", luar.New(L, func(fn *lua.LFunction, args ...lua.LValue) lua.LValue {
 		var dbg lua.Debug
-		fmt.Println("dcall", fn)
 		_, err := L.GetInfo(">nSl", &dbg, fn)
-		fmt.Println(err)
 		if err != nil {
 			vm.Err(err)
 			return lua.LNil
@@ -182,7 +179,7 @@ func NewLuaVM() *LuaVM {
 		return vm.L.Get(-1)
 	}))
 	L.SetGlobal("rel", luar.New(L, func(files []string) []string {
-		wd := vm.wd.Peek()
+		wd := vm.Wd()
 		if wd == "." {
 			return files
 		}
@@ -263,7 +260,7 @@ func NewLuaVM() *LuaVM {
 	// Lua eval
 	L.SetGlobal("eval", luar.New(L, func(s string) lua.LValue {
 		file := "<eval>"
-		wd := vm.wd.Peek()
+		wd := vm.Wd()
 		if wd != "." {
 			file = filepath.Join(wd, file)
 		}
@@ -285,6 +282,8 @@ func NewLuaVM() *LuaVM {
 	return vm
 }
 
+// EnterDir changes into 'dir' and returns the path of the directory that was
+// changed out of.
 func (vm *LuaVM) EnterDir(dir string) string {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -296,22 +295,31 @@ func (vm *LuaVM) EnterDir(dir string) string {
 	return wd
 }
 
+// LeaveDir returns to the directory 'to' (usually the value returned by
+// 'EnterDir').
 func (vm *LuaVM) LeaveDir(to string) {
 	vm.wd.Pop()
 	os.Chdir(to)
 }
 
+// Wd returns the current working directory.
 func (vm *LuaVM) Wd() string {
 	return vm.wd.Peek()
 }
 
+// Err causes the VM to Lua-panic with 'err'.
 func (vm *LuaVM) Err(err error) {
 	vm.ErrStr(err.Error())
 }
+
+// ErrStr causes the VM to Lua-panic with a string message 'err'.
 func (vm *LuaVM) ErrStr(err string) {
 	vm.L.Error(lua.LString(err), 1)
 }
 
+// Eval runs the Lua code in 'r' with the filename 'file' and all local/global
+// variables available in the current context. Returns the value that was
+// generated, or a possible error.
 func (vm *LuaVM) Eval(r io.Reader, file string) (lua.LValue, error) {
 	if fn, err := vm.L.Load(r, file); err != nil {
 		return nil, err
@@ -326,14 +334,17 @@ func (vm *LuaVM) Eval(r io.Reader, file string) (lua.LValue, error) {
 	}
 }
 
+// DoFile executes the Lua code inside 'file'. The file will be executed from
+// the current directory, but the filename displayed for errors will be
+// relative to the previous working directory.
 func (vm *LuaVM) DoFile(file string) (lua.LValue, error) {
 	f, err := os.Open(file)
 	defer f.Close()
 	if err != nil {
 		return lua.LNil, err
 	}
-	if vm.wd.Peek() != "." {
-		file = filepath.Join(vm.wd.Peek(), file)
+	if vm.Wd() != "." {
+		file = filepath.Join(vm.Wd(), file)
 	}
 	if fn, err := vm.L.Load(f, file); err != nil {
 		return nil, err
@@ -347,6 +358,9 @@ func (vm *LuaVM) DoFile(file string) (lua.LValue, error) {
 	}
 }
 
+// ExpandFuncs returns a set of functions used for expansion. The first expands
+// by looking up variables in the current Lua context, and the second evaluates
+// arbitrary Lua expressions.
 func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (string, error)) {
 	return func(name string) (string, error) {
 			v := getVar(vm.L, name)
@@ -365,6 +379,8 @@ func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (stri
 		}
 }
 
+// OpenDefaults opens all default Lua libraries: package, base, table, debug,
+// io, math, os, string.
 func (vm *LuaVM) OpenDefaults() {
 	for _, pair := range []struct {
 		n string
@@ -389,6 +405,7 @@ func (vm *LuaVM) OpenDefaults() {
 	}
 }
 
+// OpenKnit makes the 'knit' library available as a preloaded module.
 func (vm *LuaVM) OpenKnit() {
 	pkg := vm.pkgknit()
 	loader := func(L *lua.LState) int {
@@ -398,6 +415,7 @@ func (vm *LuaVM) OpenKnit() {
 	vm.L.PreloadModule("knit", loader)
 }
 
+// Returns a table containing all values exposed as part of the 'knit' library.
 func (vm *LuaVM) pkgknit() *lua.LTable {
 	pkg := vm.L.NewTable()
 
@@ -533,6 +551,7 @@ func getVar(L *lua.LState, v string) lua.LValue {
 	return L.GetGlobal(v)
 }
 
+// LToString converts a Lua value to a string.
 func LToString(v lua.LValue) string {
 	switch v := v.(type) {
 	case *lua.LUserData:
@@ -552,6 +571,7 @@ func LToString(v lua.LValue) string {
 	}
 }
 
+// LTableToString converts a Lua table to a string.
 func LTableToString(v *lua.LTable) string {
 	buf := &bytes.Buffer{}
 	v.ForEach(func(k, v lua.LValue) {
@@ -561,6 +581,7 @@ func LTableToString(v *lua.LTable) string {
 	return buf.String()
 }
 
+// LArrayToString converts a Lua array (table with length) to a string.
 func LArrayToString(v *lua.LTable) string {
 	size := v.Len()
 	buf := &bytes.Buffer{}
@@ -575,6 +596,8 @@ func LArrayToString(v *lua.LTable) string {
 	return buf.String()
 }
 
+// MakeTable creates a global Lua table called 'name', with the key-value pairs
+// from 'vals'.
 func (vm *LuaVM) MakeTable(name string, vals []assign) {
 	t := vm.L.NewTable()
 	vm.L.SetGlobal(name, t)

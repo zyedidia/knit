@@ -3,21 +3,10 @@ $ a:
     echo hi
 }
 
-print(b({
-$ %.o: %.c
-    gcc $input -o $output
-rules
-}, "asdf"))
-
 sub = include("sub/sub.lua")
-print(sub)
 
-print(dcall(foo))
-
-print(expand"$su")
-
-local knit = require("knit")
-
-print("glob: ", knit.glob("*.c"))
-
-return rules
+return {
+    sub,
+    rules,
+    dcall(foo),
+}

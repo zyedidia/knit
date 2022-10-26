@@ -13,6 +13,7 @@ import (
 	lua "github.com/zyedidia/gopher-lua"
 )
 
+// Flags for modifying the behavior of Knit.
 type Flags struct {
 	Knitfile string
 	Ncpu     int
@@ -31,6 +32,7 @@ type Flags struct {
 	ToolArgs []string
 }
 
+// Flags that may be automatically set in a .knit.toml file.
 type UserFlags struct {
 	Knitfile *string
 	Ncpu     *int
@@ -47,11 +49,13 @@ type UserFlags struct {
 	Updated  *[]string
 }
 
+// Capitalize the first rune of a string.
 func title(s string) string {
 	r, size := utf8.DecodeRuneInString(s)
 	return string(unicode.ToTitle(r)) + s[size:]
 }
 
+// Returns true if 'path' exists.
 func exists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
@@ -62,6 +66,8 @@ type assign struct {
 	value string
 }
 
+// Parses 'args' for expressions of the form 'key=value'. Assignments that are
+// found are returned, along with the remaining arguments.
 func makeAssigns(args []string) ([]assign, []string) {
 	assigns := make([]assign, 0, len(args))
 	other := make([]string, 0)
@@ -79,6 +85,8 @@ func makeAssigns(args []string) ([]assign, []string) {
 	return assigns, other
 }
 
+// Changes the working directory to 'dir' and changes all targets to be
+// relative to that directory.
 func goToKnitfile(vm *LuaVM, dir string, targets []string) error {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -90,7 +98,7 @@ func goToKnitfile(vm *LuaVM, dir string, targets []string) error {
 			return err
 		}
 		if r != "" && r != "." {
-			targets[i] = fmt.Sprintf("[%s]%s", r, t)
+			targets[i] = filepath.Join(r, t)
 		}
 	}
 
@@ -108,6 +116,62 @@ func (e *ErrMessage) Error() string {
 	return e.msg
 }
 
+// Given the return value from the Lua evaluation of the Knitfile, returns all
+// the buildsets and a list of the directories in order of priority. If the
+// Knitfile requested to return an error (with a string), or quietly (with
+// nil), returns an appropriate error.
+func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
+	var dirs []string
+	bsets := make(map[string]*LBuildSet)
+
+	addRuleSet := func(rs LRuleSet) {
+		if _, ok := bsets["."]; !ok {
+			bsets["."] = &LBuildSet{
+				Dir: ".",
+			}
+			dirs = append(dirs, ".")
+		}
+		bsets["."].rset = append(bsets["."].rset, rs...)
+	}
+	addBuildSet := func(bs LBuildSet) {
+		bsets[bs.Dir] = &bs
+		dirs = append(dirs, bs.Dir)
+	}
+
+	switch v := lval.(type) {
+	case lua.LString:
+		return nil, nil, &ErrMessage{msg: string(v)}
+	case *lua.LNilType:
+		return nil, nil, ErrQuiet
+	case *lua.LUserData:
+		switch u := v.Value.(type) {
+		case LRuleSet:
+			addRuleSet(u)
+		case LBuildSet:
+			addBuildSet(u)
+		default:
+			return nil, nil, fmt.Errorf("invalid return value: %v", lval)
+		}
+	case *lua.LTable:
+		v.ForEach(func(key, val lua.LValue) {
+			if u, ok := val.(*lua.LUserData); ok {
+				switch u := u.Value.(type) {
+				case LRuleSet:
+					addRuleSet(u)
+				case LBuildSet:
+					addBuildSet(u)
+				}
+			}
+		})
+	default:
+		return nil, nil, fmt.Errorf("invalid return value: %v", lval)
+	}
+	return dirs, bsets, nil
+}
+
+// Run searches for a Knitfile and executes it, according to args (a list of
+// targets and assignments), and the flags. All output is written to 'out'. The
+// path of the executed knitfile is returned, along with a possible error.
 func Run(out io.Writer, args []string, flags Flags) (string, error) {
 	if flags.RunDir != "" {
 		os.Chdir(flags.RunDir)
@@ -147,15 +211,13 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		return knitpath, err
 	}
 
-	switch v := lval.(type) {
-	case lua.LString:
-		return knitpath, &ErrMessage{msg: string(v)}
-	case *lua.LNilType:
-		return knitpath, ErrQuiet
-	case *lua.LUserData:
+	dirs, bsets, err := getBuildSets(lval)
+	if err != nil {
+		return knitpath, err
 	}
 
-	fmt.Println(lval)
+	fmt.Println(dirs)
+	fmt.Println(bsets)
 
 	return knitpath, ErrNothingToDo
 }
