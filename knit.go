@@ -12,16 +12,11 @@ import (
 	"unicode/utf8"
 
 	"github.com/adrg/xdg"
+	lua "github.com/zyedidia/gopher-lua"
 	"github.com/zyedidia/knit/rules"
 )
 
-func title(s string) string {
-	r, size := utf8.DecodeRuneInString(s)
-	return string(unicode.ToTitle(r)) + s[size:]
-}
-
-var Stderr io.Writer = os.Stderr
-
+// Flags for modifying the behavior of Knit.
 type Flags struct {
 	Knitfile string
 	Ncpu     int
@@ -40,6 +35,7 @@ type Flags struct {
 	ToolArgs []string
 }
 
+// Flags that may be automatically set in a .knit.toml file.
 type UserFlags struct {
 	Knitfile *string
 	Ncpu     *int
@@ -56,11 +52,37 @@ type UserFlags struct {
 	Updated  *[]string
 }
 
+// Capitalize the first rune of a string.
+func title(s string) string {
+	r, size := utf8.DecodeRuneInString(s)
+	return string(unicode.ToTitle(r)) + s[size:]
+}
+
+// Returns true if 'path' exists.
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func rel(basepath, targpath string) (string, error) {
+	slash := strings.HasSuffix(targpath, "/")
+	rel, err := filepath.Rel(basepath, targpath)
+	if err != nil {
+		return rel, err
+	}
+	if slash {
+		rel += "/"
+	}
+	return rel, err
+}
+
 type assign struct {
 	name  string
 	value string
 }
 
+// Parses 'args' for expressions of the form 'key=value'. Assignments that are
+// found are returned, along with the remaining arguments.
 func makeAssigns(args []string) ([]assign, []string) {
 	assigns := make([]assign, 0, len(args))
 	other := make([]string, 0)
@@ -78,59 +100,99 @@ func makeAssigns(args []string) ([]assign, []string) {
 	return assigns, other
 }
 
-func exists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
-func getRuleSets(vm *LuaVM, sets []string, rulesets map[string]*rules.RuleSet) error {
-	for _, set := range sets {
-		if _, ok := rulesets[set]; ok {
-			continue
-		}
-
-		lrs, ok := vm.GetRuleSet(set)
-		if !ok {
-			return fmt.Errorf("ruleset not found: %s", set)
-		}
-
-		var sets []string
-		rs := rules.NewRuleSet()
-		for _, lr := range lrs.Rules {
-			s, err := rules.ParseInto(lr.Contents, rs, lr.File, lr.Line)
-			if err != nil {
-				return err
-			}
-			sets = append(sets, s...)
-		}
-		rulesets[set] = rs
-		err := getRuleSets(vm, sets, rulesets)
+// Changes the working directory to 'dir' and changes all targets to be
+// relative to that directory.
+func goToKnitfile(vm *LuaVM, dir string, targets []string) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	adir, err := filepath.Abs(dir)
+	if err != nil {
+		return err
+	}
+	for i, t := range targets {
+		r, err := rel(adir, wd)
 		if err != nil {
 			return err
 		}
+		if r != "" && r != "." {
+			targets[i] = filepath.Join(r, t)
+		}
 	}
-	return nil
+
+	return os.Chdir(dir)
 }
 
 var ErrNothingToDo = errors.New("nothing to be done")
+var ErrQuiet = errors.New("quiet")
 
-func Run(out io.Writer, args []string, flags Flags) error {
+type ErrMessage struct {
+	msg string
+}
+
+func (e *ErrMessage) Error() string {
+	return e.msg
+}
+
+// Given the return value from the Lua evaluation of the Knitfile, returns all
+// the buildsets and a list of the directories in order of priority. If the
+// Knitfile requested to return an error (with a string), or quietly (with
+// nil), returns an appropriate error.
+func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
+	dirs := []string{"."}
+	bsets := map[string]*LBuildSet{
+		".": {
+			Dir:  ".",
+			rset: LRuleSet{},
+		},
+	}
+
+	addRuleSet := func(rs LRuleSet) {
+		bsets["."].rset = append(bsets["."].rset, rs...)
+	}
+	addBuildSet := func(bs LBuildSet) {
+		bsets[bs.Dir] = &bs
+		dirs = append(dirs, bs.Dir)
+	}
+
+	switch v := lval.(type) {
+	case lua.LString:
+		return nil, nil, &ErrMessage{msg: string(v)}
+	case *lua.LNilType:
+		return nil, nil, ErrQuiet
+	case *lua.LUserData:
+		switch u := v.Value.(type) {
+		case LRuleSet:
+			addRuleSet(u)
+		case LBuildSet:
+			addBuildSet(u)
+		default:
+			return nil, nil, fmt.Errorf("invalid return value: %v", lval)
+		}
+	case *lua.LTable:
+		v.ForEach(func(key, val lua.LValue) {
+			if u, ok := val.(*lua.LUserData); ok {
+				switch u := u.Value.(type) {
+				case LRuleSet:
+					addRuleSet(u)
+				case LBuildSet:
+					addBuildSet(u)
+				}
+			}
+		})
+	default:
+		return nil, nil, fmt.Errorf("invalid return value: %v", lval)
+	}
+	return dirs, bsets, nil
+}
+
+// Run searches for a Knitfile and executes it, according to args (a list of
+// targets and assignments), and the flags. All output is written to 'out'. The
+// path of the executed knitfile is returned, along with a possible error.
+func Run(out io.Writer, args []string, flags Flags) (string, error) {
 	if flags.RunDir != "" {
 		os.Chdir(flags.RunDir)
-	}
-
-	if exists(title(flags.Knitfile)) {
-		flags.Knitfile = title(flags.Knitfile)
-	}
-
-	def, ok := DefaultBuildFile()
-	if !exists(flags.Knitfile) && ok {
-		flags.Knitfile = def
-	}
-
-	f, err := os.Open(flags.Knitfile)
-	if err != nil {
-		return err
 	}
 
 	vm := NewLuaVM()
@@ -138,33 +200,54 @@ func Run(out io.Writer, args []string, flags Flags) error {
 	cliAssigns, targets := makeAssigns(args)
 	envAssigns, _ := makeAssigns(os.Environ())
 
-	vm.MakeTable("cli")
-	for _, v := range cliAssigns {
-		vm.AddVar("cli", v.name, v.value)
+	vm.MakeTable("cli", cliAssigns)
+	vm.MakeTable("env", envAssigns)
+
+	file, dir, err := FindBuildFile(flags.Knitfile)
+	if err != nil {
+		return "", err
 	}
-	vm.MakeTable("env")
-	for _, v := range envAssigns {
-		vm.AddVar("env", v.name, v.value)
+	knitpath := filepath.Join(dir, file)
+	if file == "" {
+		def, ok := DefaultBuildFile()
+		if ok {
+			file = def
+		}
+	} else if dir != "" {
+		err = goToKnitfile(vm, dir, targets)
+		if err != nil {
+			return knitpath, err
+		}
 	}
 
-	lval, err := vm.Eval(f, f.Name())
-	if err != nil {
-		return err
+	if file == "" {
+		return knitpath, fmt.Errorf("%s does not exist", flags.Knitfile)
 	}
-	f.Close()
+
+	lval, err := vm.DoFile(file)
+	if err != nil {
+		return knitpath, err
+	}
+
+	dirs, bsets, err := getBuildSets(lval)
+	if err != nil {
+		return knitpath, err
+	}
 
 	rulesets := make(map[string]*rules.RuleSet)
 
-	lruleset, ok := LToRuleSet(lval)
-	if !ok {
-		return fmt.Errorf("eval returned %s, expected ruleset", lval.Type())
-	}
-	err = getRuleSets(vm, []string{lruleset.name}, rulesets)
-	if err != nil {
-		return err
+	for k, v := range bsets {
+		rs := rules.NewRuleSet()
+		for _, lr := range v.rset {
+			err := rules.ParseInto(lr.Contents, rs, lr.File, lr.Line)
+			if err != nil {
+				return knitpath, err
+			}
+		}
+		rulesets[k] = rs
 	}
 
-	rs := rulesets[lruleset.name]
+	rs := rulesets["."]
 
 	alltargets := rs.AllTargets()
 
@@ -173,7 +256,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 	}
 
 	if len(targets) == 0 {
-		return errors.New("no targets")
+		return knitpath, errors.New("no targets")
 	}
 
 	rs.Add(rules.NewDirectRule([]string{"_build"}, targets, nil, rules.AttrSet{
@@ -193,18 +276,14 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		updated[u] = true
 	}
 
-	graph, err := rules.NewGraphSet(rulesets, lruleset.name, "_build", updated)
+	graph, err := rules.NewGraph(rulesets, dirs, "_build", updated)
 	if err != nil {
-		return err
-	}
-
-	if graph.Size() == 1 {
-		return fmt.Errorf("target not found: %s", targets)
+		return knitpath, err
 	}
 
 	err = graph.ExpandRecipes(vm)
 	if err != nil {
-		return err
+		return knitpath, err
 	}
 
 	var db *rules.Database
@@ -213,7 +292,7 @@ func Run(out io.Writer, args []string, flags Flags) error {
 	} else {
 		wd, err := os.Getwd()
 		if err != nil {
-			return err
+			return knitpath, err
 		}
 		dir := flags.CacheDir
 		if dir == "$cache" {
@@ -245,14 +324,14 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		case "status":
 			t = &rules.StatusTool{W: w, Db: db, Hash: flags.Hash}
 		default:
-			return fmt.Errorf("unknown tool: %s", flags.Tool)
+			return knitpath, fmt.Errorf("unknown tool: %s", flags.Tool)
 		}
 
-		return t.Run(graph.Graph, flags.ToolArgs)
+		return knitpath, t.Run(graph, flags.ToolArgs)
 	}
 
 	if flags.Ncpu <= 0 {
-		return errors.New("you must enable at least 1 core")
+		return knitpath, errors.New("you must enable at least 1 core")
 	}
 
 	var printer rules.Printer
@@ -281,18 +360,17 @@ func Run(out io.Writer, args []string, flags Flags) error {
 		Hash:         flags.Hash,
 	})
 
-	rebuilt, execerr := ex.Exec(graph.Graph)
+	rebuilt, execerr := ex.Exec(graph)
 
 	err = db.Save()
 	if err != nil {
-		return err
+		return knitpath, err
 	}
 	if execerr != nil {
-		return execerr
+		return knitpath, execerr
 	}
 	if !rebuilt {
-		return fmt.Errorf("'%s': %w", strings.Join(targets, " "), ErrNothingToDo)
+		return knitpath, fmt.Errorf("'%s': %w", strings.Join(targets, " "), ErrNothingToDo)
 	}
-	return nil
-
+	return knitpath, nil
 }

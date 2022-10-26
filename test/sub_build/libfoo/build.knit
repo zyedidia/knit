@@ -1,10 +1,10 @@
-local knit = import("knit")
+local knit = require("knit")
 
 local src = knit.glob("*.c")
 local obj = knit.extrepl(src, ".c", ".o")
 
-return r{
-$ all:V: libfoo.a
+return b{
+$ all:V: libfoo.a libbar/libbar.a
 
 $ %.o: %.c
     cc -c $input -o $output
@@ -15,5 +15,4 @@ $ libfoo.a: $obj
 $ clean:VB:
     rm -f *.o
     rm -f *.a
-
 }

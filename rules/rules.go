@@ -3,6 +3,7 @@ package rules
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -55,7 +56,7 @@ func (r *DirectRule) Equals(other *DirectRule) bool {
 }
 
 func (r *DirectRule) String() string {
-	return fmt.Sprintf("%s: %s", r.targets, r.prereqs)
+	return fmt.Sprintf("%s: %s", strings.Join(r.targets, " "), strings.Join(r.prereqs, " "))
 }
 
 // A MetaRule specifies the targets to build based on a pattern.
@@ -84,6 +85,14 @@ func (r *MetaRule) Match(target string) ([]int, *Pattern) {
 		}
 	}
 	return nil, nil
+}
+
+func (r *MetaRule) String() string {
+	targets := make([]string, len(r.targets))
+	for i, p := range r.targets {
+		targets[i] = p.Regex.String()
+	}
+	return fmt.Sprintf("%s: %s", strings.Join(targets, " "), strings.Join(r.prereqs, " "))
 }
 
 type AttrSet struct {

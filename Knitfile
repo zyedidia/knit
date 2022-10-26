@@ -1,4 +1,4 @@
-knit = import("knit")
+knit = require("knit")
 
 knit.shell("knit -C tools/version")
 version = knit.shell("./tools/version/version")

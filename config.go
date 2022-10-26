@@ -1,12 +1,15 @@
 package knit
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
 	"github.com/adrg/xdg"
 	"github.com/pelletier/go-toml/v2"
 )
+
+var ErrBuildFileNotFound = errors.New("build file not found")
 
 const defaultFile = "knitfile.def"
 
@@ -19,7 +22,6 @@ func init() {
 		configDirs = append(configDirs, filepath.Join(dir, "knit"))
 	}
 }
-
 func DefaultBuildFile() (string, bool) {
 	for _, dir := range configDirs {
 		if exists(filepath.Join(dir, defaultFile)) {
@@ -29,6 +31,28 @@ func DefaultBuildFile() (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func FindBuildFile(name string) (string, string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", "", err
+	}
+	dirs := []string{wd}
+	path := wd
+	for path != "/" {
+		if exists(filepath.Join(path, name)) {
+			p, e := filepath.Rel(wd, path)
+			return name, p, e
+		}
+		if exists(filepath.Join(path, title(name))) {
+			p, e := filepath.Rel(wd, path)
+			return title(name), p, e
+		}
+		path = filepath.Dir(path)
+		dirs = append(dirs, path)
+	}
+	return "", "", nil
 }
 
 const configFile = ".knit.toml"

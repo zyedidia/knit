@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/zyedidia/knit/expand"
 )
 
 type parser struct {
@@ -14,7 +16,8 @@ type parser struct {
 	file     string
 	tokenbuf []token  // tokens consumed on the current statement
 	rules    *RuleSet // current ruleSet
-	rulesets []string // names of all rulesets used
+
+	errexpand expand.Resolver
 
 	fatal  bool
 	errors MultiError
@@ -28,7 +31,7 @@ func (e MultiError) Error() string {
 		buf.WriteString(err.Error())
 		buf.WriteByte('\n')
 	}
-	return buf.String()
+	return strings.TrimSpace(buf.String())
 }
 
 func (p *parser) parseError(context string, expected string, found token) {
@@ -61,9 +64,7 @@ func (p *parser) clear() {
 type parserStateFun func(*parser, token) parserStateFun
 
 // ParseInto parses 'input' into the rules RuleSet, from the file at 'file'.
-// The list of rulesets used by this ruleset is returned, or a possible parse
-// error.
-func ParseInto(input string, rules *RuleSet, file string, line int) ([]string, error) {
+func ParseInto(input string, rules *RuleSet, file string, line int) error {
 	input = stripIndentation(input, 0)
 	input = strings.TrimSpace(input)
 	l := lex(input, line)
@@ -72,6 +73,16 @@ func ParseInto(input string, rules *RuleSet, file string, line int) ([]string, e
 		file:     file,
 		tokenbuf: []token{},
 		rules:    rules,
+		// This function is used to "expand" targets and prereqs. All
+		// expansions in targets/prereqs must have been resolved during Lua
+		// evaluation, so they are now all errors. The errors have to be thrown
+		// during rule parsing rather than Lua evaluation, because the rule is
+		// a black-box to Lua, and it doesn't know if an expansion is within a
+		// recipe (still legal after Lua evaluation) or within targets/prereqs
+		// (illegal after Lua evaluation).
+		errexpand: func(name string) (string, error) {
+			return "", fmt.Errorf("'%s' does not exist", name)
+		},
 	}
 	state := parseTopLevel
 	for t := l.nextToken(); t.typ != tokenEnd; t = l.nextToken() {
@@ -83,7 +94,7 @@ func ParseInto(input string, rules *RuleSet, file string, line int) ([]string, e
 		state = state(p, t)
 
 		if p.fatal {
-			return nil, p.errors
+			return p.errors
 		}
 	}
 
@@ -93,10 +104,10 @@ func ParseInto(input string, rules *RuleSet, file string, line int) ([]string, e
 	state(p, token{tokenNewline, "\n", l.line, l.col})
 
 	if len(p.errors) != 0 {
-		return p.rulesets, p.errors
+		return p.errors
 	}
 
-	return p.rulesets, nil
+	return nil
 }
 
 func parseTopLevel(p *parser, t token) parserStateFun {
@@ -117,6 +128,10 @@ func parseTopLevel(p *parser, t token) parserStateFun {
 func parseTargets(p *parser, t token) parserStateFun {
 	switch t.typ {
 	case tokenWord:
+		_, err := expand.Expand(t.val, p.errexpand, p.errexpand, true)
+		if err != nil {
+			p.basicErrorAtToken(err.Error(), t)
+		}
 		p.push(t)
 	case tokenColon:
 		p.push(t)
@@ -138,9 +153,9 @@ func parseAttributesOrPrereqs(p *parser, t token) parserStateFun {
 		p.push(t)
 		return parsePrereqs
 	case tokenWord:
-		pr := parsePrereq(t.val)
-		if pr.ruleset != "" {
-			p.rulesets = append(p.rulesets, pr.ruleset)
+		_, err := expand.Expand(t.val, p.errexpand, p.errexpand, true)
+		if err != nil {
+			p.basicErrorAtToken(err.Error(), t)
 		}
 		p.push(t)
 	default:
@@ -157,9 +172,9 @@ func parsePrereqs(p *parser, t token) parserStateFun {
 	case tokenNewline:
 		return parseRecipe
 	case tokenWord:
-		pr := parsePrereq(t.val)
-		if pr.ruleset != "" {
-			p.rulesets = append(p.rulesets, pr.ruleset)
+		_, err := expand.Expand(t.val, p.errexpand, p.errexpand, true)
+		if err != nil {
+			p.basicErrorAtToken(err.Error(), t)
 		}
 		p.push(t)
 	default:

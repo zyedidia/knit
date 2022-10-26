@@ -4,12 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/spf13/pflag"
 	"github.com/zyedidia/knit"
 	"github.com/zyedidia/knit/info"
 )
+
+func fatal(a ...interface{}) {
+	fmt.Fprintln(os.Stderr, a...)
+	os.Exit(1)
+}
 
 func optString(flags *pflag.FlagSet, name, short string, val string, user *string, desc string) *string {
 	if user != nil {
@@ -56,6 +62,11 @@ func parseFlags(flags *pflag.FlagSet) ([]string, error) {
 }
 
 func main() {
+	wd, err := os.Getwd()
+	if err != nil {
+		fatal(err)
+	}
+
 	user, err := knit.UserDefaults()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -100,7 +111,7 @@ func main() {
 	}
 
 	out := os.Stdout
-	err = knit.Run(out, main.Args(), knit.Flags{
+	file, err := knit.Run(out, main.Args(), knit.Flags{
 		Knitfile: *knitfile,
 		Ncpu:     *ncpu,
 		DryRun:   *dryrun,
@@ -114,8 +125,20 @@ func main() {
 		Tool:     *tool,
 		ToolArgs: toolargs,
 	})
+
+	rel, rerr := filepath.Rel(file, wd)
+	if rerr != nil {
+		rel = file
+	}
+	if file == "" {
+		rel = "knit"
+	}
+
+	if errors.Is(err, knit.ErrQuiet) {
+		return
+	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "knit: %s\n", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", rel, err)
 		if !errors.Is(err, knit.ErrNothingToDo) {
 			os.Exit(1)
 		}

@@ -1,0 +1,4 @@
+return b{
+$ libbar.a:
+    echo "hi" > $output
+}

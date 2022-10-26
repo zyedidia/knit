@@ -3,7 +3,6 @@ package knit_test
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,7 +60,7 @@ func runTest(dir string, t *testing.T) {
 	defer os.Chdir(wd)
 	for i, b := range test.Builds {
 		buf := &bytes.Buffer{}
-		err := knit.Run(buf, b.Args, test.Flags)
+		_, err := knit.Run(buf, b.Args, test.Flags)
 		if err != nil {
 			if err.Error() == b.Error {
 				continue
@@ -86,8 +85,6 @@ func runTest(dir string, t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	knit.Stderr = io.Discard
-
 	files, err := os.ReadDir("./test")
 	if err != nil {
 		t.Fatal(fmt.Errorf("open test dir: %w", err))

@@ -17,16 +17,16 @@ func varInner(b byte) bool {
 
 type Resolver func(name string) (value string, err error)
 
-func Expand(s string, rvar Resolver, rexpr Resolver) (string, error) {
-	return ExpandSpecial(s, rvar, rexpr, '$')
+func Expand(s string, rvar Resolver, rexpr Resolver, escape bool) (string, error) {
+	return ExpandSpecial(s, rvar, rexpr, '$', escape)
 }
 
-func ExpandSpecial(s string, rvar Resolver, rexpr Resolver, special byte) (string, error) {
-	return expand(bufio.NewReader(strings.NewReader(s)), rvar, rexpr, special)
+func ExpandSpecial(s string, rvar Resolver, rexpr Resolver, special byte, escape bool) (string, error) {
+	return expand(bufio.NewReader(strings.NewReader(s)), rvar, rexpr, special, escape)
 }
 
 // special is '$' or '%' or some other symbol
-func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (string, error) {
+func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte, escape bool) (string, error) {
 	buf := &bytes.Buffer{}
 	exprbuf := &bytes.Buffer{}
 	pos := 0
@@ -34,6 +34,8 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 	braceLevel := 0
 	inExpr := false
 	inVar := false
+
+	var expandErr error
 
 	for {
 		b, err := r.ReadByte()
@@ -59,6 +61,9 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 				r.ReadByte()
 				pos++
 				buf.WriteByte(special)
+				if !escape {
+					buf.WriteByte(special)
+				}
 				continue
 			} else if p[0] == '(' {
 				r.ReadByte()
@@ -79,9 +84,13 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 				inExpr = false
 				value, err := rexpr(exprbuf.String())
 				if err != nil {
-					buf.WriteString("$(")
+					buf.WriteByte(special)
+					buf.WriteByte('(')
 					buf.WriteString(exprbuf.String())
 					buf.WriteByte(')')
+					if expandErr == nil {
+						expandErr = err
+					}
 				} else {
 					buf.WriteString(value)
 				}
@@ -103,8 +112,11 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 					inVar = false
 					value, err := rvar(exprbuf.String())
 					if err != nil {
-						buf.WriteByte('$')
+						buf.WriteByte(special)
 						buf.WriteString(exprbuf.String())
+						if expandErr == nil {
+							expandErr = err
+						}
 					} else {
 						buf.WriteString(value)
 					}
@@ -116,5 +128,5 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 		}
 	}
 
-	return buf.String(), nil
+	return buf.String(), expandErr
 }

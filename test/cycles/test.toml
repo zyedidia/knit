@@ -8,4 +8,4 @@ ncpu = 1
 [[builds]]
 
 args = []
-error = "cycle detected at rule [rule1]: [rule2]"
+error = "cycle detected at rule rule1: rule2"

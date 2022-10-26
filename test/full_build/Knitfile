@@ -1,4 +1,4 @@
-knit = import("knit")
+knit = require("knit")
 
 cc = cli.cc or "gcc"
 debug = tobool(cli.debug) or false

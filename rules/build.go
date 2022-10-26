@@ -160,7 +160,7 @@ func (e *Executor) runServer() {
 		failed := false
 		var execErr error
 		for _, cmd := range n.recipe {
-			c, err := e.getCmd(cmd, n.graph.dir)
+			c, err := e.getCmd(cmd, n.dir)
 			if err != nil {
 				execErr = fmt.Errorf("'%s': error while evaluating '%s': %w", ruleName, cmd, err)
 				failed = true

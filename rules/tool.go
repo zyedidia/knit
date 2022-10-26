@@ -12,10 +12,10 @@ import (
 )
 
 func n2str(n *node) string {
-	if n.graph.dir == "" || n.graph.dir == "." {
+	if n.dir == "" || n.dir == "." {
 		return n.myTarget
 	}
-	return fmt.Sprintf("[%s] %s", n.graph.dir, n.myTarget)
+	return filepath.Join(n.dir, n.myTarget)
 }
 
 var tools = []Tool{
@@ -153,10 +153,7 @@ func (t *CleanTool) clean(n *node, done map[*info]bool) {
 					continue
 				}
 			}
-			if n.graph.dir != "." && n.graph.dir != "" {
-				fmt.Fprintf(t.W, "[%s] ", n.graph.dir)
-			}
-			fmt.Fprintln(t.W, "remove", o.name)
+			fmt.Fprintln(t.W, "remove", filepath.Join(n.dir, o.name))
 		}
 	}
 	done[n.info] = true
@@ -232,7 +229,7 @@ func (t *CompileDbTool) visit(n *node, visited map[*info]bool, cmds []CompComman
 		if len(p.prereqs) == 0 {
 			for _, o := range p.outputs {
 				cmds = append(cmds, CompCommand{
-					Directory: p.graph.dir,
+					Directory: p.dir,
 					File:      o.name,
 					Command:   strings.Join(n.recipe, "; "),
 				})
@@ -372,24 +369,24 @@ func (t *CommandsTool) commands(n *node, visited map[*info]bool, cmds BuildRules
 		return cmds
 	}
 
-	inputs := n.prereqsSub(false)
+	inputs := n.inputs()
 	for i, p := range inputs {
-		inputs[i] = filepath.Join(n.graph.dir, p)
+		inputs[i] = filepath.Join(n.dir, p)
 	}
-	prs := n.prereqsSub(true)
+	prs := n.myPrereqs
 	for i, p := range prs {
-		prs[i] = filepath.Join(n.graph.dir, p)
+		prs[i] = filepath.Join(n.dir, p)
 	}
 	outputs := []string{}
 	for _, o := range n.outputs {
 		outputs = append(outputs, filepath.Clean(o.name))
 	}
 	cmds = append(cmds, BuildCommand{
-		Directory: n.graph.dir,
+		Directory: n.dir,
 		Prereqs:   prs,
 		Inputs:    inputs,
 		Outputs:   outputs,
-		Name:      filepath.Join(n.graph.dir, n.myTarget),
+		Name:      filepath.Join(n.dir, n.myTarget),
 		Commands:  n.recipe,
 	})
 
@@ -411,8 +408,8 @@ func (t *CommandsTool) shell(n *node, visited map[*info]bool, w io.Writer) {
 		t.shell(p, visited, w)
 	}
 	cd := ""
-	if n.graph.dir != "." && n.graph.dir != "" {
-		cd = "cd " + n.graph.dir + ";"
+	if n.dir != "." && n.dir != "" {
+		cd = "cd " + n.dir + ";"
 	}
 	for _, c := range n.recipe {
 		var cmd string
