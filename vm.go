@@ -52,19 +52,14 @@ func (rs LRuleSet) String() string {
 // An LBuildSet is a list of rules associated with a directory, and possibly
 // referencing other buildsets.
 type LBuildSet struct {
-	Dir string
-	// map from dir to the buildset for that dir
-	bsets map[string]LBuildSet
-	rset  LRuleSet
+	Dir  string
+	rset LRuleSet
 }
 
 func (bs *LBuildSet) String() string {
 	buf := &bytes.Buffer{}
 	buf.WriteString("[" + bs.Dir + "]:\n")
 	buf.WriteString(bs.rset.String())
-	for _, b := range bs.bsets {
-		buf.WriteString(b.String())
-	}
 	return buf.String()
 }
 
@@ -138,17 +133,13 @@ func NewLuaVM() *LuaVM {
 		return bs.String()
 	}))
 	L.SetGlobal("b", luar.New(L, func(vals *lua.LTable) LBuildSet {
-		b := LBuildSet{
-			bsets: make(map[string]LBuildSet),
-		}
+		b := LBuildSet{}
 		vals.ForEach(func(key lua.LValue, val lua.LValue) {
 			switch v := val.(type) {
 			case *lua.LUserData:
 				switch u := v.Value.(type) {
 				case LRuleSet:
 					b.rset = append(b.rset, u...)
-				case LBuildSet:
-					b.bsets[u.Dir] = u
 				case LRule:
 					b.rset = append(b.rset, u)
 				default:
@@ -328,6 +319,7 @@ func (vm *LuaVM) Eval(r io.Reader, file string) (lua.LValue, error) {
 
 func (vm *LuaVM) DoFile(file string) (lua.LValue, error) {
 	f, err := os.Open(file)
+	defer f.Close()
 	if err != nil {
 		return lua.LNil, err
 	}
@@ -559,4 +551,12 @@ func LArrayToString(v *lua.LTable) string {
 		i++
 	})
 	return buf.String()
+}
+
+func (vm *LuaVM) MakeTable(name string, vals []assign) {
+	t := vm.L.NewTable()
+	vm.L.SetGlobal(name, t)
+	for _, a := range vals {
+		vm.L.SetField(t, a.name, luar.New(vm.L, a.value))
+	}
 }
