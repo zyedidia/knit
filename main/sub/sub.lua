@@ -5,7 +5,7 @@ function foo()
     }
 end
 
-return b{
+return b({
 $ sub:
     echo sub
-}
+}, "../blah")

@@ -132,7 +132,10 @@ func NewLuaVM() *LuaVM {
 	L.SetField(bsmt.LTable, "__tostring", luar.New(L, func(bs LBuildSet) string {
 		return bs.String()
 	}))
-	L.SetGlobal("b", luar.New(L, func(vals *lua.LTable) LBuildSet {
+
+	L.SetGlobal("b", L.NewFunction(func(L *lua.LState) int {
+		vals := L.ToTable(1)
+		dir := L.OptString(2, ".")
 		b := LBuildSet{}
 		vals.ForEach(func(key lua.LValue, val lua.LValue) {
 			switch v := val.(type) {
@@ -149,8 +152,9 @@ func NewLuaVM() *LuaVM {
 				vm.Err(fmt.Errorf("invalid buildset item: %v", v))
 			}
 		})
-		b.Dir = vm.wd.Peek()
-		return b
+		b.Dir = filepath.Join(vm.wd.Peek(), dir)
+		L.Push(luar.New(L, b))
+		return 1
 	}))
 
 	// Directory management
