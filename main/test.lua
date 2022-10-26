@@ -16,4 +16,8 @@ print(dcall(foo))
 
 print(expand"$su")
 
+local knit = require("knit")
+
+print("glob: ", knit.glob("*.c"))
+
 return rules

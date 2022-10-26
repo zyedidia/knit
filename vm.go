@@ -4,11 +4,16 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 
+	"github.com/gobwas/glob"
 	"github.com/zyedidia/generic/stack"
 	lua "github.com/zyedidia/gopher-lua"
 	luar "github.com/zyedidia/gopher-luar"
@@ -65,12 +70,15 @@ func (bs *LBuildSet) String() string {
 
 // NewLuaVM constructs a new VM, and adds all the default built-ins.
 func NewLuaVM() *LuaVM {
-	L := lua.NewState()
+	L := lua.NewState(lua.Options{SkipOpenLibs: true})
 	vm := &LuaVM{
 		L:  L,
 		wd: stack.New[string](),
 	}
 	vm.wd.Push(".")
+
+	vm.OpenDefaults()
+	vm.OpenKnit()
 
 	rvar, rexpr := vm.ExpandFuncs()
 
@@ -84,6 +92,10 @@ func NewLuaVM() *LuaVM {
 			Line:     line,
 		}
 	}
+	slcmt := luar.MT(L, []string{})
+	L.SetField(slcmt.LTable, "__tostring", luar.New(L, func(s []string) string {
+		return strings.Join(s, " ")
+	}))
 	rmt := luar.MT(L, LRule{})
 	L.SetField(rmt.LTable, "__tostring", luar.New(L, func(r LRule) string {
 		return r.String()
@@ -270,8 +282,6 @@ func NewLuaVM() *LuaVM {
 		})
 	}))
 
-	// L.PreloadModule("knit", mymodule.Loader)
-
 	return vm
 }
 
@@ -352,6 +362,122 @@ func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (stri
 			}
 			return LToString(v), nil
 		}
+}
+
+func (vm *LuaVM) OpenDefaults() {
+	for _, pair := range []struct {
+		n string
+		f lua.LGFunction
+	}{
+		{lua.LoadLibName, lua.OpenPackage}, // Must be first
+		{lua.BaseLibName, lua.OpenBase},
+		{lua.TabLibName, lua.OpenTable},
+		{lua.DebugLibName, lua.OpenDebug},
+		{lua.IoLibName, lua.OpenIo},
+		{lua.MathLibName, lua.OpenMath},
+		{lua.OsLibName, lua.OpenOs},
+		{lua.StringLibName, lua.OpenString},
+	} {
+		if err := vm.L.CallByParam(lua.P{
+			Fn:      vm.L.NewFunction(pair.f),
+			NRet:    0,
+			Protect: true,
+		}, lua.LString(pair.n)); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func (vm *LuaVM) OpenKnit() {
+	pkg := vm.pkgknit()
+	loader := func(L *lua.LState) int {
+		L.Push(pkg)
+		return 1
+	}
+	vm.L.PreloadModule("knit", loader)
+}
+
+func (vm *LuaVM) pkgknit() *lua.LTable {
+	pkg := vm.L.NewTable()
+
+	vm.L.SetField(pkg, "trim", luar.New(vm.L, strings.TrimSpace))
+	vm.L.SetField(pkg, "os", luar.New(vm.L, runtime.GOOS))
+	vm.L.SetField(pkg, "arch", luar.New(vm.L, runtime.GOARCH))
+	vm.L.SetField(pkg, "glob", luar.New(vm.L, func(pattern string) []string {
+		f, err := filepath.Glob(pattern)
+		if err != nil {
+			vm.Err(err)
+		}
+		if len(f) == 0 {
+			return []string{}
+		}
+		return f
+	}))
+	vm.L.SetField(pkg, "rglob", luar.New(vm.L, func(path, pattern string) []string {
+		g, err := glob.Compile(pattern)
+		if err != nil {
+			vm.Err(err)
+			return nil
+		}
+		files := []string{}
+		err = filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if g.Match(info.Name()) {
+				files = append(files, path)
+			}
+			return nil
+		})
+		if err != nil {
+			vm.Err(err)
+			return nil
+		}
+		return files
+	}))
+	vm.L.SetField(pkg, "abs", luar.New(vm.L, func(path string) string {
+		p, err := filepath.Abs(path)
+		if err != nil {
+			vm.Err(err)
+		}
+		return p
+	}))
+	vm.L.SetField(pkg, "extrepl", luar.New(vm.L, func(in []string, ext, repl string) []string {
+		patstr := fmt.Sprintf("%s$", regexp.QuoteMeta(ext))
+		s, err := replace(in, patstr, repl)
+		if err != nil {
+			vm.Err(err)
+		}
+		return s
+	}))
+	vm.L.SetField(pkg, "repl", luar.New(vm.L, func(in []string, patstr, repl string) []string {
+		s, err := replace(in, patstr, repl)
+		if err != nil {
+			vm.Err(err)
+		}
+		return s
+	}))
+	vm.L.SetField(pkg, "shell", luar.New(vm.L, func(shcmd string) string {
+		cmd := exec.Command("sh", "-c", shcmd)
+		b, err := cmd.Output()
+		if err != nil {
+			vm.Err(err)
+		}
+		return string(bytes.TrimSpace(b))
+	}))
+	return pkg
+}
+
+func replace(in []string, patstr, repl string) ([]string, error) {
+	rgx, err := regexp.Compile(patstr)
+	if err != nil {
+		return nil, err
+	}
+	outs := make([]string, len(in))
+	for i, v := range in {
+		outs[i] = rgx.ReplaceAllString(v, repl)
+	}
+	return outs, nil
 }
 
 func addLocals(L *lua.LState, locals *lua.LTable) *lua.LTable {
