@@ -35,7 +35,7 @@ type LRule struct {
 }
 
 func (r LRule) String() string {
-	return r.Contents
+	return "$ " + r.Contents
 }
 
 // An LRuleSet is a list of LRules.
@@ -43,9 +43,11 @@ type LRuleSet []LRule
 
 func (rs LRuleSet) String() string {
 	buf := &bytes.Buffer{}
+	buf.WriteString("r{\n")
 	for _, r := range rs {
 		buf.WriteString(strings.TrimSpace(r.String()) + "\n")
 	}
+	buf.WriteByte('}')
 	return buf.String()
 }
 
@@ -58,8 +60,11 @@ type LBuildSet struct {
 
 func (bs *LBuildSet) String() string {
 	buf := &bytes.Buffer{}
-	buf.WriteString("[" + bs.Dir + "]:\n")
+	buf.WriteString("b({\n")
 	buf.WriteString(bs.rset.String())
+	buf.WriteString("\n}, ")
+	buf.WriteString(strconv.Quote(bs.Dir))
+	buf.WriteByte(')')
 	return buf.String()
 }
 
