@@ -458,6 +458,19 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 		}
 		return s
 	}))
+	vm.L.SetField(pkg, "filterout", luar.New(vm.L, func(in []string, exclude []string) []string {
+		removed := make([]string, 0, len(in))
+		exmap := make(map[string]bool)
+		for _, e := range exclude {
+			exmap[e] = true
+		}
+		for _, s := range in {
+			if !exmap[s] {
+				removed = append(removed, s)
+			}
+		}
+		return removed
+	}))
 	vm.L.SetField(pkg, "shell", luar.New(vm.L, func(shcmd string) string {
 		cmd := exec.Command("sh", "-c", shcmd)
 		b, err := cmd.Output()
