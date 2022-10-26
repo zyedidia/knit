@@ -35,6 +35,8 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 	inExpr := false
 	inVar := false
 
+	var expandErr error
+
 	for {
 		b, err := r.ReadByte()
 		if err == io.EOF {
@@ -79,9 +81,13 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 				inExpr = false
 				value, err := rexpr(exprbuf.String())
 				if err != nil {
-					buf.WriteString("$(")
+					buf.WriteByte(special)
+					buf.WriteByte('(')
 					buf.WriteString(exprbuf.String())
 					buf.WriteByte(')')
+					if expandErr == nil {
+						expandErr = err
+					}
 				} else {
 					buf.WriteString(value)
 				}
@@ -103,8 +109,11 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 					inVar = false
 					value, err := rvar(exprbuf.String())
 					if err != nil {
-						buf.WriteByte('$')
+						buf.WriteByte(special)
 						buf.WriteString(exprbuf.String())
+						if expandErr == nil {
+							expandErr = err
+						}
 					} else {
 						buf.WriteString(value)
 					}
@@ -116,5 +125,5 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 		}
 	}
 
-	return buf.String(), nil
+	return buf.String(), expandErr
 }

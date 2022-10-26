@@ -1,4 +1,0 @@
-return r{
-$ hello:VB:
-	echo hello
-}

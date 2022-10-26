@@ -1,8 +1,0 @@
-return r{
-$ x.o: x.c
-    cp $input $output
-$ %.bin: %.o
-    cp $input $output
-$ %.list: %.o
-    cp $input $output
-}

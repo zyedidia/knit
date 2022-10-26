@@ -1,4 +1,0 @@
-return r{
-$ version: version.go
-    go build -o $output $input
-}

@@ -1,6 +1,0 @@
-return r{
-$ f1.txt f2.txt:
-    touch f1.txt f2.txt
-$ clean:VB:
-    rm -f f1.txt f2.txt
-}

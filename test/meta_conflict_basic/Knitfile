@@ -1,7 +1,0 @@
-return r{
-$ %.o: %.s
-    as $input -c -o $output
-
-$ %.o: %.c
-    gcc $input -c -o $output
-}

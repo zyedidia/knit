@@ -1,7 +1,0 @@
-return r{
-$ clean tidy nuke:VB:
-    rm -f o.out
-
-$ clean:VB:
-    rm -f o.out *.o
-}
