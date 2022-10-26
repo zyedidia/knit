@@ -13,6 +13,40 @@ import (
 	lua "github.com/zyedidia/gopher-lua"
 )
 
+type Flags struct {
+	Knitfile string
+	Ncpu     int
+	Graph    string
+	DryRun   bool
+	RunDir   string
+	Always   bool
+	Quiet    bool
+	Clean    bool
+	Style    string
+	CacheDir string
+	Hash     bool
+	Commands bool
+	Updated  []string
+	Tool     string
+	ToolArgs []string
+}
+
+type UserFlags struct {
+	Knitfile *string
+	Ncpu     *int
+	Graph    *string
+	DryRun   *bool
+	RunDir   *string
+	Always   *bool
+	Quiet    *bool
+	Clean    *bool
+	Style    *string
+	CacheDir *string
+	Hash     *bool
+	Commands *bool
+	Updated  *[]string
+}
+
 func title(s string) string {
 	r, size := utf8.DecodeRuneInString(s)
 	return string(unicode.ToTitle(r)) + s[size:]
