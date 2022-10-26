@@ -1,5 +1,5 @@
 local rules = r{
-$ a:
+$ a:V$obj:
     echo hi
 }
 

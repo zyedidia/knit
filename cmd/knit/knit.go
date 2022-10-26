@@ -126,19 +126,19 @@ func main() {
 		ToolArgs: toolargs,
 	})
 
-	file, rerr := filepath.Rel(wd, file)
+	rel, rerr := filepath.Rel(file, wd)
 	if rerr != nil {
-		file = file
+		rel = file
 	}
 	if file == "" {
-		file = "knit"
+		rel = "knit"
 	}
 
 	if errors.Is(err, knit.ErrQuiet) {
 		return
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", file, err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", rel, err)
 		if !errors.Is(err, knit.ErrNothingToDo) {
 			os.Exit(1)
 		}

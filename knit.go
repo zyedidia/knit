@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	lua "github.com/zyedidia/gopher-lua"
+	"github.com/zyedidia/knit/rules"
 )
 
 // Flags for modifying the behavior of Knit.
@@ -216,8 +217,21 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		return knitpath, err
 	}
 
+	rulesets := make(map[string]*rules.RuleSet)
+
+	for k, v := range bsets {
+		rs := rules.NewRuleSet()
+		for _, lr := range v.rset {
+			err := rules.ParseInto(lr.Contents, rs, lr.File, lr.Line)
+			if err != nil {
+				return knitpath, err
+			}
+		}
+		rulesets[k] = rs
+	}
+
 	fmt.Println(dirs)
-	fmt.Println(bsets)
+	fmt.Println(rulesets)
 
 	return knitpath, ErrNothingToDo
 }
