@@ -212,8 +212,11 @@ func (g *Graph) resolveTargetInterGraph(prereq string, visits []int, gs *GraphSe
 	}
 	// otherwise go through every buildset and attempt to resolve it
 	for dir, rs := range gs.rules {
-		fmt.Println(prereq, g.dir, dir)
-		subg, err := NewGraph(rs, prereq, dir, gs, updated)
+		p, err := filepath.Rel(dir, prereq)
+		if err != nil {
+			continue
+		}
+		subg, err := NewGraph(rs, p, dir, gs, updated)
 		if err != nil {
 			continue
 		}

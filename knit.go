@@ -282,8 +282,6 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		updated[u] = true
 	}
 
-	fmt.Println(rulesets)
-
 	graph, err := rules.NewGraphSet(rulesets, ".", "_build", updated)
 	if err != nil {
 		return knitpath, err
