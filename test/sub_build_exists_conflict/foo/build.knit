@@ -1,0 +1,4 @@
+return b{
+$ ../foo.txt:
+    echo "foo" > $output
+}
