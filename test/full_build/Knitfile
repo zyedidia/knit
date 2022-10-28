@@ -1,0 +1,27 @@
+knit = require("knit")
+
+cc = cli.cc or "gcc"
+debug = tobool(cli.debug) or false
+
+cflags := -Wall
+
+if debug then
+    cflags := $cflags -Og -g
+else
+    cflags := $cflags -O2
+end
+
+src = knit.glob("*.c")
+obj = knit.extrepl(src, ".c", ".o")
+prog := hello
+
+return r{
+$ $prog: $obj
+    $cc $cflags $input -o $output
+
+$ %.o: %.c
+    $cc $cflags -c $input -o $output
+
+$ clean:VB:
+    rm -f $obj $prog
+}

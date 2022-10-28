@@ -1,0 +1,12 @@
+return r{
+$ out1.txt out2.txt:
+    echo "1" > out1.txt; echo "2" > out2.txt
+
+$ build-1:V: out1.txt
+    echo $input
+$ build-2:V: out2.txt
+    echo $input
+
+$ clean:VB:
+    rm *.txt
+}

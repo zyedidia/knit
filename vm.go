@@ -551,6 +551,10 @@ func getVar(L *lua.LState, v string) lua.LValue {
 	return L.GetGlobal(v)
 }
 
+func (vm *LuaVM) SetVar(name string, val interface{}) {
+	vm.L.SetGlobal(name, luar.New(vm.L, val))
+}
+
 // LToString converts a Lua value to a string.
 func LToString(v lua.LValue) string {
 	switch v := v.(type) {

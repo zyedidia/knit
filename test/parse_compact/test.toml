@@ -1,0 +1,12 @@
+name = "Check parsing"
+
+[flags]
+
+knitfile = "Knitfile"
+dryrun = true
+ncpu = 1
+
+[[builds]]
+
+args = ["all"]
+output = "echo all"

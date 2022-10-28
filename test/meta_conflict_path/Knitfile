@@ -1,0 +1,10 @@
+return r{
+$ install:V: bin/prog
+
+$ %: %.c
+    cc $match.c -o $match.o
+    ld -o $output $match.o
+
+$ bin/%: %
+    mv $match $output
+}

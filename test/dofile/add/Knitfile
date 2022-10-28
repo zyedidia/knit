@@ -1,0 +1,6 @@
+clean[#clean+1] = "add/add.o"
+
+return {
+$ %.o: %.c
+    gcc -c $input -o $output
+}

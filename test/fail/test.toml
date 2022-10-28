@@ -1,0 +1,17 @@
+name = "Failed build files should be removed"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+
+[[builds]]
+
+args = ["test1.txt"]
+output = """\
+echo "hi" > test.txt
+false
+removing 'test.txt' due to failure
+"""
+error = "'test.txt': error during recipe: exit status 1"
+notbuilt = ["test1.txt", "test.txt"]

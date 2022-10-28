@@ -7,9 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/adrg/xdg"
 	lua "github.com/zyedidia/gopher-lua"
 	"github.com/zyedidia/knit/rules"
 )
@@ -93,8 +95,12 @@ func goToKnitfile(vm *LuaVM, dir string, targets []string) error {
 	if err != nil {
 		return err
 	}
+	adir, err := filepath.Abs(dir)
+	if err != nil {
+		return err
+	}
 	for i, t := range targets {
-		r, err := filepath.Rel(dir, wd)
+		r, err := filepath.Rel(adir, wd)
 		if err != nil {
 			return err
 		}
@@ -122,16 +128,15 @@ func (e *ErrMessage) Error() string {
 // Knitfile requested to return an error (with a string), or quietly (with
 // nil), returns an appropriate error.
 func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
-	var dirs []string
-	bsets := make(map[string]*LBuildSet)
+	dirs := []string{"."}
+	bsets := map[string]*LBuildSet{
+		".": &LBuildSet{
+			Dir:  ".",
+			rset: LRuleSet{},
+		},
+	}
 
 	addRuleSet := func(rs LRuleSet) {
-		if _, ok := bsets["."]; !ok {
-			bsets["."] = &LBuildSet{
-				Dir: ".",
-			}
-			dirs = append(dirs, ".")
-		}
 		bsets["."].rset = append(bsets["."].rset, rs...)
 	}
 	addBuildSet := func(bs LBuildSet) {
@@ -230,8 +235,130 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		rulesets[k] = rs
 	}
 
-	fmt.Println(dirs)
-	fmt.Println(rulesets)
+	rs := rulesets["."]
 
-	return knitpath, ErrNothingToDo
+	alltargets := rs.AllTargets()
+
+	if len(targets) == 0 {
+		targets = []string{rs.MainTarget()}
+	}
+
+	if len(targets) == 0 {
+		return knitpath, errors.New("no targets")
+	}
+
+	rs.Add(rules.NewDirectRule([]string{"_build"}, targets, nil, rules.AttrSet{
+		Virtual: true,
+		NoMeta:  true,
+		Rebuild: true,
+	}))
+
+	rs.Add(rules.NewDirectRule([]string{"_all"}, alltargets, nil, rules.AttrSet{
+		Virtual: true,
+		NoMeta:  true,
+		Rebuild: true,
+	}))
+
+	updated := make(map[string]bool)
+	for _, u := range flags.Updated {
+		updated[u] = true
+	}
+
+	graph, err := rules.NewGraph(rulesets, dirs, "_build", updated)
+	if err != nil {
+		return knitpath, err
+	}
+
+	err = graph.ExpandRecipes(vm)
+	if err != nil {
+		return knitpath, err
+	}
+
+	var db *rules.Database
+	if flags.CacheDir == "." || flags.CacheDir == "" {
+		db = rules.NewDatabase(".knit")
+	} else {
+		wd, err := os.Getwd()
+		if err != nil {
+			return knitpath, err
+		}
+		dir := flags.CacheDir
+		if dir == "$cache" {
+			dir = filepath.Join(xdg.CacheHome, "knit")
+		}
+		db = rules.NewCacheDatabase(dir, wd)
+	}
+
+	var w io.Writer = out
+	if flags.Quiet {
+		w = io.Discard
+	}
+
+	if flags.Tool != "" {
+		var t rules.Tool
+		switch flags.Tool {
+		case "list":
+			t = &rules.ListTool{W: w}
+		case "graph":
+			t = &rules.GraphTool{W: w}
+		case "clean":
+			t = &rules.CleanTool{W: w, NoExec: flags.DryRun, All: flags.Always}
+		case "targets":
+			t = &rules.TargetsTool{W: w}
+		case "compdb":
+			t = &rules.CompileDbTool{W: w}
+		case "commands":
+			t = &rules.CommandsTool{W: w}
+		case "status":
+			t = &rules.StatusTool{W: w, Db: db, Hash: flags.Hash}
+		default:
+			return knitpath, fmt.Errorf("unknown tool: %s", flags.Tool)
+		}
+
+		return knitpath, t.Run(graph, flags.ToolArgs)
+	}
+
+	if flags.Ncpu <= 0 {
+		return knitpath, errors.New("you must enable at least 1 core")
+	}
+
+	var printer rules.Printer
+	switch flags.Style {
+	case "steps":
+		printer = &StepPrinter{w: w}
+	case "progress":
+		printer = &ProgressPrinter{
+			w:     w,
+			tasks: make(map[string]string),
+		}
+	default:
+		printer = &BasicPrinter{w: w}
+	}
+
+	lock := sync.Mutex{}
+	ex := rules.NewExecutor(".", db, flags.Ncpu, printer, func(msg string) {
+		lock.Lock()
+		fmt.Fprintln(out, msg)
+		lock.Unlock()
+	}, rules.Options{
+		NoExec:       flags.DryRun,
+		Shell:        "sh",
+		AbortOnError: true,
+		BuildAll:     flags.Always,
+		Hash:         flags.Hash,
+	})
+
+	rebuilt, execerr := ex.Exec(graph)
+
+	err = db.Save()
+	if err != nil {
+		return knitpath, err
+	}
+	if execerr != nil {
+		return knitpath, execerr
+	}
+	if !rebuilt {
+		return knitpath, fmt.Errorf("'%s': %w", strings.Join(targets, " "), ErrNothingToDo)
+	}
+	return knitpath, nil
 }

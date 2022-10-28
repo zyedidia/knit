@@ -1,0 +1,18 @@
+name = "Check rebuilding and changing vars"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+always = true
+tool = "clean"
+
+[[builds]]
+
+args = ["hello"]
+output = """\
+remove hello.o
+remove other.o
+remove hello
+"""

@@ -1,0 +1,4 @@
+return r{
+$ %: %.z
+    cp $input $input.z
+}

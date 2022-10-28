@@ -1,0 +1,23 @@
+name = "Check including rules from other files"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = []
+output = """\
+gcc -c hello.c -o hello.o
+gcc -c add/add.c -o add/add.o
+gcc hello.o add/add.o -o hello
+"""
+
+[[builds]]
+
+args = ["clean"]
+output = """\
+rm -f hello.o hello add/add.o
+"""
