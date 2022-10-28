@@ -3,6 +3,8 @@ local knit = require("knit")
 local src = knit.glob("*.c")
 local obj = knit.extrepl(src, ".c", ".o")
 
+local bar = include("libbar/build.knit")
+
 return b{
 $ all:V: libfoo.a libbar/libbar.a
 
@@ -15,4 +17,6 @@ $ libfoo.a: $obj
 $ clean:VB:
     rm -f *.o
     rm -f *.a
+
+bar
 }

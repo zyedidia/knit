@@ -1,14 +1,13 @@
 foo = include("libfoo/build.knit")
-bar = include("libfoo/libbar/build.knit")
 
-return {
+return b{
     r{
     $ %.o: %.c
         cc -c $input -o $output
     $ prog: f1.o f2.o f3.o libfoo/libfoo.a
         cc $input -o $output
-    $ clean:VB: libfoo/clean
-        rm -f *.o prog
+    $ clean:VB:
+        knit :all -t clean
     },
     foo, bar
 }
