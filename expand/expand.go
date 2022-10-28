@@ -17,16 +17,16 @@ func varInner(b byte) bool {
 
 type Resolver func(name string) (value string, err error)
 
-func Expand(s string, rvar Resolver, rexpr Resolver) (string, error) {
-	return ExpandSpecial(s, rvar, rexpr, '$')
+func Expand(s string, rvar Resolver, rexpr Resolver, escape bool) (string, error) {
+	return ExpandSpecial(s, rvar, rexpr, '$', escape)
 }
 
-func ExpandSpecial(s string, rvar Resolver, rexpr Resolver, special byte) (string, error) {
-	return expand(bufio.NewReader(strings.NewReader(s)), rvar, rexpr, special)
+func ExpandSpecial(s string, rvar Resolver, rexpr Resolver, special byte, escape bool) (string, error) {
+	return expand(bufio.NewReader(strings.NewReader(s)), rvar, rexpr, special, escape)
 }
 
 // special is '$' or '%' or some other symbol
-func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (string, error) {
+func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte, escape bool) (string, error) {
 	buf := &bytes.Buffer{}
 	exprbuf := &bytes.Buffer{}
 	pos := 0
@@ -61,6 +61,9 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte) (strin
 				r.ReadByte()
 				pos++
 				buf.WriteByte(special)
+				if !escape {
+					buf.WriteByte(special)
+				}
 				continue
 			} else if p[0] == '(' {
 				r.ReadByte()

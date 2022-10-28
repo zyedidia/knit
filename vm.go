@@ -84,7 +84,7 @@ func NewLuaVM() *LuaVM {
 	// Rules
 	mkrule := func(rule string, file string, line int) LRule {
 		// ignore errors during Lua-time rule expansion
-		s, _ := expand.Expand(rule, rvar, rexpr)
+		s, _ := expand.Expand(rule, rvar, rexpr, false)
 		return LRule{
 			Contents: s,
 			File:     file,
@@ -242,7 +242,7 @@ func NewLuaVM() *LuaVM {
 
 	// Lua string formatting
 	format := func(s string) string {
-		s, err := expand.Expand(s, rvar, rexpr)
+		s, err := expand.Expand(s, rvar, rexpr, true)
 		if err != nil {
 			vm.Err(err)
 		}
@@ -253,7 +253,7 @@ func NewLuaVM() *LuaVM {
 	L.SetGlobal("_format", luar.New(L, format))
 	// expand without throwing an error for invalid expansions
 	L.SetGlobal("expand", luar.New(L, func(s string) string {
-		ret, _ := expand.Expand(s, rvar, rexpr)
+		ret, _ := expand.Expand(s, rvar, rexpr, true)
 		return ret
 	}))
 
@@ -497,6 +497,21 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 		}
 		return string(bytes.TrimSpace(b))
 	}))
+	vm.L.SetField(pkg, "addpath", luar.New(vm.L, func(path string) {
+		if !filepath.IsAbs(path) {
+			wd, err := os.Getwd()
+			if err != nil {
+				vm.Err(err)
+			}
+			path = filepath.Join(wd, path)
+		}
+		lv := vm.L.GetField(vm.L.GetField(vm.L.Get(lua.EnvironIndex), "package"), "path")
+		if lv, ok := lv.(lua.LString); ok {
+			vm.L.SetField(vm.L.GetField(vm.L.Get(lua.EnvironIndex), "package"), "path", lua.LString(filepath.Join(path, "?.knit;"))+lv)
+		} else {
+			vm.ErrStr("package.path must be a string")
+		}
+	}))
 	return pkg
 }
 
@@ -524,11 +539,6 @@ func addLocals(L *lua.LState, locals *lua.LTable) *lua.LTable {
 		}
 	}
 	return locals
-}
-
-func getLocals(L *lua.LState) *lua.LTable {
-	locals := L.NewTable()
-	return addLocals(L, locals)
 }
 
 func getVars(L *lua.LState) *lua.LTable {

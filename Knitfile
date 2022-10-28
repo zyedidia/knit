@@ -1,0 +1,65 @@
+knit = require("knit")
+
+knit.shell("knit -C tools/version")
+version = knit.shell("./tools/version/version")
+if version:find("exit status") ~= nil then
+    version = "0.0.0-unknown"
+end
+goflags = f"-trimpath -ldflags \"-s -w -X github.com/zyedidia/knit/info.Version=$version\""
+
+race = tobool(cli.race) and "-race" or ""
+
+pkgs = ".,./rules,./expand"
+
+return r{
+$ knit:B:
+    go build $goflags ./cmd/knit
+$ build:V: knit
+
+$ install:VB:
+    go install $goflags ./cmd/knit
+
+$ all:V: knit-$version-linux-amd64.tar.gz \
+         knit-$version-linux-386.tar.gz \
+         knit-$version-linux-arm.tar.gz \
+         knit-$version-linux-arm64.tar.gz \
+         knit-$version-darwin-amd64.tar.gz \
+         knit-$version-darwin-arm64.tar.gz \
+         knit-$version-openbsd-amd64.tar.gz \
+         knit-$version-freebsd-amd64.tar.gz \
+         knit-$version-windows-amd64.tar.gz
+
+$ %.tar.gz: %/
+    tar czf $output $input
+
+$ (knit-$version-(.*)-(.*))/:R: knit.1
+    mkdir -p $match1
+    GOOS=$match2 GOARCH=$match3 go build $goflags -o $match1/knit ./cmd/knit
+    cp LICENSE* $match1
+    cp README.md $match1
+    cp knit.1 $match1
+
+$ clean:VB:
+    rm -f *.tar.gz knit cover.out
+
+$ test:VB:
+    go test $race
+
+$ check:VB:
+    if [ "$$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
+    go vet ./...
+    staticcheck ./...
+    go test $race
+
+$ cover.out:B:
+    go test -coverpkg=$pkgs -coverprofile cover.out .
+
+$ cover:VB:
+    go test -coverpkg=$pkgs -cover .
+
+$ cover-html:VB: cover.out
+    go tool cover -html=cover.out
+
+$ knit.1: man/knit.md
+    pandoc $input -s -t man -o $output
+}

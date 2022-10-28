@@ -87,6 +87,14 @@ func (r *MetaRule) Match(target string) ([]int, *Pattern) {
 	return nil, nil
 }
 
+func (r *MetaRule) String() string {
+	targets := make([]string, len(r.targets))
+	for i, p := range r.targets {
+		targets[i] = p.Regex.String()
+	}
+	return fmt.Sprintf("%s: %s", strings.Join(targets, " "), strings.Join(r.prereqs, " "))
+}
+
 type AttrSet struct {
 	Regex   bool // regular expression meta-rule
 	Virtual bool // targets are not files

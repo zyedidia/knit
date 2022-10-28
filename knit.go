@@ -64,6 +64,18 @@ func exists(path string) bool {
 	return err == nil
 }
 
+func rel(basepath, targpath string) (string, error) {
+	slash := strings.HasSuffix(targpath, "/")
+	rel, err := filepath.Rel(basepath, targpath)
+	if err != nil {
+		return rel, err
+	}
+	if slash {
+		rel += "/"
+	}
+	return rel, err
+}
+
 type assign struct {
 	name  string
 	value string
@@ -100,7 +112,7 @@ func goToKnitfile(vm *LuaVM, dir string, targets []string) error {
 		return err
 	}
 	for i, t := range targets {
-		r, err := filepath.Rel(adir, wd)
+		r, err := rel(adir, wd)
 		if err != nil {
 			return err
 		}
@@ -130,7 +142,7 @@ func (e *ErrMessage) Error() string {
 func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
 	dirs := []string{"."}
 	bsets := map[string]*LBuildSet{
-		".": &LBuildSet{
+		".": {
 			Dir:  ".",
 			rset: LRuleSet{},
 		},

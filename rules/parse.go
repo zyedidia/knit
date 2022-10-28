@@ -128,7 +128,7 @@ func parseTopLevel(p *parser, t token) parserStateFun {
 func parseTargets(p *parser, t token) parserStateFun {
 	switch t.typ {
 	case tokenWord:
-		_, err := expand.Expand(t.val, p.errexpand, p.errexpand)
+		_, err := expand.Expand(t.val, p.errexpand, p.errexpand, true)
 		if err != nil {
 			p.basicErrorAtToken(err.Error(), t)
 		}
@@ -153,7 +153,7 @@ func parseAttributesOrPrereqs(p *parser, t token) parserStateFun {
 		p.push(t)
 		return parsePrereqs
 	case tokenWord:
-		_, err := expand.Expand(t.val, p.errexpand, p.errexpand)
+		_, err := expand.Expand(t.val, p.errexpand, p.errexpand, true)
 		if err != nil {
 			p.basicErrorAtToken(err.Error(), t)
 		}
@@ -172,7 +172,7 @@ func parsePrereqs(p *parser, t token) parserStateFun {
 	case tokenNewline:
 		return parseRecipe
 	case tokenWord:
-		_, err := expand.Expand(t.val, p.errexpand, p.errexpand)
+		_, err := expand.Expand(t.val, p.errexpand, p.errexpand, true)
 		if err != nil {
 			p.basicErrorAtToken(err.Error(), t)
 		}

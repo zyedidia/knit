@@ -120,7 +120,11 @@ func pathJoin(dir, target string) string {
 	if filepath.IsAbs(target) {
 		return target
 	}
-	return filepath.Join(dir, target)
+	p := filepath.Join(dir, target)
+	if strings.HasSuffix(target, "/") {
+		p += "/"
+	}
+	return p
 }
 
 func (f *file) updateTimestamp() {
@@ -174,13 +178,25 @@ func NewGraph(rs map[string]*RuleSet, dirs []string, target string, updated map[
 	return g, checkCycles(g.base)
 }
 
+func rel(basepath, targpath string) (string, error) {
+	slash := strings.HasSuffix(targpath, "/")
+	rel, err := filepath.Rel(basepath, targpath)
+	if err != nil {
+		return rel, err
+	}
+	if slash {
+		rel += "/"
+	}
+	return rel, err
+}
+
 // Resolves 'target' by looking across all rulesets.
 func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, updated map[string]bool) (*node, error) {
 	dir := filepath.Dir(target)
 
 	var rerr error
 	if rs, ok := g.rsets[dir]; ok {
-		rel, err := filepath.Rel(dir, target)
+		rel, err := rel(dir, target)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +211,7 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 		if d == dir {
 			continue
 		}
-		rel, err := filepath.Rel(d, target)
+		rel, err := rel(d, target)
 		if err != nil {
 			return nil, err
 		}
@@ -212,7 +228,7 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 }
 
 func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, visits map[string][]int, updated map[string]bool) (*node, error) {
-	fulltarget := filepath.Join(dir, target)
+	fulltarget := pathJoin(dir, target)
 	// do we have a node that builds target already
 	if n, ok := g.nodes[fulltarget]; ok {
 		// make sure the node knows that it now builds target too
@@ -301,8 +317,9 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 				visits[dir][mi]++
 				// Is there significant performance impact from this?
 				for _, p := range metarule.prereqs {
-					_, err := g.resolveTargetAcross(filepath.Join(dir, p), visits, updated)
+					_, err := g.resolveTargetAcross(pathJoin(dir, p), visits, updated)
 					if err != nil {
+						// log.Printf("could not use metarule '%s': %s\n", mr.String(), err)
 						failed = true
 						break
 					}
@@ -369,7 +386,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 		if !n.rule.attrs.Virtual {
 			n.outputs[t] = newFile(dir, t, updated)
 		}
-		g.fullNodes[filepath.Join(dir, t)] = n
+		g.fullNodes[pathJoin(dir, t)] = n
 	}
 
 	n.myTarget = target
@@ -384,13 +401,13 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 		visits[dir][ri]++
 	}
 	for _, p := range n.rule.prereqs {
-		pn, err := g.resolveTargetAcross(filepath.Join(dir, p), visits, updated)
+		pn, err := g.resolveTargetAcross(pathJoin(dir, p), visits, updated)
 		if err != nil {
 			// there was an error with a prereq, so this node is invalid and we
 			// must remove it from the maps
 			delete(g.nodes, fulltarget)
 			for _, t := range n.rule.targets {
-				delete(g.fullNodes, filepath.Join(dir, t))
+				delete(g.fullNodes, pathJoin(dir, t))
 			}
 			return nil, err
 		}
@@ -444,7 +461,7 @@ func (n *node) expandRecipe(vm VM) error {
 	n.recipe = make([]string, 0, len(n.rule.recipe))
 	for _, c := range n.rule.recipe {
 		rvar, rexpr := vm.ExpandFuncs()
-		output, err := expand.Expand(c, rvar, rexpr)
+		output, err := expand.Expand(c, rvar, rexpr, true)
 		if err != nil {
 			return err
 		}
