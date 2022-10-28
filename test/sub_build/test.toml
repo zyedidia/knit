@@ -18,3 +18,13 @@ cc -c f3.c -o f3.o
 [libfoo] ar -rcs libfoo.a bar.o foo.o
 cc f1.o f2.o f3.o libfoo/libfoo.a -o prog
 """
+
+[[builds]]
+
+args = ["libfoo/all"]
+output = """\
+[libfoo] cc -c bar.c -o bar.o
+[libfoo] cc -c foo.c -o foo.o
+[libfoo] ar -rcs libfoo.a bar.o foo.o
+[libfoo/libbar] echo "hi" > libbar.a
+"""
