@@ -530,6 +530,18 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 			vm.ErrStr("package.path must be a string")
 		}
 	}))
+	vm.L.SetField(pkg, "knit", luar.New(vm.L, func(flags string) string {
+		path, err := os.Executable()
+		if err != nil {
+			vm.Err(err)
+		}
+		cmd := exec.Command("sh", "-c", path+" "+flags)
+		b, err := cmd.Output()
+		if err != nil {
+			vm.Err(err)
+		}
+		return string(bytes.TrimSpace(b))
+	}))
 	return pkg
 }
 

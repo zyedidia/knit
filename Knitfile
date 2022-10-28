@@ -1,10 +1,8 @@
 knit = require("knit")
 
 version = "0.0.0-unknown"
-ok = pcall(knit.shell, "knit -C tools/version")
-if ok then
-    version = knit.shell("./tools/version/version")
-end
+knit.knit("-C tools/version")
+version = knit.shell("./tools/version/version")
 goflags = f"-trimpath -ldflags \"-s -w -X github.com/zyedidia/knit/info.Version=$version\""
 
 race = tobool(cli.race) and "-race" or ""
