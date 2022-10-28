@@ -1,9 +1,9 @@
 knit = require("knit")
 
-pcall(knit.shell, "knit -C tools/version")
-ok, version = pcall(knit.shell, "./tools/version/version")
-if not ok then
-    version = "0.0.0-unknown"
+version = "0.0.0-unknown"
+ok = pcall(knit.shell, "knit -C tools/version")
+if ok then
+    version = knit.shell("./tools/version/version")
 end
 goflags = f"-trimpath -ldflags \"-s -w -X github.com/zyedidia/knit/info.Version=$version\""
 
