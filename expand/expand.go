@@ -61,6 +61,10 @@ func expand(r *bufio.Reader, rvar Resolver, rexpr Resolver, special byte, escape
 				r.ReadByte()
 				pos++
 				buf.WriteByte(special)
+				// due to two-stage expansion sometimes it is useful to
+				// translate '$$' to '$$' instead of to '$'. This way the
+				// escape stays as an escape in the output, to be used in
+				// a future expansion
 				if !escape {
 					buf.WriteByte(special)
 				}
