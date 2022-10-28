@@ -118,7 +118,7 @@ func (p *ProgressPrinter) Print(cmd, dir string, name string, step int) {
 
 func (p *ProgressPrinter) desc() string {
 	desc := "Building"
-	for k, _ := range p.tasks {
+	for k := range p.tasks {
 		desc += " " + fmt.Sprintf("%-20s", filepath.Base(k))
 		// before, _, found := strings.Cut(cmd, " ")
 		// if found {
