@@ -84,8 +84,8 @@ func (n *node) setDoneOrErr() {
 }
 
 // This function is run when the node completes execution without error.
-func (n *node) setDone(db *Database, noexec bool) {
-	if !noexec {
+func (n *node) setDone(db *Database, noexec, hash bool) {
+	if !noexec && hash {
 		for _, p := range n.prereqs {
 			for _, f := range p.outputs {
 				// TODO: think about path normalization?

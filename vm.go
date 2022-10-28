@@ -69,7 +69,8 @@ func (bs *LBuildSet) String() string {
 
 // NewLuaVM constructs a new VM, and adds all the default built-ins.
 func NewLuaVM() *LuaVM {
-	L := lua.NewState(lua.Options{SkipOpenLibs: true})
+	// TODO: make this only enabled in debug mode
+	L := lua.NewState(lua.Options{SkipOpenLibs: true, IncludeGoStackTrace: true})
 	vm := &LuaVM{
 		L:  L,
 		wd: stack.New[string](),
@@ -94,6 +95,12 @@ func NewLuaVM() *LuaVM {
 	slcmt := luar.MT(L, []string{})
 	L.SetField(slcmt.LTable, "__tostring", luar.New(L, func(s []string) string {
 		return strings.Join(s, " ")
+	}))
+	L.SetField(slcmt.LTable, "__add", luar.New(L, func(s1, s2 []string) []string {
+		s3 := make([]string, 0, len(s1)+len(s2))
+		s3 = append(s3, s1...)
+		s3 = append(s3, s2...)
+		return s3
 	}))
 	rmt := luar.MT(L, LRule{})
 	L.SetField(rmt.LTable, "__tostring", luar.New(L, func(r LRule) string {
@@ -138,6 +145,7 @@ func NewLuaVM() *LuaVM {
 	}))
 
 	L.SetGlobal("b", L.NewFunction(func(L *lua.LState) int {
+		// TODO: also accept a ruleset
 		vals := L.ToTable(1)
 		dir := L.OptString(2, ".")
 		b := LBuildSet{}

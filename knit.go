@@ -254,6 +254,7 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 	if len(targets) == 0 {
 		targets = []string{rs.MainTarget()}
 	}
+	// TODO: don't turn an empty target into '.'
 
 	if len(targets) == 0 {
 		return knitpath, errors.New("no targets")
