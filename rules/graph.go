@@ -194,6 +194,8 @@ func rel(basepath, targpath string) (string, error) {
 func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, updated map[string]bool) (*node, error) {
 	dir := filepath.Dir(target)
 
+	var candidate *node
+
 	var rerr error
 	if rs, ok := g.rsets[dir]; ok {
 		rel, err := rel(dir, target)
@@ -202,7 +204,10 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 		}
 		n, err := g.resolveTargetForRuleSet(rs, dir, rel, visits, updated)
 		if err == nil {
-			return n, nil
+			if len(n.rule.recipe) != 0 {
+				return n, nil
+			}
+			candidate = n
 		}
 		rerr = err
 	}
@@ -217,11 +222,20 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 		}
 		n, err := g.resolveTargetForRuleSet(g.rsets[d], d, rel, visits, updated)
 		if err == nil {
-			return n, nil
+			if len(n.rule.recipe) != 0 {
+				return n, nil
+			}
+			if candidate == nil {
+				candidate = n
+			}
 		}
 		if rerr == nil {
 			rerr = err
 		}
+	}
+
+	if candidate != nil {
+		return candidate, nil
 	}
 
 	return nil, rerr
@@ -230,7 +244,9 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, visits map[string][]int, updated map[string]bool) (*node, error) {
 	fulltarget := pathJoin(dir, target)
 	// do we have a node that builds target already
-	if n, ok := g.nodes[fulltarget]; ok {
+	// if the node has an empty recipe, we don't use it because it could be a
+	// candidate so we should check if we can build it in a better way
+	if n, ok := g.nodes[fulltarget]; ok && len(n.rule.recipe) != 0 {
 		// make sure the node knows that it now builds target too
 		if _, ok := n.outputs[target]; !ok && !n.rule.attrs.Virtual {
 			n.outputs[target] = newFile(dir, target, updated)

@@ -1,0 +1,10 @@
+foo = include("foo/build.knit")
+
+return {
+    r{
+    $ all:V: foo.txt
+    $ clean:VB:
+        rm -f foo.txt
+    },
+    foo
+}

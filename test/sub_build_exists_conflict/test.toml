@@ -1,0 +1,22 @@
+name = "Sub builds where buildsets have an existence conflict"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+always = true
+
+[[builds]]
+
+args = ["clean"]
+output = "rm -f foo.txt"
+
+[[builds]]
+
+args = []
+output = "[foo] echo \"foo\" > ../foo.txt"
+
+[[builds]]
+
+args = []
+output = "[foo] echo \"foo\" > ../foo.txt"
