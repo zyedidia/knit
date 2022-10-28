@@ -58,12 +58,6 @@ func title(s string) string {
 	return string(unicode.ToTitle(r)) + s[size:]
 }
 
-// Returns true if 'path' exists.
-func exists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
 func rel(basepath, targpath string) (string, error) {
 	slash := strings.HasSuffix(targpath, "/")
 	rel, err := filepath.Rel(basepath, targpath)
@@ -295,7 +289,7 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 
 	var db *rules.Database
 	if flags.CacheDir == "." || flags.CacheDir == "" {
-		db = rules.NewDatabase(".knit")
+		db = rules.NewDatabase(filepath.Join(".knit", file))
 	} else {
 		wd, err := os.Getwd()
 		if err != nil {
@@ -305,7 +299,7 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		if dir == "$cache" {
 			dir = filepath.Join(xdg.CacheHome, "knit")
 		}
-		db = rules.NewCacheDatabase(dir, wd)
+		db = rules.NewCacheDatabase(dir, filepath.Join(wd, file))
 	}
 
 	var w io.Writer = out

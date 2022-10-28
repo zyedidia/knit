@@ -13,6 +13,18 @@ var ErrBuildFileNotFound = errors.New("build file not found")
 
 const defaultFile = "knitfile.def"
 
+// Returns true if 'path' exists.
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// Returns true if 'path' exists and is not a directory.
+func existsFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}
+
 var configDirs = []string{
 	filepath.Join(xdg.ConfigHome, "knit"),
 }
@@ -24,9 +36,9 @@ func init() {
 }
 func DefaultBuildFile() (string, bool) {
 	for _, dir := range configDirs {
-		if exists(filepath.Join(dir, defaultFile)) {
+		if existsFile(filepath.Join(dir, defaultFile)) {
 			return filepath.Join(defaultFile), true
-		} else if exists(filepath.Join(dir, title(defaultFile))) {
+		} else if existsFile(filepath.Join(dir, title(defaultFile))) {
 			return filepath.Join(dir, title(defaultFile)), true
 		}
 	}
@@ -41,11 +53,11 @@ func FindBuildFile(name string) (string, string, error) {
 	dirs := []string{wd}
 	path := wd
 	for path != "/" {
-		if exists(filepath.Join(path, name)) {
+		if existsFile(filepath.Join(path, name)) {
 			p, e := filepath.Rel(wd, path)
 			return name, p, e
 		}
-		if exists(filepath.Join(path, title(name))) {
+		if existsFile(filepath.Join(path, title(name))) {
 			p, e := filepath.Rel(wd, path)
 			return title(name), p, e
 		}
