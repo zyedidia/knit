@@ -142,9 +142,6 @@ func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
 		},
 	}
 
-	addRuleSet := func(rs LRuleSet) {
-		bsets["."].rset = append(bsets["."].rset, rs...)
-	}
 	var addBuildSet func(bs LBuildSet)
 	addBuildSet = func(bs LBuildSet) {
 		bsets[bs.Dir] = &bs
@@ -163,24 +160,11 @@ func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
 		return nil, nil, ErrQuiet
 	case *lua.LUserData:
 		switch u := v.Value.(type) {
-		case LRuleSet:
-			addRuleSet(u)
 		case LBuildSet:
 			addBuildSet(u)
 		default:
 			return nil, nil, fmt.Errorf("invalid return value: %v", lval)
 		}
-	case *lua.LTable:
-		v.ForEach(func(key, val lua.LValue) {
-			if u, ok := val.(*lua.LUserData); ok {
-				switch u := u.Value.(type) {
-				case LRuleSet:
-					addRuleSet(u)
-				case LBuildSet:
-					addBuildSet(u)
-				}
-			}
-		})
 	default:
 		return nil, nil, fmt.Errorf("invalid return value: %v", lval)
 	}

@@ -1,4 +1,4 @@
-return r{
+return b{
 $ hello: hello.c
     cc -o $output $input
 $ touch:VB:

@@ -1,6 +1,6 @@
 ofiles := f1.o f2.o f3.o
 
-return r{
+return b{
 $ o.out: $ofiles
     ld $ofiles
 

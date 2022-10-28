@@ -1,4 +1,4 @@
-return r{
+return b{
 $ install:V: bin/prog
 
 $ %: %.c

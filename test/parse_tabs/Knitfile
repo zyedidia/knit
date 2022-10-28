@@ -1,4 +1,4 @@
-return r{
+return b{
 $ hello:VB:
 	echo hello
 }

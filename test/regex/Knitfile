@@ -1,6 +1,6 @@
 version = "0.0.0"
 
-return r{
+return b{
 $ all:V: knit-$version-linux-amd64.tar.gz \
          knit-$version-linux-386.tar.gz \
          knit-$version-linux-arm.tar.gz \

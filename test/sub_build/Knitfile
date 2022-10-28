@@ -1,13 +1,11 @@
 foo = include("libfoo/build.knit")
 
 return b{
-    r{
     $ %.o: %.c
         cc -c $input -o $output
     $ prog: f1.o f2.o f3.o libfoo/libfoo.a
         cc $input -o $output
     $ clean:VB:
         knit :all -t clean
-    },
     foo, bar
 }

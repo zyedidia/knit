@@ -1,4 +1,4 @@
-return r{
+return b{
 $ version: version.go
     go build -o $output $input
 }

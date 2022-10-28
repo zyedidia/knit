@@ -1,4 +1,4 @@
-return r{
+return b{
 $ %: %.z
     cp $input $input.z
 }

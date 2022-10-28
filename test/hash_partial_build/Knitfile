@@ -1,4 +1,4 @@
-return r{
+return b{
 $ %.o: %.c
     cc -c $input -o $output
 $ prog: f1.o

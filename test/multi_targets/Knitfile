@@ -1,4 +1,4 @@
-return r{
+return b{
 $ out1.txt out2.txt:
     echo "1" > out1.txt; echo "2" > out2.txt
 

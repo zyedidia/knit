@@ -1,4 +1,4 @@
-return r{
+return b{
 $ f1.txt f2.txt:
     touch f1.txt f2.txt
 $ clean:VB:

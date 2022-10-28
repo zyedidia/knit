@@ -1,4 +1,4 @@
-return r{
+return b{
 $ %.o: %.c hdr.h
     cc -Wall $match.c -c -o $output
 

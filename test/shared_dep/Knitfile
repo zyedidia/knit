@@ -1,6 +1,6 @@
 local obj := f1.o f2.o f3.o
 
-return r{
+return b{
 $ f1.c:
     echo "int main() { return 0; }" > $output
 

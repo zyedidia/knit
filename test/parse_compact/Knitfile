@@ -1,6 +1,6 @@
 local test = $ test: > echo test
 
-return r{
+return b{
     $ all:VB:
         echo all
     test,

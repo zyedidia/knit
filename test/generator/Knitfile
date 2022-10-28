@@ -10,4 +10,4 @@ for i = 1, 10 do
     } + rules
 end
 
-return rules
+return b{rules}

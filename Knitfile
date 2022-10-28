@@ -9,7 +9,7 @@ race = tobool(cli.race) and "-race" or ""
 
 pkgs = ".,./rules,./expand"
 
-return r{
+return b{
 $ knit:B:
     go build $goflags ./cmd/knit
 $ build:V: knit

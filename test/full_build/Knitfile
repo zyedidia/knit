@@ -15,7 +15,7 @@ src = knit.glob("*.c")
 obj = knit.extrepl(src, ".c", ".o")
 prog := hello
 
-return r{
+return b{
 $ $prog: $obj
     $cc $cflags $input -o $output
 

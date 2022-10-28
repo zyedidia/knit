@@ -151,7 +151,11 @@ func NewLuaVM() *LuaVM {
 	}))
 
 	L.SetGlobal("b", L.NewFunction(func(L *lua.LState) int {
-		vals := L.ToTable(1)
+		lv := L.Get(1)
+		vals, ok := lv.(*lua.LTable)
+		if !ok {
+			vm.Err(fmt.Errorf("requires table, but got value %v", lv.Type()))
+		}
 		dir := L.OptString(2, ".")
 		b := LBuildSet{}
 

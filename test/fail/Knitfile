@@ -1,4 +1,4 @@
-return r{
+return b{
 $ test.txt:
     echo "hi" > $output
     false
