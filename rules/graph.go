@@ -85,11 +85,13 @@ func (n *node) setDoneOrErr() {
 
 // This function is run when the node completes execution without error.
 func (n *node) setDone(db *Database, noexec, hash bool) {
-	if !noexec && hash {
-		for _, p := range n.prereqs {
-			for _, f := range p.outputs {
-				// TODO: think about path normalization?
-				db.Prereqs.insert(n.rule.targets, f.name, n.dir)
+	if !noexec {
+		if hash {
+			for _, p := range n.prereqs {
+				for _, f := range p.outputs {
+					// TODO: think about path normalization?
+					db.Prereqs.insert(n.rule.targets, f.name, n.dir)
+				}
 			}
 		}
 		// TODO: think about path normalization?

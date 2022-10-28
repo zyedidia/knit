@@ -8,6 +8,15 @@ dryrun = true
 
 [[builds]]
 
+args = ["clean"]
+output = """\
+[libfoo] rm -f *.o
+[libfoo] rm -f *.a
+rm -f *.o prog
+"""
+
+[[builds]]
+
 args = []
 output = """\
 cc -c f1.c -o f1.o
