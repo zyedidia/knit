@@ -1,6 +1,6 @@
 knit = require("knit")
 
-pcall(knit.shell("knit -C tools/version"))
+pcall(knit.shell, "knit -C tools/version")
 ok, version = pcall(knit.shell, "./tools/version/version")
 if not ok then
     version = "0.0.0-unknown"
