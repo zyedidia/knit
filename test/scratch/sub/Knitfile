@@ -1,6 +1,0 @@
-function foo(x)
-    if x == 42 then
-        return "hello"
-    end
-    error("not good")
-end
