@@ -259,13 +259,13 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		return knitpath, errors.New("no targets")
 	}
 
-	rs.Add(rules.NewDirectRule([]string{"_build"}, targets, nil, rules.AttrSet{
+	rs.Add(rules.NewDirectRule([]string{":build"}, targets, nil, rules.AttrSet{
 		Virtual: true,
 		NoMeta:  true,
 		Rebuild: true,
 	}))
 
-	rs.Add(rules.NewDirectRule([]string{"_all"}, alltargets, nil, rules.AttrSet{
+	rs.Add(rules.NewDirectRule([]string{":all"}, alltargets, nil, rules.AttrSet{
 		Virtual: true,
 		NoMeta:  true,
 		Rebuild: true,
@@ -276,7 +276,7 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		updated[u] = true
 	}
 
-	graph, err := rules.NewGraph(rulesets, dirs, "_build", updated)
+	graph, err := rules.NewGraph(rulesets, dirs, ":build", updated)
 	if err != nil {
 		return knitpath, err
 	}

@@ -9,9 +9,9 @@ tool = "graph"
 
 args = ["foo.o", "bar.o"]
 output = """\
-_build -> foo.o
+:build -> foo.o
 foo.o -> foo.s
-_build -> bar.o
+:build -> bar.o
 bar.o -> bar.c
 bar.o -> hdr.h
 """

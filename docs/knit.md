@@ -222,7 +222,7 @@ specify a sub-tool to run instead of building:
 * `commands` - output the build commands (formats: knit, json, make, ninja, shell)
 * `status` - lists dependencies and whether they are up-to-date
 
-The special target `_all` depends on every target in the build. Thus `knit _all
+The special target `:all` depends on every target in the build. Thus `knit :all
 -t targets` will list all targets.
 
 Some examples are shown below.

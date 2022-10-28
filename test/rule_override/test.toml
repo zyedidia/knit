@@ -9,7 +9,7 @@ tool = "graph"
 
 args = ["o.out"]
 output = """\
-_build -> o.out
+:build -> o.out
 o.out -> f1.o
 f1.o -> f1.c
 o.out -> f2.o

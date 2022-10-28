@@ -9,7 +9,7 @@ tool = "graph"
 
 args = ["prog"]
 output = """\
-_build -> prog
+:build -> prog
 prog -> f1.o
 f1.o -> f1.c
 f1.o -> hdr.h
