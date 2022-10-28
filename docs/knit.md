@@ -1,3 +1,5 @@
+Note: the documentation for sub builds is out of date.
+
 # Rules
 
 A rule consists of four parts:
@@ -257,8 +259,6 @@ knit target -t graph pdf > graph.pdf
 
 # Built-in Lua functions
 
-* `import(pkg string) table`: import a built-in package. Currently the only built-in package is `knit`.
-
 * `rule(rule string)`: define a rule. The `$` syntax is shorthand for this function.
 
 * `include(file string)`: run a Knitfile from its directory and return the generated ruleset.
@@ -282,7 +282,7 @@ knit target -t graph pdf > graph.pdf
 
 # The `knit` Lua package
 
-The `knit` package can be imported with `import("knit")`, and provides the following functions:
+The `knit` package can be imported with `require("knit")`, and provides the following functions:
 
 * `repl(in []string, patstr, repl string) ([]string, error)`: replace all
   occurrences of the Go regular expression `patstr` with `repl` within `in`.
