@@ -613,7 +613,7 @@ func (n *node) outOfDateNoMemo(db *Database, hash bool) UpdateReason {
 					return Untracked
 				}
 			}
-		} else if p.time().After(n.time()) {
+		} else if !p.rule.attrs.Virtual && p.time().After(n.time()) {
 			return TimeModified
 		}
 	}

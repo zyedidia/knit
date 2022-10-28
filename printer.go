@@ -3,7 +3,7 @@ package knit
 import (
 	"fmt"
 	"io"
-	"strings"
+	"path/filepath"
 	"sync"
 
 	pb "github.com/schollz/progressbar/v3"
@@ -118,12 +118,12 @@ func (p *ProgressPrinter) Print(cmd, dir string, name string, step int) {
 
 func (p *ProgressPrinter) desc() string {
 	desc := "Building"
-	for k, cmd := range p.tasks {
-		desc += " " + k
-		before, _, found := strings.Cut(cmd, " ")
-		if found {
-			desc += " [" + before + "]"
-		}
+	for k, _ := range p.tasks {
+		desc += " " + fmt.Sprintf("%-20s", filepath.Base(k))
+		// before, _, found := strings.Cut(cmd, " ")
+		// if found {
+		// 	desc += " [" + before + "]"
+		// }
 		break
 	}
 	return desc
