@@ -179,13 +179,14 @@ func NewGraph(rs map[string]*RuleSet, dirs []string, target string, updated map[
 }
 
 func rel(basepath, targpath string) (string, error) {
-	slash := strings.HasSuffix(targpath, "/")
+	ps := string(os.PathSeparator)
+	slash := strings.HasSuffix(targpath, ps)
 	rel, err := filepath.Rel(basepath, targpath)
 	if err != nil {
 		return rel, err
 	}
 	if slash {
-		rel += "/"
+		rel += ps
 	}
 	return rel, err
 }
