@@ -55,6 +55,8 @@ func (rs LRuleSet) String() string {
 type LBuildSet struct {
 	Dir  string
 	rset LRuleSet
+	// list of build sets, relative to the root buildset
+	bsets []LBuildSet
 }
 
 func (bs *LBuildSet) String() string {
@@ -143,27 +145,35 @@ func NewLuaVM() *LuaVM {
 	L.SetField(bsmt.LTable, "__tostring", luar.New(L, func(bs LBuildSet) string {
 		return bs.String()
 	}))
+	L.SetField(bsmt.LTable, "__add", luar.New(L, func(bs LBuildSet, rs LRuleSet) LBuildSet {
+		bs.rset = append(bs.rset, rs...)
+		return bs
+	}))
 
 	L.SetGlobal("b", L.NewFunction(func(L *lua.LState) int {
-		// TODO: also accept a ruleset
 		vals := L.ToTable(1)
 		dir := L.OptString(2, ".")
 		b := LBuildSet{}
+
 		vals.ForEach(func(key lua.LValue, val lua.LValue) {
 			switch v := val.(type) {
 			case *lua.LUserData:
 				switch u := v.Value.(type) {
+				case LBuildSet:
+					u.Dir = filepath.Join(vm.Wd(), u.Dir)
+					b.bsets = append(b.bsets, u)
 				case LRuleSet:
 					b.rset = append(b.rset, u...)
 				case LRule:
 					b.rset = append(b.rset, u)
 				default:
-					vm.Err(fmt.Errorf("invalid buildset item: %v", u))
+					vm.Err(fmt.Errorf("invalid buildset item: %v of type %v", u, v.Type()))
 				}
 			default:
-				vm.Err(fmt.Errorf("invalid buildset item: %v", v))
+				vm.Err(fmt.Errorf("invalid buildset item: %v of type %v", v, v.Type()))
 			}
 		})
+
 		b.Dir = filepath.Join(vm.Wd(), dir)
 		L.Push(luar.New(L, b))
 		return 1
