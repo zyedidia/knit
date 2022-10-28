@@ -181,6 +181,13 @@ func NewGraph(rs map[string]*RuleSet, dirs []string, target string, updated map[
 }
 
 func rel(basepath, targpath string) (string, error) {
+	if filepath.IsAbs(targpath) {
+		p, err := filepath.Abs(basepath)
+		if err != nil {
+			return "", err
+		}
+		basepath = p
+	}
 	ps := string(os.PathSeparator)
 	slash := strings.HasSuffix(targpath, ps)
 	rel, err := filepath.Rel(basepath, targpath)
