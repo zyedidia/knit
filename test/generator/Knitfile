@@ -1,0 +1,13 @@
+rules = r{
+$ step-0:VB:
+}
+
+for i = 1, 10 do
+    rules = r{
+        $ step-$i:V: step-$(i-1)
+            echo $i
+            sleep 0.1
+    } + rules
+end
+
+return rules
