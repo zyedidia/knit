@@ -141,7 +141,7 @@ func (t *CleanTool) clean(n *node, done map[*info]bool) {
 	}
 
 	// don't clean virtual rules or rules without a recipe to rebuild the outputs
-	if len(n.rule.recipe) != 0 && !n.rule.attrs.Virtual {
+	if len(n.rule.Recipe) != 0 && !n.rule.Attrs.Virtual {
 		for _, o := range n.outputs {
 			if !o.exists && !t.All {
 				continue
@@ -173,12 +173,12 @@ type TargetsTool struct {
 }
 
 func (t *TargetsTool) targets(n *node, virtual bool, visited map[*info]bool) {
-	if visited[n.info] || len(n.rule.recipe) == 0 && len(n.rule.prereqs) == 0 {
+	if visited[n.info] || len(n.rule.Recipe) == 0 && len(n.rule.Prereqs) == 0 {
 		return
 	}
 
-	if !virtual || virtual && n.rule.attrs.Virtual {
-		fmt.Fprintln(t.W, strings.Join(n.rule.targets, "\n"))
+	if !virtual || virtual && n.rule.Attrs.Virtual {
+		fmt.Fprintln(t.W, strings.Join(n.rule.Targets, "\n"))
 	}
 
 	visited[n.info] = true
@@ -365,7 +365,7 @@ func (c *BuildCommand) toNinja(w io.Writer) {
 }
 
 func (t *CommandsTool) commands(n *node, visited map[*info]bool, cmds BuildRules) BuildRules {
-	if visited[n.info] || len(n.rule.prereqs) == 0 && len(n.rule.recipe) == 0 {
+	if visited[n.info] || len(n.rule.Prereqs) == 0 && len(n.rule.Recipe) == 0 {
 		return cmds
 	}
 
@@ -465,7 +465,7 @@ type StatusTool struct {
 
 func (t *StatusTool) visit(prev UpdateReason, indent string, n *node, visited map[*node]bool) {
 	status := n.outOfDate(t.Db, t.Hash)
-	if n.rule.attrs.Linked && status == UpToDate && prev != UpToDate {
+	if n.rule.Attrs.Linked && status == UpToDate && prev != UpToDate {
 		status = LinkedUpdate
 	}
 	fmt.Fprintf(t.W, "%s%s: [%s]\n", indent, n2str(n), status)

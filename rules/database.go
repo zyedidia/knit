@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/gob"
 	"io"
@@ -40,6 +41,43 @@ const dataFile = "data"
 type Database struct {
 	*data
 	location string
+}
+
+func (db *Database) WriteRuleSets(rsets map[string]*RuleSet, dirs []string) error {
+	var buf bytes.Buffer
+	fz := gzip.NewWriter(&buf)
+	enc := gob.NewEncoder(fz)
+	err := enc.Encode(rsets)
+	if err != nil {
+		return err
+	}
+	err = enc.Encode(dirs)
+	fz.Close()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(db.location, "rules.dat"), buf.Bytes(), 0666)
+}
+
+func (db *Database) ReadRuleSets() (map[string]*RuleSet, []string, error) {
+	b, err := os.ReadFile(filepath.Join(db.location, "rules.dat"))
+	if err != nil {
+		return nil, nil, err
+	}
+	var rsets map[string]*RuleSet
+	fz, err := gzip.NewReader(bytes.NewReader(b))
+	if err != nil {
+		return nil, nil, err
+	}
+	dec := gob.NewDecoder(fz)
+	err = dec.Decode(&rsets)
+	if err != nil {
+		return nil, nil, err
+	}
+	var dirs []string
+	err = dec.Decode(&dirs)
+	fz.Close()
+	return rsets, dirs, err
 }
 
 func NewDatabase(dir string) *Database {

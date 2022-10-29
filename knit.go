@@ -18,38 +18,40 @@ import (
 
 // Flags for modifying the behavior of Knit.
 type Flags struct {
-	Knitfile string
-	Ncpu     int
-	Graph    string
-	DryRun   bool
-	RunDir   string
-	Always   bool
-	Quiet    bool
-	Clean    bool
-	Style    string
-	CacheDir string
-	Hash     bool
-	Commands bool
-	Updated  []string
-	Tool     string
-	ToolArgs []string
+	Knitfile   string
+	Ncpu       int
+	Graph      string
+	DryRun     bool
+	RunDir     string
+	Always     bool
+	Quiet      bool
+	Clean      bool
+	Style      string
+	CacheDir   string
+	Hash       bool
+	Commands   bool
+	Updated    []string
+	Serialized bool
+	Tool       string
+	ToolArgs   []string
 }
 
 // Flags that may be automatically set in a .knit.toml file.
 type UserFlags struct {
-	Knitfile *string
-	Ncpu     *int
-	Graph    *string
-	DryRun   *bool
-	RunDir   *string
-	Always   *bool
-	Quiet    *bool
-	Clean    *bool
-	Style    *string
-	CacheDir *string
-	Hash     *bool
-	Commands *bool
-	Updated  *[]string
+	Knitfile   *string
+	Ncpu       *int
+	Graph      *string
+	DryRun     *bool
+	RunDir     *string
+	Always     *bool
+	Quiet      *bool
+	Clean      *bool
+	Style      *string
+	CacheDir   *string
+	Hash       *bool
+	Commands   *bool
+	Updated    *[]string
+	Serialized *bool
 }
 
 // Capitalize the first rune of a string.
@@ -208,27 +210,57 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		return knitpath, fmt.Errorf("%s does not exist", flags.Knitfile)
 	}
 
-	lval, err := vm.DoFile(file)
-	if err != nil {
-		return knitpath, err
-	}
-
-	dirs, bsets, err := getBuildSets(lval)
-	if err != nil {
-		return knitpath, err
-	}
-
-	rulesets := make(map[string]*rules.RuleSet)
-
-	for k, v := range bsets {
-		rs := rules.NewRuleSet()
-		for _, lr := range v.rset {
-			err := rules.ParseInto(lr.Contents, rs, lr.File, lr.Line)
-			if err != nil {
-				return knitpath, err
-			}
+	var db *rules.Database
+	if flags.CacheDir == "." || flags.CacheDir == "" {
+		db = rules.NewDatabase(filepath.Join(".knit", file))
+	} else {
+		wd, err := os.Getwd()
+		if err != nil {
+			return knitpath, err
 		}
-		rulesets[k] = rs
+		dir := flags.CacheDir
+		if dir == "$cache" {
+			dir = filepath.Join(xdg.CacheHome, "knit")
+		}
+		db = rules.NewCacheDatabase(dir, filepath.Join(wd, file))
+	}
+
+	var rulesets map[string]*rules.RuleSet
+	var dirs []string
+
+	if rs, d, err := db.ReadRuleSets(); err == nil && flags.Serialized {
+		rulesets = rs
+		dirs = d
+	} else {
+		rulesets = make(map[string]*rules.RuleSet)
+
+		lval, err := vm.DoFile(file)
+		if err != nil {
+			return knitpath, err
+		}
+
+		d, bsets, err := getBuildSets(lval)
+		if err != nil {
+			return knitpath, err
+		}
+
+		dirs = d
+
+		for k, v := range bsets {
+			rs := rules.NewRuleSet()
+			for _, lr := range v.rset {
+				err := rules.ParseInto(lr.Contents, rs, lr.File, lr.Line)
+				if err != nil {
+					return knitpath, err
+				}
+			}
+			rulesets[k] = rs
+		}
+
+		err = db.WriteRuleSets(rulesets, dirs)
+		if err != nil {
+			return knitpath, err
+		}
 	}
 
 	rs := rulesets["."]
@@ -269,21 +301,6 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 	err = graph.ExpandRecipes(vm)
 	if err != nil {
 		return knitpath, err
-	}
-
-	var db *rules.Database
-	if flags.CacheDir == "." || flags.CacheDir == "" {
-		db = rules.NewDatabase(filepath.Join(".knit", file))
-	} else {
-		wd, err := os.Getwd()
-		if err != nil {
-			return knitpath, err
-		}
-		dir := flags.CacheDir
-		if dir == "$cache" {
-			dir = filepath.Join(xdg.CacheHome, "knit")
-		}
-		db = rules.NewCacheDatabase(dir, filepath.Join(wd, file))
 	}
 
 	var w io.Writer = out

@@ -189,7 +189,7 @@ func parsePrereqs(p *parser, t token) parserStateFun {
 
 // An entire rule has been consumed.
 func parseRecipe(p *parser, t token) parserStateFun {
-	var base baseRule
+	var base BaseRule
 	var r Rule
 	var meta bool
 
@@ -212,9 +212,9 @@ func parseRecipe(p *parser, t token) parserStateFun {
 			msg := fmt.Sprintf("%v", err)
 			p.basicErrorAtToken(msg, p.tokenbuf[i+1])
 		}
-		base.attrs = attrs
+		base.Attrs = attrs
 
-		if base.attrs.Regex {
+		if base.Attrs.Regex {
 			meta = true
 		}
 	} else {
@@ -239,7 +239,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	if meta {
 		for k := 0; k < i; k++ {
 			str := p.tokenbuf[k].val
-			if base.attrs.Regex {
+			if base.Attrs.Regex {
 				rpat, err := regexp.Compile("^" + str + "$")
 				if err != nil {
 					msg := fmt.Sprintf("invalid regular expression: %q", err)
@@ -275,24 +275,24 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	}
 
 	// prereqs
-	base.prereqs = make([]string, 0)
+	base.Prereqs = make([]string, 0)
 	for k := j + 1; k < len(p.tokenbuf); k++ {
-		base.prereqs = append(base.prereqs, p.tokenbuf[k].val)
+		base.Prereqs = append(base.Prereqs, p.tokenbuf[k].val)
 	}
 
 	if t.typ == tokenRecipe {
-		base.recipe = parseCommands(stripIndentation(t.val, t.col))
+		base.Recipe = parseCommands(stripIndentation(t.val, t.col))
 	}
 
 	if meta {
 		r = MetaRule{
-			baseRule: base,
-			targets:  patterns,
+			BaseRule: base,
+			Targets:  patterns,
 		}
 	} else {
 		r = DirectRule{
-			baseRule: base,
-			targets:  direct,
+			BaseRule: base,
+			Targets:  direct,
 		}
 	}
 

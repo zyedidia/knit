@@ -91,12 +91,12 @@ func (n *node) setDone(db *Database, noexec, hash bool) {
 			for _, p := range n.prereqs {
 				for _, f := range p.outputs {
 					// TODO: think about path normalization?
-					db.Prereqs.insert(n.rule.targets, f.name, n.dir)
+					db.Prereqs.insert(n.rule.Targets, f.name, n.dir)
 				}
 			}
 		}
 		// TODO: think about path normalization?
-		db.Recipes.insert(n.rule.targets, n.recipe, n.dir)
+		db.Recipes.insert(n.rule.Targets, n.recipe, n.dir)
 	}
 	n.setDoneOrErr()
 }
@@ -172,7 +172,7 @@ func NewGraph(rs map[string]*RuleSet, dirs []string, target string, updated map[
 	}
 	visits := make(map[string][]int)
 	for d, r := range rs {
-		visits[d] = make([]int, len(r.metaRules))
+		visits[d] = make([]int, len(r.MetaRules))
 	}
 	g.base, err = g.resolveTargetAcross(target, visits, updated)
 	if err != nil {
@@ -215,7 +215,7 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 		}
 		n, err := g.resolveTargetForRuleSet(rs, dir, rel, visits, updated)
 		if err == nil {
-			if len(n.rule.recipe) != 0 {
+			if len(n.rule.Recipe) != 0 {
 				return n, nil
 			}
 			candidate = n
@@ -233,7 +233,7 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 		}
 		n, err := g.resolveTargetForRuleSet(g.rsets[d], d, rel, visits, updated)
 		if err == nil {
-			if len(n.rule.recipe) != 0 {
+			if len(n.rule.Recipe) != 0 {
 				return n, nil
 			}
 			if candidate == nil {
@@ -257,9 +257,9 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	// do we have a node that builds target already
 	// if the node has an empty recipe, we don't use it because it could be a
 	// candidate so we should check if we can build it in a better way
-	if n, ok := g.nodes[fulltarget]; ok && len(n.rule.recipe) != 0 {
+	if n, ok := g.nodes[fulltarget]; ok && len(n.rule.Recipe) != 0 {
 		// make sure the node knows that it now builds target too
-		if _, ok := n.outputs[target]; !ok && !n.rule.attrs.Virtual {
+		if _, ok := n.outputs[target]; !ok && !n.rule.Attrs.Virtual {
 			n.outputs[target] = newFile(dir, target, updated)
 		}
 		return n, nil
@@ -267,29 +267,29 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	n := g.newNode(target, dir, updated)
 	var rule DirectRule
 	// do we have a direct rule available?
-	ris, ok := rs.targets[target]
+	ris, ok := rs.Targets[target]
 	if ok && len(ris) > 0 {
 		var prereqs []string
 		// Go through all the rules and accumulate all the prereqs. If multiple
 		// rules have targets then we have some ambiguity, but we select the
 		// last one.
 		for _, ri := range ris {
-			r := &rs.directRules[ri]
-			if len(r.recipe) != 0 {
+			r := &rs.DirectRules[ri]
+			if len(r.Recipe) != 0 {
 				// recipe exists -- overwrite prereqs
-				prereqs = r.prereqs
+				prereqs = r.Prereqs
 			} else {
 				// recipe is empty -- only add the prereqs
-				prereqs = append(prereqs, r.prereqs...)
+				prereqs = append(prereqs, r.Prereqs...)
 			}
 			// copy over the attrs/targets/recipe into 'rule' if the currently
 			// matched rule has a recipe (it is a full rule), or the
 			// accumulated rule is empty.
-			if len(r.recipe) != 0 || len(rule.recipe) == 0 {
+			if len(r.Recipe) != 0 || len(rule.Recipe) == 0 {
 				rule = *r
 			}
 		}
-		rule.prereqs = prereqs
+		rule.Prereqs = prereqs
 	} else if ok {
 		// should not happen
 		return nil, fmt.Errorf("internal error: target %s exists but has no rules", target)
@@ -298,25 +298,25 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 
 	// if we did not find a recipe from the direct rules and this target can
 	// use meta-rules, then search all meta-rules for a match
-	if len(rule.recipe) == 0 && !rule.attrs.NoMeta {
+	if len(rule.Recipe) == 0 && !rule.Attrs.NoMeta {
 		// search backwards so that we get the last rule to match first, and
 		// then can skip subsequent full rules, and add subsequent prereq
 		// rules.
-		for mi := len(rs.metaRules) - 1; mi >= 0; mi-- {
-			mr := rs.metaRules[mi]
+		for mi := len(rs.MetaRules) - 1; mi >= 0; mi-- {
+			mr := rs.MetaRules[mi]
 			// a meta-rule can only be used maxVisits times (in one dependency path)
 			if visits[dir][mi] >= maxVisits {
 				continue
 			}
 			if sub, pat := mr.Match(target); sub != nil {
 				// if this rule has a recipe and we already have a recipe, skip it
-				if len(mr.recipe) > 0 && len(rule.recipe) > 0 {
+				if len(mr.Recipe) > 0 && len(rule.Recipe) > 0 {
 					continue
 				}
 
 				var metarule DirectRule
-				metarule.attrs = mr.attrs
-				metarule.recipe = mr.recipe
+				metarule.Attrs = mr.Attrs
+				metarule.Recipe = mr.Recipe
 
 				// there should be exactly 1 submatch (2 indices for full
 				// match, 2 for the submatch) for a % match.
@@ -324,18 +324,18 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 					// %-metarule -- the match is the submatch and all %s in the
 					// prereqs get expanded to the submatch
 					n.match = string(target[sub[2]:sub[3]])
-					for _, p := range mr.prereqs {
+					for _, p := range mr.Prereqs {
 						p = strings.ReplaceAll(p, "%", n.match)
-						metarule.prereqs = append(metarule.prereqs, p)
+						metarule.Prereqs = append(metarule.Prereqs, p)
 					}
 				} else {
 					// regex match, accumulate all the matches and expand them in the prereqs
 					for i := 0; i < len(sub); i += 2 {
 						n.matches = append(n.matches, string(target[sub[i]:sub[i+1]]))
 					}
-					for _, p := range mr.prereqs {
+					for _, p := range mr.Prereqs {
 						expanded := pat.Regex.ExpandString([]byte{}, p, target, sub)
-						metarule.prereqs = append(metarule.prereqs, string(expanded))
+						metarule.Prereqs = append(metarule.Prereqs, string(expanded))
 					}
 				}
 
@@ -343,7 +343,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 				failed := false
 				visits[dir][mi]++
 				// Is there significant performance impact from this?
-				for _, p := range metarule.prereqs {
+				for _, p := range metarule.Prereqs {
 					_, err := g.resolveTargetAcross(pathJoin(dir, p), visits, updated)
 					if err != nil {
 						// log.Printf("could not use metarule '%s': %s\n", mr.String(), err)
@@ -358,13 +358,13 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 				}
 
 				// success -- add the prereqs
-				rule.prereqs = append(rule.prereqs, metarule.prereqs...)
+				rule.Prereqs = append(rule.Prereqs, metarule.Prereqs...)
 				// overwrite the recipe/attrs/targets if the matched rule has a
 				// recipe, or we don't yet have a recipe
-				if len(mr.recipe) > 0 || len(rule.recipe) == 0 {
-					rule.attrs = metarule.attrs
-					rule.recipe = metarule.recipe
-					rule.targets = []string{target}
+				if len(mr.Recipe) > 0 || len(rule.Recipe) == 0 {
+					rule.Attrs = metarule.Attrs
+					rule.Recipe = metarule.Recipe
+					rule.Targets = []string{target}
 				}
 
 				n.meta = true
@@ -373,11 +373,11 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 		}
 	}
 
-	if rule.attrs.Virtual {
+	if rule.Attrs.Virtual {
 		n.outputs = nil
 	}
 
-	if len(rule.targets) == 0 && !rule.attrs.Virtual {
+	if len(rule.Targets) == 0 && !rule.Attrs.Virtual {
 		for o, f := range n.outputs {
 			if !f.exists {
 				return nil, fmt.Errorf("%sno rule to make target '%s'", sub(dir), o)
@@ -386,21 +386,21 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 		// If this rule had no targets, the target is the requested one. For
 		// example, maybe we didn't find a rule, and the requested target was
 		// foo.c. If foo.c exists, then this is an empty rule to "build" it.
-		rule.targets = []string{target}
+		rule.Targets = []string{target}
 	}
 
-	n.myPrereqs = rule.prereqs
+	n.myPrereqs = rule.Prereqs
 
 	// if the rule we found is equivalent to an existing rule that also builds
 	// this target, then use that
 	if gn, ok := g.fullNodes[fulltarget]; ok && gn.rule.Equals(&rule) {
 		// make sure the node knows that it builds target too
-		if _, ok := n.outputs[target]; !ok && !rule.attrs.Virtual {
+		if _, ok := n.outputs[target]; !ok && !rule.Attrs.Virtual {
 			n.outputs[target] = newFile(dir, target, updated)
 		}
 		n.info = gn.info
 		n.myTarget = target
-		if !rule.attrs.Virtual {
+		if !rule.Attrs.Virtual {
 			n.myOutput = newFile(dir, target, updated)
 		}
 		g.nodes[fulltarget] = n
@@ -409,15 +409,15 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 
 	n.rule = &rule
 
-	for _, t := range n.rule.targets {
-		if !n.rule.attrs.Virtual {
+	for _, t := range n.rule.Targets {
+		if !n.rule.Attrs.Virtual {
 			n.outputs[t] = newFile(dir, t, updated)
 		}
 		g.fullNodes[pathJoin(dir, t)] = n
 	}
 
 	n.myTarget = target
-	if !n.rule.attrs.Virtual {
+	if !n.rule.Attrs.Virtual {
 		n.myOutput = newFile(dir, target, updated)
 	}
 
@@ -427,13 +427,13 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	if ri != -1 {
 		visits[dir][ri]++
 	}
-	for _, p := range n.rule.prereqs {
+	for _, p := range n.rule.Prereqs {
 		pn, err := g.resolveTargetAcross(pathJoin(dir, p), visits, updated)
 		if err != nil {
 			// there was an error with a prereq, so this node is invalid and we
 			// must remove it from the maps
 			delete(g.nodes, fulltarget)
-			for _, t := range n.rule.targets {
+			for _, t := range n.rule.Targets {
 				delete(g.fullNodes, pathJoin(dir, t))
 			}
 			return nil, err
@@ -450,7 +450,7 @@ func (n *node) inputs() []string {
 	ins := make([]string, 0, len(n.myPrereqs))
 	for i, prereq := range n.myPrereqs {
 		p := n.prereqs[i]
-		if p.rule.attrs.Virtual {
+		if p.rule.Attrs.Virtual {
 			continue
 		}
 		ins = append(ins, prereq)
@@ -480,8 +480,8 @@ func (n *node) expandRecipe(vm VM) error {
 	prs := n.myPrereqs
 	vm.SetVar("inputs", prs)
 	vm.SetVar("input", strings.Join(prs, " "))
-	vm.SetVar("outputs", n.rule.targets)
-	vm.SetVar("output", strings.Join(n.rule.targets, " "))
+	vm.SetVar("outputs", n.rule.Targets)
+	vm.SetVar("output", strings.Join(n.rule.Targets, " "))
 	if n.meta {
 		vm.SetVar("match", n.match)
 		for i, m := range n.matches {
@@ -489,13 +489,13 @@ func (n *node) expandRecipe(vm VM) error {
 		}
 		vm.SetVar("matches", n.matches)
 	}
-	n.recipe = make([]string, 0, len(n.rule.recipe))
-	for _, c := range n.rule.recipe {
+	n.recipe = make([]string, 0, len(n.rule.Recipe))
+	for _, c := range n.rule.Recipe {
 		rvar, rexpr := vm.ExpandFuncs()
-		output, err := expand.Expand(c, rvar, rexpr, true)
-		if err != nil {
-			return err
-		}
+		output, _ := expand.Expand(c, rvar, rexpr, true)
+		// if err != nil {
+		// 	return err
+		// }
 		n.recipe = append(n.recipe, output)
 	}
 
@@ -591,12 +591,12 @@ func (n *node) outOfDate(db *Database, hash bool) UpdateReason {
 // returns true if this node should be rebuilt during the build
 func (n *node) outOfDateNoMemo(db *Database, hash bool) UpdateReason {
 	// rebuild rules are always out of date
-	if n.rule.attrs.Rebuild {
+	if n.rule.Attrs.Rebuild {
 		return Rebuild
 	}
 
 	// virtual rules don't have outputs
-	if !n.rule.attrs.Virtual {
+	if !n.rule.Attrs.Virtual {
 		// if an output does not exist, it is out of date
 		for _, o := range n.outputs {
 			if !o.exists {
@@ -615,21 +615,21 @@ func (n *node) outOfDateNoMemo(db *Database, hash bool) UpdateReason {
 
 		if hash {
 			if p.myOutput != nil {
-				has := db.Prereqs.has(n.rule.targets, p.myOutput.name, n.dir)
+				has := db.Prereqs.has(n.rule.Targets, p.myOutput.name, n.dir)
 				if has == noHash {
 					return HashModified
 				} else if has == noTargets {
 					return Untracked
 				}
 			}
-		} else if !p.rule.attrs.Virtual && p.time().After(n.time()) {
+		} else if !p.rule.Attrs.Virtual && p.time().After(n.time()) {
 			return TimeModified
 		}
 	}
 
 	// database doesn't have an entry for this recipe
-	if len(n.rule.recipe) != 0 {
-		has := db.Recipes.has(n.rule.targets, n.recipe, n.dir)
+	if len(n.rule.Recipe) != 0 {
+		has := db.Recipes.has(n.rule.Targets, n.recipe, n.dir)
 		if has == noHash {
 			return RecipeModified
 		} else if has == noTargets {
@@ -651,7 +651,7 @@ func (n *node) count(db *Database, full, hash bool, counted map[*info]bool) int 
 	if !full && n.outOfDate(db, hash) == UpToDate {
 		return 0
 	}
-	if len(n.rule.recipe) != 0 {
+	if len(n.rule.Recipe) != 0 {
 		s++
 	}
 	counted[n.info] = true

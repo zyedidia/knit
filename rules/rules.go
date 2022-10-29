@@ -1,6 +1,8 @@
 package rules
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"regexp"
 	"strings"
@@ -11,29 +13,29 @@ type Rule interface {
 	isRule()
 }
 
-type baseRule struct {
-	prereqs []string
-	attrs   AttrSet
-	recipe  []string
+type BaseRule struct {
+	Prereqs []string
+	Attrs   AttrSet
+	Recipe  []string
 }
 
-func (b baseRule) isRule() {}
+func (b BaseRule) isRule() {}
 
 // A DirectRule specifies how to build a fully specified list of targets from a
 // list of prereqs.
 type DirectRule struct {
-	baseRule
-	targets []string
+	BaseRule
+	Targets []string
 }
 
 func NewDirectRule(targets, prereqs, recipe []string, attrs AttrSet) DirectRule {
 	return DirectRule{
-		baseRule: baseRule{
-			recipe:  recipe,
-			prereqs: prereqs,
-			attrs:   attrs,
+		BaseRule: BaseRule{
+			Recipe:  recipe,
+			Prereqs: prereqs,
+			Attrs:   attrs,
 		},
-		targets: targets,
+		Targets: targets,
 	}
 }
 
@@ -50,49 +52,49 @@ func equal(a, b []string) bool {
 }
 
 func (r *DirectRule) Equals(other *DirectRule) bool {
-	return r.attrs == other.attrs &&
-		equal(r.prereqs, other.prereqs) &&
-		equal(r.recipe, other.recipe)
+	return r.Attrs == other.Attrs &&
+		equal(r.Prereqs, other.Prereqs) &&
+		equal(r.Recipe, other.Recipe)
 }
 
 func (r *DirectRule) String() string {
-	return fmt.Sprintf("%s: %s", strings.Join(r.targets, " "), strings.Join(r.prereqs, " "))
+	return fmt.Sprintf("%s: %s", strings.Join(r.Targets, " "), strings.Join(r.Prereqs, " "))
 }
 
 // A MetaRule specifies the targets to build based on a pattern.
 type MetaRule struct {
-	baseRule
-	targets []Pattern
+	BaseRule
+	Targets []Pattern
 }
 
 func NewMetaRule(targets []Pattern, prereqs, recipe []string, attrs AttrSet) MetaRule {
 	return MetaRule{
-		baseRule: baseRule{
-			recipe:  recipe,
-			prereqs: prereqs,
-			attrs:   attrs,
+		BaseRule: BaseRule{
+			Recipe:  recipe,
+			Prereqs: prereqs,
+			Attrs:   attrs,
 		},
-		targets: targets,
+		Targets: targets,
 	}
 }
 
 // Match returns the submatch and pattern used to perform the match, if there
 // is one.
 func (r *MetaRule) Match(target string) ([]int, *Pattern) {
-	for i, t := range r.targets {
+	for i, t := range r.Targets {
 		if s := t.Regex.FindStringSubmatchIndex(target); s != nil {
-			return s, &r.targets[i]
+			return s, &r.Targets[i]
 		}
 	}
 	return nil, nil
 }
 
 func (r *MetaRule) String() string {
-	targets := make([]string, len(r.targets))
-	for i, p := range r.targets {
+	targets := make([]string, len(r.Targets))
+	for i, p := range r.Targets {
 		targets[i] = p.Regex.String()
 	}
-	return fmt.Sprintf("%s: %s", strings.Join(targets, " "), strings.Join(r.prereqs, " "))
+	return fmt.Sprintf("%s: %s", strings.Join(targets, " "), strings.Join(r.Prereqs, " "))
 }
 
 type AttrSet struct {
@@ -110,46 +112,72 @@ type Pattern struct {
 	Regex  *regexp.Regexp
 }
 
+func (p *Pattern) GobEncode() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	err := enc.Encode(p.Suffix)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(p.Regex.String())
+	return buf.Bytes(), err
+}
+
+func (p *Pattern) GobDecode(b []byte) error {
+	dec := gob.NewDecoder(bytes.NewReader(b))
+	err := dec.Decode(&p.Suffix)
+	if err != nil {
+		return err
+	}
+	var rgx string
+	err = dec.Decode(&rgx)
+	if err != nil {
+		return err
+	}
+	p.Regex, err = regexp.Compile(rgx)
+	return err
+}
+
 type RuleSet struct {
-	metaRules   []MetaRule
-	directRules []DirectRule
+	MetaRules   []MetaRule
+	DirectRules []DirectRule
 	// maps target names into directRules
 	// a target may have multiple rules implementing it
-	// a rule may have multiple targets pointing to it
-	targets map[string][]int
+	// a rule may have multiple Targets pointing to it
+	Targets map[string][]int
 }
 
 func NewRuleSet() *RuleSet {
 	return &RuleSet{
-		metaRules:   make([]MetaRule, 0),
-		directRules: make([]DirectRule, 0),
-		targets:     make(map[string][]int),
+		MetaRules:   make([]MetaRule, 0),
+		DirectRules: make([]DirectRule, 0),
+		Targets:     make(map[string][]int),
 	}
 }
 
 func (rs *RuleSet) Add(r Rule) {
 	switch r := r.(type) {
 	case DirectRule:
-		rs.directRules = append(rs.directRules, r)
-		k := len(rs.directRules) - 1
-		for _, t := range r.targets {
-			rs.targets[t] = append(rs.targets[t], k)
+		rs.DirectRules = append(rs.DirectRules, r)
+		k := len(rs.DirectRules) - 1
+		for _, t := range r.Targets {
+			rs.Targets[t] = append(rs.Targets[t], k)
 		}
 	case MetaRule:
-		rs.metaRules = append(rs.metaRules, r)
+		rs.MetaRules = append(rs.MetaRules, r)
 	}
 }
 
 func (rs *RuleSet) MainTarget() string {
-	if len(rs.directRules) == 0 || len(rs.directRules[0].targets) == 0 {
+	if len(rs.DirectRules) == 0 || len(rs.DirectRules[0].Targets) == 0 {
 		return ""
 	}
-	return rs.directRules[0].targets[0]
+	return rs.DirectRules[0].Targets[0]
 }
 
 func (rs *RuleSet) AllTargets() []string {
-	targets := make([]string, 0, len(rs.targets))
-	for k := range rs.targets {
+	targets := make([]string, 0, len(rs.Targets))
+	for k := range rs.Targets {
 		targets = append(targets, k)
 	}
 	return targets

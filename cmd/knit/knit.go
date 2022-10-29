@@ -86,6 +86,7 @@ func main() {
 	cache := optString(main, "cache", "", ".", user.CacheDir, "directory for caching internal build information")
 	hash := optBool(main, "hash", "", true, user.Hash, "hash files to determine if they are out-of-date")
 	updated := optStringSlice(main, "updated", "u", nil, user.Updated, "treat files as updated")
+	serialized := optBool(main, "serialized", "g", false, user.Serialized, "serialize rules for faster rebuilds")
 
 	tool := main.StringP("tool", "t", "", "subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool")
 	version := main.BoolP("version", "v", false, "show version information")
@@ -126,18 +127,19 @@ func main() {
 
 	out := os.Stdout
 	file, err := knit.Run(out, main.Args(), knit.Flags{
-		Knitfile: *knitfile,
-		Ncpu:     *ncpu,
-		DryRun:   *dryrun,
-		RunDir:   *rundir,
-		Always:   *always,
-		Quiet:    *quiet,
-		Style:    *style,
-		CacheDir: *cache,
-		Hash:     *hash,
-		Updated:  *updated,
-		Tool:     *tool,
-		ToolArgs: toolargs,
+		Knitfile:   *knitfile,
+		Ncpu:       *ncpu,
+		DryRun:     *dryrun,
+		RunDir:     *rundir,
+		Always:     *always,
+		Quiet:      *quiet,
+		Style:      *style,
+		CacheDir:   *cache,
+		Hash:       *hash,
+		Updated:    *updated,
+		Serialized: *serialized,
+		Tool:       *tool,
+		ToolArgs:   toolargs,
 	})
 
 	rel, rerr := filepath.Rel(file, wd)

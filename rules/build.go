@@ -103,7 +103,7 @@ func (e *Executor) execNode(n *node) {
 		e.lock.Unlock()
 		return
 	}
-	if !e.opts.BuildAll && !n.rule.attrs.Linked && n.outOfDate(e.db, e.opts.Hash) == UpToDate {
+	if !e.opts.BuildAll && !n.rule.Attrs.Linked && n.outOfDate(e.db, e.opts.Hash) == UpToDate {
 		n.setDone(e.db, e.opts.NoExec, e.opts.Hash)
 		e.lock.Unlock()
 		return
@@ -145,7 +145,7 @@ func (e *Executor) execNode(n *node) {
 
 func (e *Executor) runServer() {
 	for n := range e.jobs {
-		if len(n.rule.recipe) == 0 {
+		if len(n.rule.Recipe) == 0 {
 			e.lock.Lock()
 			n.setDone(e.db, e.opts.NoExec, e.opts.Hash)
 			e.lock.Unlock()
@@ -161,7 +161,7 @@ func (e *Executor) runServer() {
 
 		step := e.step.Add(1)
 
-		ruleName := strings.Join(n.rule.targets, " ")
+		ruleName := strings.Join(n.rule.Targets, " ")
 
 		failed := false
 		var execErr error
@@ -174,14 +174,14 @@ func (e *Executor) runServer() {
 			} else if c.recipe == "" {
 				continue
 			}
-			if !n.rule.attrs.Quiet {
+			if !n.rule.Attrs.Quiet {
 				e.printer.Print(c.recipe, c.dir, ruleName, int(step))
 			}
 			if !e.opts.NoExec {
 				err := e.execCmd(c)
 				if err != nil {
-					execErr = fmt.Errorf("'%s': error during recipe: %w", strings.Join(n.rule.targets, " "), err)
-					if e.opts.AbortOnError && !n.rule.attrs.NonStop {
+					execErr = fmt.Errorf("'%s': error during recipe: %w", strings.Join(n.rule.Targets, " "), err)
+					if e.opts.AbortOnError && !n.rule.Attrs.NonStop {
 						failed = true
 						break
 					}
@@ -193,8 +193,8 @@ func (e *Executor) runServer() {
 		e.lock.Lock()
 
 		if failed {
-			if !n.rule.attrs.Virtual {
-				for _, t := range n.rule.targets {
+			if !n.rule.Attrs.Virtual {
+				for _, t := range n.rule.Targets {
 					e.info(fmt.Sprintf("removing '%s' due to failure", t))
 					err := os.RemoveAll(t)
 					if err != nil {
