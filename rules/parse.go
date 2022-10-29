@@ -65,7 +65,6 @@ type parserStateFun func(*parser, token) parserStateFun
 
 // ParseInto parses 'input' into the rules RuleSet, from the file at 'file'.
 func ParseInto(input string, rules *RuleSet, file string, line int) error {
-	input = stripIndentation(input, 0)
 	input = strings.TrimSpace(input)
 	l := lex(input, line)
 	p := &parser{
