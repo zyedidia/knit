@@ -72,12 +72,14 @@ type command struct {
 
 // Exec runs all commands and returns true if something was rebuilt.
 func (e *Executor) Exec(g *Graph) (bool, error) {
-	// make sure ctrl-c doesn't kill this process, just the children
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt)
-
 	e.steps = g.steps(e.db, e.opts.BuildAll, e.opts.Hash)
 	e.printer.SetSteps(e.steps)
+
+	// make sure ctrl-c doesn't kill this process, just the children
+	if !e.opts.NoExec {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt)
+	}
 
 	for i := 0; i < e.threads; i++ {
 		go e.runServer()
@@ -97,6 +99,10 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 
 func (e *Executor) execNode(n *node) {
 	e.lock.Lock()
+	if n.done {
+		e.lock.Unlock()
+		return
+	}
 	if !e.opts.BuildAll && !n.rule.attrs.Linked && n.outOfDate(e.db, e.opts.Hash) == UpToDate {
 		n.setDone(e.db, e.opts.NoExec, e.opts.Hash)
 		e.lock.Unlock()

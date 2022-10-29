@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/pprof"
 
 	"github.com/spf13/pflag"
 	"github.com/zyedidia/knit"
@@ -88,12 +89,25 @@ func main() {
 
 	tool := main.StringP("tool", "t", "", "subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool")
 	version := main.BoolP("version", "v", false, "show version information")
+	cpuprofile := main.String("cpuprofile", "", "write cpu profile to 'file'")
 	help := main.BoolP("help", "h", false, "show this help message")
 
 	toolargs, err := parseFlags(main)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 
 	if *help {

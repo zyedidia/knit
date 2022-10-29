@@ -51,7 +51,8 @@ type info struct {
 	dir     string
 
 	// for cycle checking
-	visited bool
+	visited  int
+	expanded bool
 
 	// for concurrent graph execution
 	cond   *sync.Cond
@@ -472,6 +473,10 @@ func (g *Graph) ExpandRecipes(vm VM) error {
 // function will assign the appropriate variables in the Lua VM and then
 // evaluate the variables and expressions that must be expanded.
 func (n *node) expandRecipe(vm VM) error {
+	if n.expanded {
+		return nil
+	}
+
 	prs := n.myPrereqs
 	vm.SetVar("inputs", prs)
 	vm.SetVar("input", strings.Join(prs, " "))
@@ -494,6 +499,8 @@ func (n *node) expandRecipe(vm VM) error {
 		n.recipe = append(n.recipe, output)
 	}
 
+	n.expanded = true
+
 	for _, pn := range n.prereqs {
 		err := pn.expandRecipe(vm)
 		if err != nil {
@@ -506,16 +513,18 @@ func (n *node) expandRecipe(vm VM) error {
 
 // checks the graph for cycles starting at node n
 func checkCycles(n *node) error {
-	if n.visited && len(n.prereqs) > 0 {
-		return fmt.Errorf("cycle detected at rule %v", n.rule)
-	}
-	n.visited = true
+	n.visited = 1
 	for _, p := range n.prereqs {
-		if err := checkCycles(p); err != nil {
-			return err
+		if p.visited == 1 {
+			return fmt.Errorf("cycle detected at rule %v", p.rule)
+		}
+		if p.visited == 0 {
+			if err := checkCycles(p); err != nil {
+				return err
+			}
 		}
 	}
-	n.visited = false
+	n.visited = 2
 	return nil
 }
 
@@ -642,11 +651,14 @@ func (n *node) count(db *Database, full, hash bool, counted map[*info]bool) int 
 	if !full && n.outOfDate(db, hash) == UpToDate {
 		return 0
 	}
-	if !counted[n.info] && len(n.rule.recipe) != 0 {
+	if len(n.rule.recipe) != 0 {
 		s++
 	}
 	counted[n.info] = true
 	for _, p := range n.prereqs {
+		if counted[p.info] {
+			continue
+		}
 		s += p.count(db, full, hash, counted)
 	}
 	return s
