@@ -41,6 +41,13 @@ version 1.0 is released.
 * Knit builds using all cores by default.
 * Knit can generate a build graph visualization using graphviz (dot).
 
+# In-progress features
+
+* Ninja to Knit converter (for compatibility with cmake, and for benchmarking).
+  See [knitja](https://github.com/zyedidia/knitja) for the converter tool.
+* Input attributes for order-only inputs, C dep files, and possibly more.
+* Performance optimizations (including build graph serialization).
+
 # Planned possible features
 
 Some major features are planned, but haven't been implemented yet (and may
@@ -48,8 +55,7 @@ never be implemented).
 
 * Automatic dependency tracking using ptrace (Linux-only feature).
 * Global build file cache.
-* Ninja to Knit converter (for compatibility with cmake, and for benchmarking).
-* Building in a separate directory and build sandboxing.
+* Automatic build sandboxing and sealing.
 
 # Installation
 
@@ -87,7 +93,7 @@ src = knit.glob("*.c")
 obj = knit.extrepl(src, ".c", ".o")
 prog := hello
 
-return r{
+return b{
 $ $prog: $obj
     $cc $cflags $input -o $output
 $ %.o: %.c

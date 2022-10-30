@@ -1,4 +1,4 @@
-Note: the documentation for sub builds is out of date.
+Note: this documentation is out of date.
 
 # Rules
 
