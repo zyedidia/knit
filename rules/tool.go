@@ -132,12 +132,12 @@ type CleanTool struct {
 }
 
 func (t *CleanTool) clean(n *node, done map[*info]bool) {
-	for _, p := range n.prereqs {
-		t.clean(p, done)
-	}
-
 	if done[n.info] {
 		return
+	}
+
+	for _, p := range n.prereqs {
+		t.clean(p, done)
 	}
 
 	// don't clean virtual rules or rules without a recipe to rebuild the outputs
