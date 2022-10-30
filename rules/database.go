@@ -44,6 +44,10 @@ type Database struct {
 }
 
 func (db *Database) WriteRuleSets(rsets map[string]*RuleSet, dirs []string) error {
+	if err := db.Mkdir(); err != nil {
+		return err
+	}
+
 	var buf bytes.Buffer
 	fz := gzip.NewWriter(&buf)
 	enc := gob.NewEncoder(fz)
@@ -103,8 +107,12 @@ func NewCacheDatabase(dir, wd string) *Database {
 	return NewDatabase(filepath.Join(dir, url.PathEscape(wd)))
 }
 
+func (db *Database) Mkdir() error {
+	return os.MkdirAll(db.location, os.ModePerm)
+}
+
 func (db *Database) Save() error {
-	if err := os.MkdirAll(db.location, os.ModePerm); err != nil {
+	if err := db.Mkdir(); err != nil {
 		return err
 	}
 	f, err := os.Create(filepath.Join(db.location, dataFile))
