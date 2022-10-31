@@ -592,9 +592,8 @@ func (vm *LuaVM) getVar(L *lua.LState, v string) lua.LValue {
 			}
 		}
 	}
-	lv, _ := vm.Eval(strings.NewReader("return "+v), "<eval>")
-	return lv
-	// return L.GetGlobal(v)
+	globals := L.GetGlobal("_G").(*lua.LTable)
+	return globals.RawGet(lua.LString(v))
 }
 
 func (vm *LuaVM) SetVar(name string, val interface{}) {
