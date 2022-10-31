@@ -585,7 +585,7 @@ func (vm *LuaVM) getVar(L *lua.LState, v string) lua.LValue {
 	if ok {
 		for j := 0; ; j++ {
 			name, val := L.GetLocal(dbg, j)
-			if val == nil || val.Type() == lua.LTNil {
+			if name == "" {
 				break
 			} else if name == v {
 				return val
