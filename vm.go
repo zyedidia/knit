@@ -385,7 +385,7 @@ func (vm *LuaVM) DoFile(file string) (lua.LValue, error) {
 // arbitrary Lua expressions.
 func (vm *LuaVM) ExpandFuncs() (func(string) (string, error), func(string) (string, error)) {
 	return func(name string) (string, error) {
-			v := getVar(vm.L, name)
+			v := vm.getVar(vm.L, name)
 			if v == nil || v.Type() == lua.LTNil {
 				return "", fmt.Errorf("expand: variable '%s' does not exist", name)
 			}
@@ -529,7 +529,7 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 		}
 		lv := vm.L.GetField(vm.L.GetField(vm.L.Get(lua.EnvironIndex), "package"), "path")
 		if lv, ok := lv.(lua.LString); ok {
-			vm.L.SetField(vm.L.GetField(vm.L.Get(lua.EnvironIndex), "package"), "path", lua.LString(filepath.Join(path, "?.knit;"))+lv)
+			vm.L.SetField(vm.L.GetField(vm.L.Get(lua.EnvironIndex), "package"), "path", lua.LString(filepath.Join(path, "?.knit;"))+lua.LString(filepath.Join(path, "?.lua;"))+lv)
 		} else {
 			vm.ErrStr("package.path must be a string")
 		}
@@ -580,7 +580,7 @@ func getVars(L *lua.LState) *lua.LTable {
 	return addLocals(L, globals)
 }
 
-func getVar(L *lua.LState, v string) lua.LValue {
+func (vm *LuaVM) getVar(L *lua.LState, v string) lua.LValue {
 	dbg, ok := L.GetStack(1)
 	if ok {
 		for j := 0; ; j++ {
@@ -592,7 +592,9 @@ func getVar(L *lua.LState, v string) lua.LValue {
 			}
 		}
 	}
-	return L.GetGlobal(v)
+	lv, _ := vm.Eval(strings.NewReader("return "+v), "<eval>")
+	return lv
+	// return L.GetGlobal(v)
 }
 
 func (vm *LuaVM) SetVar(name string, val interface{}) {
