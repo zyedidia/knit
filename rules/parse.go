@@ -49,6 +49,11 @@ func (p *parser) basicErrorAtLine(what string, line int) {
 	p.errors = append(p.errors, err)
 }
 
+func (p *parser) expandErrorAtLine(what string, line int) {
+	err := fmt.Errorf("%s:%d: expand error: %s", p.file, line, what)
+	p.errors = append(p.errors, err)
+}
+
 // Accept a token for use in the current statement being parsed.
 func (p *parser) push(t token) {
 	p.tokenbuf = append(p.tokenbuf, t)
@@ -129,7 +134,7 @@ func parseTargets(p *parser, t token) parserStateFun {
 	case tokenWord:
 		s, err := expand.Expand(t.val, p.errexpand, p.errexpand, true)
 		if err != nil {
-			p.basicErrorAtToken(err.Error(), t)
+			p.expandErrorAtLine(err.Error(), t.line)
 		}
 		t.val = s
 		p.push(t)
@@ -155,7 +160,7 @@ func parseAttributesOrPrereqs(p *parser, t token) parserStateFun {
 	case tokenWord:
 		s, err := expand.Expand(t.val, p.errexpand, p.errexpand, true)
 		if err != nil {
-			p.basicErrorAtToken(err.Error(), t)
+			p.expandErrorAtLine(err.Error(), t.line)
 		}
 		t.val = s
 		p.push(t)
