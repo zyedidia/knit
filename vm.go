@@ -200,16 +200,16 @@ func NewLuaVM() *LuaVM {
 		vm.LeaveDir(from)
 		return vm.L.Get(-1)
 	}))
-	L.SetGlobal("rel", luar.New(L, func(files []string) []string {
+	L.SetGlobal("rel", luar.New(L, func(files []string) *lua.LTable {
 		wd := vm.Wd()
 		if wd == "." {
-			return files
+			return GoStrSliceToTable(vm.L, files)
 		}
 		rels := make([]string, 0, len(files))
 		for _, f := range files {
 			rels = append(rels, filepath.Join(wd, f))
 		}
-		return rels
+		return GoStrSliceToTable(vm.L, rels)
 	}))
 
 	// Include
@@ -444,17 +444,14 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 	vm.L.SetField(pkg, "trim", luar.New(vm.L, strings.TrimSpace))
 	vm.L.SetField(pkg, "os", luar.New(vm.L, runtime.GOOS))
 	vm.L.SetField(pkg, "arch", luar.New(vm.L, runtime.GOARCH))
-	vm.L.SetField(pkg, "glob", luar.New(vm.L, func(pattern string) []string {
+	vm.L.SetField(pkg, "glob", luar.New(vm.L, func(pattern string) *lua.LTable {
 		f, err := filepath.Glob(pattern)
 		if err != nil {
 			vm.Err(err)
 		}
-		if len(f) == 0 {
-			return []string{}
-		}
-		return f
+		return GoStrSliceToTable(vm.L, f)
 	}))
-	vm.L.SetField(pkg, "rglob", luar.New(vm.L, func(path, pattern string) []string {
+	vm.L.SetField(pkg, "rglob", luar.New(vm.L, func(path, pattern string) *lua.LTable {
 		g, err := glob.Compile(pattern)
 		if err != nil {
 			vm.Err(err)
@@ -474,7 +471,7 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 			vm.Err(err)
 			return nil
 		}
-		return files
+		return GoStrSliceToTable(vm.L, files)
 	}))
 	vm.L.SetField(pkg, "abs", luar.New(vm.L, func(path string) string {
 		p, err := filepath.Abs(path)
@@ -483,22 +480,22 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 		}
 		return p
 	}))
-	vm.L.SetField(pkg, "extrepl", luar.New(vm.L, func(in []string, ext, repl string) []string {
+	vm.L.SetField(pkg, "extrepl", luar.New(vm.L, func(in []string, ext, repl string) *lua.LTable {
 		patstr := fmt.Sprintf("%s$", regexp.QuoteMeta(ext))
 		s, err := replace(in, patstr, repl)
 		if err != nil {
 			vm.Err(err)
 		}
-		return s
+		return GoStrSliceToTable(vm.L, s)
 	}))
-	vm.L.SetField(pkg, "repl", luar.New(vm.L, func(in []string, patstr, repl string) []string {
+	vm.L.SetField(pkg, "repl", luar.New(vm.L, func(in []string, patstr, repl string) *lua.LTable {
 		s, err := replace(in, patstr, repl)
 		if err != nil {
 			vm.Err(err)
 		}
-		return s
+		return GoStrSliceToTable(vm.L, s)
 	}))
-	vm.L.SetField(pkg, "filterout", luar.New(vm.L, func(in []string, exclude []string) []string {
+	vm.L.SetField(pkg, "filterout", luar.New(vm.L, func(in []string, exclude []string) *lua.LTable {
 		removed := make([]string, 0, len(in))
 		exmap := make(map[string]bool)
 		for _, e := range exclude {
@@ -509,7 +506,7 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 				removed = append(removed, s)
 			}
 		}
-		return removed
+		return GoStrSliceToTable(vm.L, removed)
 	}))
 	vm.L.SetField(pkg, "shell", luar.New(vm.L, func(shcmd string) string {
 		cmd := exec.Command("sh", "-c", shcmd)
@@ -618,6 +615,29 @@ func LToString(v lua.LValue) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+func GoStrSliceToTable(L *lua.LState, arr []string) *lua.LTable {
+	tbl := L.NewTable()
+	mt := L.NewTable()
+	L.SetField(mt, "__tostring", luar.New(L, func(s []string) string {
+		return strings.Join(s, " ")
+	}))
+	L.SetField(mt, "__add", luar.New(L, func(s1, s2 []string) *lua.LTable {
+		tbl := L.NewTable()
+		for _, val := range s1 {
+			tbl.Append(lua.LString(val))
+		}
+		for _, val := range s2 {
+			tbl.Append(lua.LString(val))
+		}
+		return tbl
+	}))
+	L.SetMetatable(tbl, mt)
+	for _, val := range arr {
+		tbl.Append(lua.LString(val))
+	}
+	return tbl
 }
 
 // LTableToString converts a Lua table to a string.
