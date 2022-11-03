@@ -1,0 +1,14 @@
+name = "Check shadowed local with string format"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = []
+output = """\
+echo 2
+"""

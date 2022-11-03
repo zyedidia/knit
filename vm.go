@@ -589,14 +589,17 @@ func getVars(L *lua.LState) *lua.LTable {
 
 func (vm *LuaVM) getVar(L *lua.LState, v string) lua.LValue {
 	dbg, ok := L.GetStack(1)
+	vars := make(map[string]lua.LValue)
 	if ok {
 		for j := 0; ; j++ {
 			name, val := L.GetLocal(dbg, j)
 			if name == "" {
 				break
-			} else if name == v {
-				return val
 			}
+			vars[name] = val
+		}
+		if lv, ok := vars[v]; ok {
+			return lv
 		}
 	}
 	globals := L.GetGlobal("_G").(*lua.LTable)

@@ -1,0 +1,7 @@
+local foo = "hi"
+local foo = 2
+
+return b{
+$ all:VB:
+    echo $foo
+}
