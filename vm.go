@@ -200,6 +200,16 @@ func NewLuaVM() *LuaVM {
 		vm.LeaveDir(from)
 		return vm.L.Get(-1)
 	}))
+	L.SetGlobal("dcallfrom", luar.New(L, func(dir string, fn *lua.LFunction, args ...lua.LValue) lua.LValue {
+		from := vm.EnterDir(dir)
+		vm.L.Push(fn)
+		for _, a := range args {
+			vm.L.Push(a)
+		}
+		vm.L.Call(len(args), lua.MultRet)
+		vm.LeaveDir(from)
+		return vm.L.Get(-1)
+	}))
 	L.SetGlobal("rel", luar.New(L, func(files []string) *lua.LTable {
 		wd := vm.Wd()
 		if wd == "." {
@@ -594,7 +604,11 @@ func (vm *LuaVM) getVar(L *lua.LState, v string) lua.LValue {
 }
 
 func (vm *LuaVM) SetVar(name string, val interface{}) {
-	vm.L.SetGlobal(name, luar.New(vm.L, val))
+	if slc, ok := val.([]string); ok {
+		vm.L.SetGlobal(name, GoStrSliceToTable(vm.L, slc))
+	} else {
+		vm.L.SetGlobal(name, luar.New(vm.L, val))
+	}
 }
 
 // LToString converts a Lua value to a string.
