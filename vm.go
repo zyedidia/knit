@@ -62,7 +62,10 @@ type LBuildSet struct {
 func (bs *LBuildSet) String() string {
 	buf := &bytes.Buffer{}
 	buf.WriteString("b({\n")
-	buf.WriteString(bs.rset.String())
+	buf.WriteString(bs.rset.String() + ", ")
+	for _, s := range bs.bsets {
+		buf.WriteString(s.String() + ", ")
+	}
 	buf.WriteString("\n}, ")
 	buf.WriteString(strconv.Quote(bs.Dir))
 	buf.WriteByte(')')
@@ -145,8 +148,15 @@ func NewLuaVM() *LuaVM {
 	L.SetField(bsmt.LTable, "__tostring", luar.New(L, func(bs LBuildSet) string {
 		return bs.String()
 	}))
-	L.SetField(bsmt.LTable, "__add", luar.New(L, func(bs LBuildSet, rs LRuleSet) LBuildSet {
-		bs.rset = append(bs.rset, rs...)
+	L.SetField(bsmt.LTable, "__add", luar.New(L, func(bs LBuildSet, lv lua.LValue) LBuildSet {
+		if u, ok := lv.(*lua.LUserData); ok {
+			switch u := u.Value.(type) {
+			case LRuleSet:
+				bs.rset = append(bs.rset, u...)
+			case LBuildSet:
+				bs.bsets = append(bs.bsets, u)
+			}
+		}
 		return bs
 	}))
 
