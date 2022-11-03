@@ -57,11 +57,11 @@ header: Knit Manual
 
   `-h, --help`
 
-:    show this help message
+:    Show a help message.
 
   `-q, --quiet`
 
-:    don't print commands
+:    Don't print commands when executing.
 
   `-s, --style string`
 
@@ -77,7 +77,7 @@ header: Knit Manual
 
   `-u, --updated strings`
 
-:    Treat files as updated.
+:    Treat given files as updated.
 
   `-v, --version`
 
