@@ -552,6 +552,7 @@ type UpdateReason int
 
 const (
 	UpToDate UpdateReason = iota
+	OnlyPrereqs
 	Rebuild
 	NoExist
 	ForceUpdate
@@ -585,6 +586,8 @@ func (u UpdateReason) String() string {
 		return "prereq is out-of-date"
 	case LinkedUpdate:
 		return "linked update"
+	case OnlyPrereqs:
+		return "only update prereqs"
 	}
 	panic("unreachable")
 }
@@ -647,20 +650,31 @@ func (n *node) outOfDateNoMemo(db *Database, hash bool) UpdateReason {
 	}
 
 	// if a prereq is out of date, this rule is out of date
+	order := false
 	for _, p := range n.prereqs {
-		if p.outOfDate(db, hash) != UpToDate {
+		ood := p.outOfDate(db, hash)
+		// if the only prereqs out of date are order-only, then we just run
+		// them but this rule does not need to rebuild
+		if !p.rule.attrs.Order && ood != UpToDate && ood != OnlyPrereqs {
 			return Prereq
 		}
+		if ood != UpToDate {
+			order = true
+		}
+	}
+	if order {
+		return OnlyPrereqs
 	}
 	return UpToDate
 }
 
 func (n *node) count(db *Database, full, hash bool, counted map[*info]bool) int {
 	s := 0
+	ood := n.outOfDate(db, hash)
 	if !full && n.outOfDate(db, hash) == UpToDate {
 		return 0
 	}
-	if len(n.rule.recipe) != 0 {
+	if ood != OnlyPrereqs && len(n.rule.recipe) != 0 {
 		s++
 	}
 	counted[n.info] = true

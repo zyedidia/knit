@@ -103,7 +103,8 @@ func (e *Executor) execNode(n *node) {
 		e.lock.Unlock()
 		return
 	}
-	if !e.opts.BuildAll && !n.rule.attrs.Linked && n.outOfDate(e.db, e.opts.Hash) == UpToDate {
+	ood := n.outOfDate(e.db, e.opts.Hash)
+	if !e.opts.BuildAll && !n.rule.attrs.Linked && ood == UpToDate {
 		n.setDone(e.db, e.opts.NoExec, e.opts.Hash)
 		e.lock.Unlock()
 		return
@@ -120,6 +121,13 @@ func (e *Executor) execNode(n *node) {
 		// wait for all prereqs to finish
 		for _, p := range n.prereqs {
 			p.wait()
+		}
+
+		if ood == OnlyPrereqs {
+			e.lock.Lock()
+			n.setDone(e.db, e.opts.NoExec, e.opts.Hash)
+			e.lock.Unlock()
+			return
 		}
 
 		n.cond.L.Lock()

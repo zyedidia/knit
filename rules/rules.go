@@ -103,6 +103,7 @@ type AttrSet struct {
 	NonStop bool // does not stop if the recipe fails
 	Rebuild bool // this rule is always out-of-date
 	Linked  bool // only run this rule if a sub-rule that requires it needs to run
+	Order   bool
 }
 
 func (a *AttrSet) UpdateFrom(other AttrSet) {
@@ -113,6 +114,7 @@ func (a *AttrSet) UpdateFrom(other AttrSet) {
 	a.NonStop = a.NonStop || other.NonStop
 	a.Rebuild = a.Rebuild || other.Rebuild
 	a.Linked = a.Linked || other.Linked
+	a.Order = a.Order || other.Order
 }
 
 type Pattern struct {
@@ -207,6 +209,8 @@ func ParseAttribs(input string) (AttrSet, error) {
 			attrs.Rebuild = true
 		case 'L':
 			attrs.Linked = true
+		case 'O':
+			attrs.Order = true
 		default:
 			return attrs, attrError{c}
 		}
