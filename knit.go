@@ -200,6 +200,13 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 			file = def
 		}
 	} else if dir != "" {
+		for i, u := range flags.Updated {
+			p, err := filepath.Rel(dir, u)
+			if err != nil {
+				return knitpath, err
+			}
+			flags.Updated[i] = p
+		}
 		if flags.Root {
 			os.Chdir(dir)
 		} else {
