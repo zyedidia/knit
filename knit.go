@@ -31,6 +31,7 @@ type Flags struct {
 	Hash     bool
 	Commands bool
 	Updated  []string
+	Root     bool
 	Tool     string
 	ToolArgs []string
 }
@@ -50,6 +51,7 @@ type UserFlags struct {
 	Hash     *bool
 	Commands *bool
 	Updated  *[]string
+	Root     *bool
 }
 
 // Capitalize the first rune of a string.
@@ -198,9 +200,13 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 			file = def
 		}
 	} else if dir != "" {
-		err = goToKnitfile(vm, dir, targets)
-		if err != nil {
-			return knitpath, err
+		if flags.Root {
+			os.Chdir(dir)
+		} else {
+			err = goToKnitfile(vm, dir, targets)
+			if err != nil {
+				return knitpath, err
+			}
 		}
 	}
 
