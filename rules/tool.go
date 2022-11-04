@@ -56,37 +56,36 @@ type GraphTool struct {
 func (t *GraphTool) dot(g *Graph, w io.Writer) {
 	fmt.Fprintln(w, "digraph take {")
 	fmt.Fprintln(w, "rankdir=\"LR\";")
-	t.dotNode(g.base, w, make(map[*info]bool))
+	t.dotNode(g.base, w, make(map[*node]bool))
 	fmt.Fprintln(w, "}")
 }
 
-func (t *GraphTool) dotNode(n *node, w io.Writer, visited map[*info]bool) {
-	if visited[n.info] {
+func (t *GraphTool) dotNode(n *node, w io.Writer, visited map[*node]bool) {
+	if visited[n] {
 		return
 	}
-	visited[n.info] = true
+	visited[n] = true
 	for _, p := range n.prereqs {
 		fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", n2str(p), n2str(n))
 		t.dotNode(p, w, visited)
 	}
 }
 
-func (t *GraphTool) text(n *node, w io.Writer, visited map[*info]bool) {
-	if visited[n.info] {
+func (t *GraphTool) text(n *node, w io.Writer, visited map[*node]bool) {
+	if visited[n] {
 		return
 	}
-	visited[n.info] = true
+	visited[n] = true
 	for _, p := range n.prereqs {
 		fmt.Fprintf(w, "%s -> %s\n", n2str(n), n2str(p))
 		t.text(p, w, visited)
 	}
 }
 
-func (t *GraphTool) tree(indent string, n *node, w io.Writer, visited map[*info]bool) {
-	visited[n.info] = true
+func (t *GraphTool) tree(indent string, n *node, w io.Writer) {
 	fmt.Fprintf(w, "%s%s\n", indent, n2str(n))
 	for _, p := range n.prereqs {
-		t.tree(indent+"| ", p, w, visited)
+		t.tree(indent+"| ", p, w)
 	}
 }
 
@@ -97,9 +96,9 @@ func (t *GraphTool) Run(g *Graph, args []string) error {
 	}
 	switch choice {
 	case "text":
-		t.text(g.base, t.W, make(map[*info]bool))
+		t.text(g.base, t.W, make(map[*node]bool))
 	case "tree":
-		t.tree("", g.base, t.W, make(map[*info]bool))
+		t.tree("", g.base, t.W)
 	case "dot":
 		t.dot(g, t.W)
 	case "pdf":
