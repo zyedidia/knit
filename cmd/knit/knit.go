@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -88,6 +90,7 @@ func main() {
 	updated := optStringSlice(main, "updated", "u", nil, user.Updated, "treat files as updated")
 	root := optBool(main, "root", "r", false, user.Root, "run target relative to the root Knitfile")
 
+	debug := main.BoolP("debug", "D", false, "print debug information")
 	tool := main.StringP("tool", "t", "", "subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool")
 	version := main.BoolP("version", "v", false, "show version information")
 	cpuprofile := main.String("cpuprofile", "", "write cpu profile to 'file'")
@@ -123,6 +126,14 @@ func main() {
 	if *version {
 		fmt.Println("knit version", info.Version)
 		os.Exit(0)
+	}
+
+	if *debug {
+		log.SetOutput(os.Stdout)
+		log.SetFlags(0)
+		log.SetPrefix("[debug] ")
+	} else {
+		log.SetOutput(io.Discard)
 	}
 
 	out := os.Stdout

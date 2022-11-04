@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -346,7 +347,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 				for _, p := range metarule.prereqs {
 					_, err := g.resolveTargetAcross(pathJoin(dir, p), visits, updated)
 					if err != nil {
-						// log.Printf("could not use metarule '%s': %s\n", mr.String(), err)
+						log.Printf("could not use metarule '%s': %s\n", mr.String(), err)
 						failed = true
 						break
 					}
