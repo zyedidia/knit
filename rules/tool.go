@@ -177,7 +177,9 @@ func (t *TargetsTool) targets(n *node, virtual bool, visited map[*info]bool) {
 	}
 
 	if !virtual || virtual && n.rule.attrs.Virtual {
-		fmt.Fprintln(t.W, strings.Join(n.rule.targets, "\n"))
+		for _, targ := range n.rule.targets {
+			fmt.Fprintln(t.W, pathJoin(n.dir, targ))
+		}
 	}
 
 	visited[n.info] = true

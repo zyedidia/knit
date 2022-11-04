@@ -96,6 +96,17 @@ func makeAssigns(args []string) ([]assign, []string) {
 	return assigns, other
 }
 
+func pathJoin(dir, target string) string {
+	if filepath.IsAbs(target) {
+		return target
+	}
+	p := filepath.Join(dir, target)
+	if strings.HasSuffix(target, "/") {
+		p += "/"
+	}
+	return p
+}
+
 // Changes the working directory to 'dir' and changes all targets to be
 // relative to that directory.
 func goToKnitfile(vm *LuaVM, dir string, targets []string) error {
@@ -113,7 +124,7 @@ func goToKnitfile(vm *LuaVM, dir string, targets []string) error {
 			return err
 		}
 		if r != "" && r != "." {
-			targets[i] = filepath.Join(r, t)
+			targets[i] = pathJoin(r, t)
 		}
 	}
 
@@ -246,7 +257,14 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 
 	rs := rulesets["."]
 
-	alltargets := rs.AllTargets()
+	var alltargets []string
+
+	for rdir, rset := range rulesets {
+		targets := rset.AllTargets()
+		for _, t := range targets {
+			alltargets = append(alltargets, pathJoin(rdir, t))
+		}
+	}
 
 	if len(targets) == 0 {
 		targets = []string{rs.MainTarget()}
