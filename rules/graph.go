@@ -254,6 +254,12 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 }
 
 func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, visits map[string][]int, updated map[string]bool) (*node, error) {
+	parsedTarget, err := parsePrereq(target)
+	if err != nil {
+		return nil, err
+	}
+	target = parsedTarget.name
+
 	fulltarget := pathJoin(dir, target)
 	// do we have a node that builds target already
 	// if the node has an empty recipe, we don't use it because it could be a
@@ -373,6 +379,8 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 			}
 		}
 	}
+
+	rule.attrs.UpdateFrom(parsedTarget.attrs)
 
 	if rule.attrs.Virtual {
 		n.outputs = nil

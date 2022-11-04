@@ -105,6 +105,16 @@ type AttrSet struct {
 	Linked  bool // only run this rule if a sub-rule that requires it needs to run
 }
 
+func (a *AttrSet) UpdateFrom(other AttrSet) {
+	a.Regex = a.Regex || other.Regex
+	a.Virtual = a.Virtual || other.Virtual
+	a.Quiet = a.Quiet || other.Quiet
+	a.NoMeta = a.NoMeta || other.NoMeta
+	a.NonStop = a.NonStop || other.NonStop
+	a.Rebuild = a.Rebuild || other.Rebuild
+	a.Linked = a.Linked || other.Linked
+}
+
 type Pattern struct {
 	Suffix bool
 	Regex  *regexp.Regexp
@@ -117,6 +127,20 @@ type RuleSet struct {
 	// a target may have multiple rules implementing it
 	// a rule may have multiple targets pointing to it
 	targets map[string][]int
+}
+
+type prereq struct {
+	name  string
+	attrs AttrSet
+}
+
+func parsePrereq(input string) (p prereq, err error) {
+	before, after, found := strings.Cut(input, "[")
+	p.name = before
+	if found && strings.HasSuffix(after, "]") {
+		p.attrs, err = ParseAttribs(after[:len(after)-1])
+	}
+	return
 }
 
 func NewRuleSet() *RuleSet {
