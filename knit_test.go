@@ -3,6 +3,8 @@ package knit_test
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,6 +87,8 @@ func runTest(dir string, t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
+	log.SetOutput(io.Discard)
+
 	files, err := os.ReadDir("./test")
 	if err != nil {
 		t.Fatal(fmt.Errorf("open test dir: %w", err))
