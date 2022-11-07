@@ -19,3 +19,5 @@ build.ninja
 .ninja*
 
 tools/version/version
+
+/examples/cmake/build

@@ -1,0 +1,11 @@
+return b{
+    $ build:VB: build/Knitfile
+
+    $ build/:
+        mkdir -p $output
+
+    $ build/build.ninja: build/
+        cd build; cmake .. -G Ninja
+    $ build/Knitfile: build/build.ninja
+        cd build; knitja > Knitfile
+}
