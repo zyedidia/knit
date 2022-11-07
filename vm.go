@@ -59,6 +59,29 @@ type LBuildSet struct {
 	bsets []LBuildSet
 }
 
+func (b *LBuildSet) Add(vals *lua.LTable, vm *LuaVM) {
+	vals.ForEach(func(key lua.LValue, val lua.LValue) {
+		switch v := val.(type) {
+		case *lua.LUserData:
+			switch u := v.Value.(type) {
+			case LBuildSet:
+				u.Dir = filepath.Join(vm.Wd(), u.Dir)
+				b.bsets = append(b.bsets, u)
+			case LRuleSet:
+				b.rset = append(b.rset, u...)
+			case LRule:
+				b.rset = append(b.rset, u)
+			default:
+				vm.Err(fmt.Errorf("invalid buildset item: %v of type %v", u, v.Type()))
+			}
+		case *lua.LTable:
+			b.Add(v, vm)
+		default:
+			vm.Err(fmt.Errorf("invalid buildset item: %v of type %v", v, v.Type()))
+		}
+	})
+}
+
 func (bs *LBuildSet) String() string {
 	buf := &bytes.Buffer{}
 	buf.WriteString("b({\n")
@@ -97,16 +120,6 @@ func NewLuaVM() *LuaVM {
 			Line:     line,
 		}
 	}
-	slcmt := luar.MT(L, []string{})
-	L.SetField(slcmt.LTable, "__tostring", luar.New(L, func(s []string) string {
-		return strings.Join(s, " ")
-	}))
-	L.SetField(slcmt.LTable, "__add", luar.New(L, func(s1, s2 []string) []string {
-		s3 := make([]string, 0, len(s1)+len(s2))
-		s3 = append(s3, s1...)
-		s3 = append(s3, s2...)
-		return s3
-	}))
 	rmt := luar.MT(L, LRule{})
 	L.SetField(rmt.LTable, "__tostring", luar.New(L, func(r LRule) string {
 		return r.String()
@@ -149,13 +162,17 @@ func NewLuaVM() *LuaVM {
 		return bs.String()
 	}))
 	L.SetField(bsmt.LTable, "__add", luar.New(L, func(bs LBuildSet, lv lua.LValue) LBuildSet {
-		if u, ok := lv.(*lua.LUserData); ok {
+		// TODO: copy bs instead of modifying it
+		switch u := lv.(type) {
+		case *lua.LUserData:
 			switch u := u.Value.(type) {
 			case LRuleSet:
 				bs.rset = append(bs.rset, u...)
 			case LBuildSet:
 				bs.bsets = append(bs.bsets, u)
 			}
+		case *lua.LTable:
+			bs.Add(u, vm)
 		}
 		return bs
 	}))
@@ -167,28 +184,10 @@ func NewLuaVM() *LuaVM {
 			vm.Err(fmt.Errorf("requires table, but got value %v", lv.Type()))
 		}
 		dir := L.OptString(2, ".")
-		b := LBuildSet{}
-
-		vals.ForEach(func(key lua.LValue, val lua.LValue) {
-			switch v := val.(type) {
-			case *lua.LUserData:
-				switch u := v.Value.(type) {
-				case LBuildSet:
-					u.Dir = filepath.Join(vm.Wd(), u.Dir)
-					b.bsets = append(b.bsets, u)
-				case LRuleSet:
-					b.rset = append(b.rset, u...)
-				case LRule:
-					b.rset = append(b.rset, u)
-				default:
-					vm.Err(fmt.Errorf("invalid buildset item: %v of type %v", u, v.Type()))
-				}
-			default:
-				vm.Err(fmt.Errorf("invalid buildset item: %v of type %v", v, v.Type()))
-			}
-		})
-
-		b.Dir = filepath.Join(vm.Wd(), dir)
+		b := LBuildSet{
+			Dir: filepath.Join(vm.Wd(), dir),
+		}
+		b.Add(vals, vm)
 		L.Push(luar.New(L, b))
 		return 1
 	}))
