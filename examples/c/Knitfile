@@ -18,12 +18,10 @@ obj = knit.extrepl(src, ".c", ".o")
 prog := hello
 
 return b{
-$ $prog: $obj
-    $(conf.cc) $cflags $input -o $output
-
-$ %.o: %.c
-    $(conf.cc) $cflags -c $input -o $output
-
-$ clean:VB:
-    knit :all -t clean
+    $ $prog: $obj
+        $(conf.cc) $cflags $input -o $output
+    $ %.o: %.c
+        $(conf.cc) $cflags -c $input -o $output
+    $ clean:VBQ:
+        knit :all -t clean
 }

@@ -39,6 +39,6 @@ return b{
     $ cover:VB:
         go test -cover
 
-    $ clean:VB:
+    $ clean:VBQ:
         knit :all -t clean
 }

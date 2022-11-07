@@ -1,0 +1,13 @@
+local knit = require("knit")
+
+local src = knit.glob("*.c")
+local obj = knit.extrepl(src, ".c", ".o")
+
+return b{
+    $ %.o: %.c
+        cc -c $input -o $output
+    $ libfoo.a: $obj
+        ar -rcs $output $input
+
+    include("libbar/build.knit")
+}
