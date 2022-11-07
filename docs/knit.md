@@ -373,56 +373,92 @@ knit target -t compdb
 knit target -t graph pdf > graph.pdf
 ```
 
+# Build-in Lua syntax
+
+* `$ ...`: creates a rule. The rule is formatted using string interpolation.
+
+* `x := ...`: creates a string without quotes. The string value continues until
+  the end of the line, and is automatically formatted using string
+  interpolation.
+
 # Built-in Lua functions
 
-* `rule(rule string)`: define a rule. The `$` syntax is shorthand for this function.
+* `rule(rule)`: define a rule. The `$` syntax is shorthand for this function.
 
-* `include(file string)`: run a Knitfile from its directory and return the generated ruleset.
+* `include(file)`: run a Knitfile from its directory (changes the
+  current working directory while the file is being executed) and return the
+  generated ruleset. Throws an error if `file` does not exist.
 
-* `rulefile(file string) Rule`: read a rule from a separate file and return it.
+* `dcall(fn, args)`: call `fn(args)` from the directory where `fn` is defined.
 
-* `r{$ ...}`, `r(rules []Rule) RuleSet`: turn a table of rules into a ruleset.
+* `dcallfrom(dir, fn, args)`: call `fn(args)` from `dir`.
 
-* `tostring(value) string`: convert an arbitrary value to a string.
+* `rel(files)`: make all paths in the table `files` relative to the build root
+  (the location of the Knitfile).
+
+* `r{$ ...}`, `r({...})`: turn a table of rules into a ruleset.
+
+* `b{...}`, b({...}, dir): turn a table of rules, rulesets, or buildsets
+  into a buildset associated with directory `dir`. `dir` is optional, and if
+  not specified will be the current working directory.
 
 * `tobool(value)` bool: convert an arbitrary value to a boolean. A nil value
   will return nil, the strings `false`, `off`, or `0` will become false. A
   boolean will not be converted. Anything else will be true.
 
-* `eval(code string): value`: evaluates a Lua expression in the global scope and returns the result.
+* `eval(code)`: evaluates a Lua expression in the global scope
+  and returns the result. Throws an error if the code has an error.
 
-* `f"..."`, `f(s string) string`: formats a string using `$var` or `$(var)` to
-  expand variables. Does not expand expressions.
+* `f"..."`, `f(s)`: formats a string using `$var` or `$(expr)` to
+  expand variables/expressions. Throws an error if the variable does not exist,
+  or the expression has an error.
+
+* `expand(s)`: formats a string in the same way as `f`, but if there is an
+  error, it does not expand that particular `$...` expression.
+
+* `use(pkg)`: imports all fields of `pkg` into the global namespace. Meant to
+  be used with `require`: `use(require("knit"))`.
 
 * `r{} + r{}`: you may use the `+` operator to combine rulesets together.
+
+* `b{} + val`: you may use the `+` operator to combine buildsets with
+  rules/rulesets/buildsets.
+
+* `{s} + {s}`: string tables returned by knit functions can be added together.
 
 # The `knit` Lua package
 
 The `knit` package can be imported with `require("knit")`, and provides the following functions:
 
-* `repl(in []string, patstr, repl string) ([]string, error)`: replace all
-  occurrences of the Go regular expression `patstr` with `repl` within `in`.
+* `repl(in, patstr, repl)`: replace all occurrences of the Go regular
+  expression `patstr` with `repl` within `in`. Throws an error if there
+  is an error with `patstr`.
 
-* `extrepl(in []string, ext, repl string) []string`: replace all occurrences of the
+* `extrepl(in, ext, repl)`: replace all occurrences of the
   literal string `ext` as a suffix with `repl` within `in`.
 
-* `glob(pat string) []string`: return all files in the current working
-  directory that match the glob `pat`.
+* `glob(pat)`: return all files in the current working directory that match the
+  glob `pat`.
 
-* `shell(cmd string) string`: execute a command with the shell and return its
-  output. If the command exits with an error the returned output will be the
-  contents of the error.
+* `filterout(in, exclude)`: returns a new table containing all the elements of
+  `in`, except those in `exclude`.
 
-* `trim(s string) string`: trim leading and trailing whitespace from a string.
+* `shell(cmd) string`: execute a command with the shell and return its
+  output. Throws an error if the command exits with an error.
 
-* `abs(path string) (string, error)`: return the absolute path of a path.
+* `trim(s)`: trim leading and trailing whitespace from a string.
 
-* `readfile(path string) string`: returns the contents of a file, or nil if it
-  does not exist.
+* `abs(path)`: return the absolute path of a path.
 
 * `os`: a string containing the operating system name.
 
 * `arch`: a string containing the machine architecture name.
+
+* `addpath(p)`: adds the path `p` to the global require path. Files with ending
+  with `.lua` or `.knit` are added.
+
+* `knit(flags)`: executes the shell command `knit flags` using the current
+  instance of Knit.
 
 # CLI and environment variables
 

@@ -243,17 +243,6 @@ func NewLuaVM() *LuaVM {
 		return val
 	}))
 
-	// Lua conversions
-	L.SetGlobal("toarray", luar.New(L, func(v lua.LValue) lua.LValue {
-		if v == nil || v.Type() == lua.LTNil {
-			return v
-		}
-		switch v := v.(type) {
-		case lua.LString:
-			return luar.New(L, strings.Split(string(v), " "))
-		}
-		return v
-	}))
 	L.SetGlobal("tobool", luar.New(L, func(b lua.LValue) lua.LValue {
 		// nil just passes through
 		if b == nil || b.Type() == lua.LTNil {
