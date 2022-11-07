@@ -1,5 +1,3 @@
-Note: this documentation is out of date.
-
 # Rules
 
 A rule consists of four parts:
@@ -26,6 +24,9 @@ When a rule is embedded in Lua, it is prefixed with a `$`:
 $ targets:attributes: prereqs
     recipe
 ```
+
+The rule continues until it is de-indented to the original indentation of the
+`$`.
 
 Direct rules are rules where the targets and prereqs are explicit names of
 values. For example,
@@ -89,6 +90,21 @@ Knit supports the following attributes:
 * `B` (build): this rule must always be built (it is always out-of-date).
 * `L` (linked): this rule always runs if an out-of-date sub-rule requires it as
   a prereq.
+* `O` (order-only): this rule's prereqs are not considered automatically
+  up-to-date even if this rule is up-to-date.
+
+Attributes can also be applied to particular prerequisites rather than to an
+entire rule, using the syntax `prereq[attributes]`. For example:
+
+```
+foo:V:
+    echo foo
+bar:V: foo[Q]
+    echo bar
+```
+
+The `foo` rule will be quiet only when used as a prerequisite to the `bar`
+rule.
 
 ## Recipes
 
@@ -97,8 +113,7 @@ shell. Recipes may use variables that will be expanded before the recipe
 executes. Variables are written with `$var`, or full Lua expressions can be
 written with `$(expr)`. Variables/expressions are expanded eagerly when the
 rule is created. If expansion causes an error, the expansion is delayed until
-rule evaluation (when special build variables are available). During rule
-evaluation, only global variables (and special variables) are available.
+rule evaluation (when special build variables are available).
 
 Some special variables are available during recipe expansion:
 
@@ -109,11 +124,17 @@ Some special variables are available during recipe expansion:
 * `match`: the value captured with `%` in a meta rule.
 * `matches`: a list of matches captured by a regular expression meta rule.
 
+Lua expressions should not mix uses of special build variables and Lua
+global/local variables. This constraint may be relaxed in the future if it
+turns out to be a useful feature.
+
 # Knitfiles
 
 A Knitfile is a Lua 5.1 program with additional support for rule expressions.
-The Knitfile ultimately must return a "ruleset" -- a list of build rules that
+The Knitfile ultimately must return a "buildset" -- a list of build rules that
 are used to construct the build graph.
+
+A rule is defined in Lua with the `$` syntax:
 
 ```
 $ targets:attributes: prereqs
@@ -138,6 +159,20 @@ $ foo: foo.o
 }
 ```
 
+When you run `knit`, Knit will automatically look for a file called `Knitfile`
+or `knitfile` (or you can specify a custom name with `-f`). Knit will look in
+the current directory, and up to ancestor directories if one does not exist in
+the current directory. This allows you to execute the build from anywhere in
+your project without fragmenting the build system with multiple Knitfiles. You
+can still make directory-specific targets that are namespaced relative to that
+directory with sub-builds.
+
+If you run `knit foo.o` from the `foo` directory, and there is a file
+`../Knitfile` that defines a rule for building `foo/foo.o`, Knit will
+automatically figure out that you mean to build `foo/foo.o` (relative to `..`),
+since you specified `foo.o` (relative to `foo`). In other words, building
+sub-files just works.
+
 ## Rulesets
 
 A table of rules can be converted into a "ruleset" by using the special `r`
@@ -154,9 +189,6 @@ $ foo: foo.o
 }
 ```
 
-If the Knitfile returns this ruleset, then it will be used as the main set of
-rules for the build.
-
 Note that two rulesets may be combined with the `+` operator.
 
 ```
@@ -165,36 +197,120 @@ $ build:V: foo
 }
 ```
 
-## Sub-builds
+# Buildsets
 
-A build may use several rulesets. In addition, when depending on another ruleset,
-you may specify the directory the ruleset should be executed in. The ruleset dependency
-is specified in the form `[ruleset][directory]rule`.
-
-For example:
+A buildset is a set of rules associated with a particular directory. A buildset
+may also contain other buildsets (rules from other directories). All rules in
+the buildset are executed relative to its directory. A buildset can be
+constructed by using the special `b` function, which constructs a buildset from
+a table of rules, rulesets, or other buildsets.
 
 ```
-local foorules = r{
+local buildset = b{
 $ foo.o: foo.c
     gcc -c $input -o $output
-}
-
-return r{
-$ prog.o: prog.c
-    gcc -c $input -o $output
-$ prog: prog.o [foorules][libfoo]foo.o
+$ foo: foo.o
     gcc $input -o $output
 }
 ```
 
-This Knitfile assumes the build consists of `prog.c` and `libfoo/foo.c`. It
-builds `libfoo/foo.o` using a sub-build and a separate ruleset that is executed
-from within the `libfoo` directory.
+By default the buildset's directory is the current working directory when it is
+constructed. A second argument may also be passed to `b` to directly specify the
+build directory.
 
-It is also useful to combine sub-builds with the `include(kf)` function, which
-runs the Knitfile `kf` from the directory where it exists, and returns the
-ruleset that the Knitfile produces. This means you can easily use a sub-directory's
-Knitfile to create a ruleset for use in a sub-build.
+```
+local buildset = b({
+$ foo.o: foo.c
+    gcc -c $input -o $output
+$ foo: foo.o
+    gcc $input -o $output
+}, "directory")
+```
+
+A buildset must be returned by the Knitfile for a build to take place. When a
+buildset is returned, knit expands it and all the buildsets that it returns
+into the full set of rules, where each rule is relative to the buildset
+directory that it came from. Rules may have cross-buildset dependencies.
+
+These facilities for making rules relative to directories are for enabling
+sub-builds, discussed in the next section.
+
+## Sub-builds
+
+A build may use several buildsets.
+
+For example:
+
+```lua
+-- this buildset is relative to the "libfoo" directory
+local foorules = b({
+$ foo.o: foo.c
+    gcc -c $input -o $output
+}, "libfoo")
+
+return b{
+$ prog.o: prog.c
+    gcc -c $input -o $output
+-- libfoo/foo.o is automatically resolved to correspond to the rule in foorules
+$ prog: prog.o libfoo/foo.o
+    gcc $input -o $output
+
+-- include the foorules buildset
+foorules
+}
+```
+
+This Knitfile assumes the build consists of `prog.c` and `libfoo/foo.c`. It
+builds `libfoo/foo.o` using a sub-build and automatically determines that
+the `foorules` buildset contains the rule for building `libfoo/foo.o`. Note
+that the recipe for `foo.o` is run in the `libfoo` directory.
+
+It is also useful to combine sub-builds with the `include(x)` function, which
+runs the knit program `x` from the directory where it exists, and returns the
+value that `x` produces. This means you can easily use a sub-directory's
+Knitfile to create a buildset for use in a sub-build.
+
+For example, for the previous build we could use the following file system
+structure:
+
+`libfoo/build.knit` contains:
+
+```lua
+-- this buildset's directory will be the current working directory
+return b{
+$ foo.o: foo.c
+    gcc -c $input -o $output
+}
+```
+
+`Knitfile` contains:
+
+```lua
+return b{
+$ prog.o: prog.c
+    gcc -c $input -o $output
+-- libfoo/foo.o is automatically resolved to correspond to the rule in foorules
+$ prog: prog.o libfoo/foo.o
+    gcc $input -o $output
+
+-- include the libfoo rules: this will change directory into libfoo, execute
+-- build.knit, and change back to the current directory, thus giving us a buildset
+-- for the libfoo directory automatically
+include("libfoo/build.knit")
+}
+```
+
+Note that since knit looks upwards for the nearest Knitfile, you can run `knit
+foo.o` from inside `libfoo`, and knit will correctly build `libfoo/foo.o`.
+
+Since managing the current working directory is important for easily creating
+buildsets that automatically reference the correct directory, there are several
+functions for this:
+
+* `include(x)`: runs a Lua file from the directory where it exists.
+* `dcall(fn, args)`: calls a Lua function from the directory where it is defined.
+* `dcallfrom(dir, fn, args)`: calls a Lua function from a specified directory.
+* `rel(files)`: makes all input files relative to the build's root directory.
 
 # Options
 

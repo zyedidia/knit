@@ -157,8 +157,12 @@ func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
 
 	var addBuildSet func(bs LBuildSet)
 	addBuildSet = func(bs LBuildSet) {
-		bsets[bs.Dir] = &bs
-		dirs = append(dirs, bs.Dir)
+		if b, ok := bsets[bs.Dir]; ok {
+			b.rset = append(b.rset, bs.rset...)
+		} else {
+			bsets[bs.Dir] = &bs
+			dirs = append(dirs, bs.Dir)
+		}
 
 		// TODO: can there be a buildset cycle?
 		for _, bset := range bs.bsets {
