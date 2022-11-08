@@ -85,32 +85,30 @@ go install github.com/zyedidia/knit/cmd/knit@latest
 Here is an example Knitfile used for building a simple C project.
 
 ```lua
-knit = import("knit")
+local knit = require("knit")
 
-cc = cli.cc or "gcc"
-debug = tobool(cli.debug) or false
+local conf = {
+    cc = cli.cc or "gcc",
+    debug = tobool(cli.debug) or false,
+}
 
-cflags := -Wall
+local cflags := -Wall
 
-if debug then
+if conf.debug then
     cflags := $cflags -Og -g
 else
     cflags := $cflags -O2
 end
 
-src = knit.glob("*.c")
-obj = knit.extrepl(src, ".c", ".o")
-prog := hello
+local src = knit.glob("*.c")
+local obj = knit.extrepl(src, ".c", ".o")
+local prog := hello
 
 return b{
-    $ build:V: $prog
-
     $ $prog: $obj
-        $cc $cflags $input -o $output
-
+        $(conf.cc) $cflags $input -o $output
     $ %.o: %.c
-        $cc $cflags -c $input -o $output
-
+        $(conf.cc) $cflags -c $input -o $output
     $ clean:VBQ:
         knit :all -t clean
 }
@@ -122,6 +120,12 @@ See [examples](./examples) for a few examples, and see this repository's
 Knitfile and the tests for even more examples.
 
 # Feedback
+
+Knit is at an early stage in development and at a point where it would be
+useful to get feedback from others to improve it. If you have feedback, or
+questions about how to use it, please open a discussion. It would be great to
+discuss the good and bad parts of the current design, and how it can be
+improved.
 
 # Usage
 
@@ -152,3 +156,6 @@ discussion. I am sometimes prone to being unresponsive to pull requests, so I
 apologize in advance. Please ping me if I forget to respond. If you have a
 feature you would like to implement, please double check with me about the
 feature before investing lots of time into implementing it.
+
+If you have a question or feedback about the current design, please open a
+discussion.

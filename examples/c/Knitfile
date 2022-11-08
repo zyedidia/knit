@@ -1,4 +1,4 @@
-knit = require("knit")
+local knit = require("knit")
 
 local conf = {
     cc = cli.cc or "gcc",
@@ -13,9 +13,9 @@ else
     cflags := $cflags -O2
 end
 
-src = knit.glob("*.c")
-obj = knit.extrepl(src, ".c", ".o")
-prog := hello
+local src = knit.glob("*.c")
+local obj = knit.extrepl(src, ".c", ".o")
+local prog := hello
 
 return b{
     $ $prog: $obj
