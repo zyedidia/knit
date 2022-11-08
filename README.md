@@ -130,6 +130,10 @@ attributes on the clean rule means that it is virtual (not referring to a file
 on the system), should always be built (out-of-date), and quiet (does not print
 the command it executes).
 
+Note that Knitfiles are Lua programs with some modified syntax: special syntax
+using `$` for defining rules, and special syntax using `:=` for defining raw
+strings (no quotes) with interpolation.
+
 See the [docs](./docs/knit.md) for more information.
 
 See [examples](./examples) for a few examples, and see this repository's
