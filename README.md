@@ -76,13 +76,15 @@ never be implemented).
 
 # Installation
 
-Prebuilt binary:
+Prebuilt binaries are available from the [release page](https://github.com/zyedidia/knit/releases).
+
+You can install one automatically using [eget](https://github.com/zyedidia/eget).
 
 ```
-eget zyedidia/knit --pre-release
+eget zyedidia/knit
 ```
 
-From source:
+Build from source (requires Go 1.19):
 
 ```
 go install github.com/zyedidia/knit/cmd/knit@latest
