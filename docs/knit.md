@@ -354,7 +354,7 @@ The default set of flags is:
 
 ```toml
 knitfile = "knitfile"
-ncpu = # depends on the number of logical cores on your machine
+ncpu = 8 # depends on the number of logical cores on your machine
 dryrun = false
 directory = ""
 always = false
