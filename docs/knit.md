@@ -151,7 +151,7 @@ time of a directory is the timestamp of the most recently modified file in it
 performance.
 
 Hashing can be disabled on a per-project basis or globally by using the
-`.knit.toml` configuration file, described the "Options" section of this
+`.knit.toml` configuration file, described the "Configuration" section of this
 documentation.
 
 # Knitfiles
@@ -199,7 +199,7 @@ automatically figure out that you mean to build `foo/foo.o` (relative to `..`),
 since you specified `foo.o` (relative to `foo`). In other words, building
 sub-files just works.
 
-## Rulesets
+# Rulesets
 
 A table of rules can be converted into a "ruleset" by using the special `r`
 function, which converts the table into a Lua "userdata" object representing a
@@ -338,7 +338,7 @@ functions for this:
 * `dcallfrom(dir, fn, args)`: calls a Lua function from a specified directory.
 * `rel(files)`: makes all input files relative to the build's root directory.
 
-# Options
+# Configuration
 
 Knit will search the current directory for a Knitfile called `knitfile` or
 `Knitfile`. If one is not found, it will use the Knitfile in
@@ -366,7 +366,7 @@ updated = []
 root = false
 ```
 
-## Sub-tools
+# Sub-tools
 
 Running `knit [TARGET]` will create a build graph for the target. By default,
 knit will then execute that build graph. Using the `-t TOOL` option, you may
@@ -385,31 +385,31 @@ The special target `:all` depends on every target in the build. Thus `knit :all
 
 Some examples are shown below.
 
-### Automatic cleaning
+## Automatic cleaning
 
 ```
 knit target -t clean
 ```
 
-### Output a shell script for the build
+## Output a shell script for the build
 
 ```
 knit target -t commands shell
 ```
 
-### Output a Ninja build file
+## Output a Ninja build file
 
 ```
 knit target -t commands ninja
 ```
 
-### Output a compile commands database
+## Output a compile commands database
 
 ```
 knit target -t compdb
 ```
 
-### Output a PDF build graph
+## Output a PDF build graph
 
 ```
 knit target -t graph pdf > graph.pdf

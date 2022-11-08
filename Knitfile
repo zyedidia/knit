@@ -39,6 +39,7 @@ $ (knit-$version-(.*)-(.*))/:R: knit.1
 
 $ clean:VB:
     knit :all -t clean
+    rm -rf knit-*
 
 $ test:VB:
     go test $race
