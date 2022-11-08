@@ -6,3 +6,5 @@ First run `knit build`. This will run cmake, and convert the `build.ninja` file
 to a `Knitfile` using `knitja` (make sure you have `knitja` installed).
 
 Next run `knit all -C build` to run the build using the generated Knitfile.
+
+<img alt="cmake graph" src="./graph.svg" width="500px"/>

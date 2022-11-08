@@ -8,3 +8,5 @@ You can also run `knit libfoo.a` from `libfoo/` and `knit libbar.a` from
 
 Run `knit clean -r` to run the `clean` target from the root, even if you are
 located in a sub-directory.
+
+<img alt="build graph" src="./graph.svg" width="500px"/>
