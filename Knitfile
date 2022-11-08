@@ -38,7 +38,7 @@ $ (knit-$version-(.*)-(.*))/:R: knit.1
     cp knit.1 $match1
 
 $ clean:VB:
-    rm -f *.tar.gz knit cover.out
+    knit :all -t clean
 
 $ test:VB:
     go test $race
