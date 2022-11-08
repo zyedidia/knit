@@ -59,9 +59,17 @@ header: Knit Manual
 
 :    Show a help message.
 
+  `--keep-going`
+
+:    Keep going even if recipes fail.
+
   `-q, --quiet`
 
 :    Don't print commands when executing.
+
+  `--shell string`
+
+:    Shell to use when executing a recipe (default "sh").
 
   `-s, --style string`
 

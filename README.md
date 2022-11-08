@@ -158,19 +158,24 @@ Usage of knit:
   knit [TARGETS] [ARGS]
 
 Options:
-  -B, --always-build       unconditionally build all targets
-      --cache string       directory for caching internal build information (default ".")
-  -C, --directory string   run command from directory
-  -n, --dry-run            print commands without actually executing
-  -f, --file string        knitfile to use (default "knitfile")
-      --hash               hash files to determine if they are out-of-date (default true)
-  -h, --help               show this help message
-  -q, --quiet              don't print commands
-  -s, --style string       printer style to use (basic, steps, progress) (default "basic")
-  -j, --threads int        number of cores to use (default 8)
-  -t, --tool string        subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool
-  -u, --updated strings    treat files as updated
-  -v, --version            show version information
+  -B, --always-build        unconditionally build all targets
+      --cache string        directory for caching internal build information (default ".")
+      --cpuprofile string   write cpu profile to 'file'
+  -D, --debug               print debug information
+  -C, --directory string    run command from directory
+  -n, --dry-run             print commands without actually executing
+  -f, --file string         knitfile to use (default "knitfile")
+      --hash                hash files to determine if they are out-of-date (default true)
+  -h, --help                show this help message
+      --keep-going          keep going even if recipes fail
+  -q, --quiet               don't print commands
+  -r, --root                run target relative to the root Knitfile
+      --shell string        shell to use when executing (default "sh")
+  -s, --style string        printer style to use (basic, steps, progress) (default "basic")
+  -j, --threads int         number of cores to use (default 8)
+  -t, --tool string         subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool
+  -u, --updated strings     treat files as updated
+  -v, --version             show version information
 ```
 
 Available sub-tools (`knit -t list`):

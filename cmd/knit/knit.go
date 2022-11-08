@@ -89,6 +89,8 @@ func main() {
 	hash := optBool(main, "hash", "", true, user.Hash, "hash files to determine if they are out-of-date")
 	updated := optStringSlice(main, "updated", "u", nil, user.Updated, "treat files as updated")
 	root := optBool(main, "root", "r", false, user.Root, "run target relative to the root Knitfile")
+	shell := optString(main, "shell", "", "sh", user.Shell, "shell to use when executing")
+	keep := optBool(main, "keep-going", "", false, user.KeepGoing, "keep going even if recipes fail")
 
 	debug := main.BoolP("debug", "D", false, "print debug information")
 	tool := main.StringP("tool", "t", "", "subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool")
@@ -138,19 +140,21 @@ func main() {
 
 	out := os.Stdout
 	file, err := knit.Run(out, main.Args(), knit.Flags{
-		Knitfile: *knitfile,
-		Ncpu:     *ncpu,
-		DryRun:   *dryrun,
-		RunDir:   *rundir,
-		Always:   *always,
-		Quiet:    *quiet,
-		Style:    *style,
-		CacheDir: *cache,
-		Hash:     *hash,
-		Updated:  *updated,
-		Root:     *root,
-		Tool:     *tool,
-		ToolArgs: toolargs,
+		Knitfile:  *knitfile,
+		Ncpu:      *ncpu,
+		DryRun:    *dryrun,
+		RunDir:    *rundir,
+		Always:    *always,
+		Quiet:     *quiet,
+		Style:     *style,
+		CacheDir:  *cache,
+		Hash:      *hash,
+		Updated:   *updated,
+		Root:      *root,
+		KeepGoing: *keep,
+		Shell:     *shell,
+		Tool:      *tool,
+		ToolArgs:  toolargs,
 	})
 
 	rel, rerr := filepath.Rel(file, wd)

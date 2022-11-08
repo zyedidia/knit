@@ -18,34 +18,38 @@ import (
 
 // Flags for modifying the behavior of Knit.
 type Flags struct {
-	Knitfile string
-	Ncpu     int
-	DryRun   bool
-	RunDir   string
-	Always   bool
-	Quiet    bool
-	Style    string
-	CacheDir string
-	Hash     bool
-	Updated  []string
-	Root     bool
-	Tool     string
-	ToolArgs []string
+	Knitfile  string
+	Ncpu      int
+	DryRun    bool
+	RunDir    string
+	Always    bool
+	Quiet     bool
+	Style     string
+	CacheDir  string
+	Hash      bool
+	Updated   []string
+	Root      bool
+	Shell     string
+	KeepGoing bool
+	Tool      string
+	ToolArgs  []string
 }
 
 // Flags that may be automatically set in a .knit.toml file.
 type UserFlags struct {
-	Knitfile *string
-	Ncpu     *int
-	DryRun   *bool
-	RunDir   *string `toml:"directory"`
-	Always   *bool
-	Quiet    *bool
-	Style    *string
-	CacheDir *string `toml:"cache"`
-	Hash     *bool
-	Updated  *[]string
-	Root     *bool
+	Knitfile  *string
+	Ncpu      *int
+	DryRun    *bool
+	RunDir    *string `toml:"directory"`
+	Always    *bool
+	Quiet     *bool
+	Style     *string
+	CacheDir  *string `toml:"cache"`
+	Hash      *bool
+	Updated   *[]string
+	Root      *bool
+	Shell     *string
+	KeepGoing *bool
 }
 
 // Capitalize the first rune of a string.
@@ -374,8 +378,8 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		lock.Unlock()
 	}, rules.Options{
 		NoExec:       flags.DryRun,
-		Shell:        "sh",
-		AbortOnError: true,
+		Shell:        flags.Shell,
+		AbortOnError: !flags.KeepGoing,
 		BuildAll:     flags.Always,
 		Hash:         flags.Hash,
 	})

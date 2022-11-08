@@ -43,6 +43,7 @@ func loadTest(dir string, t *testing.T) *Test {
 	if err != nil {
 		t.Fatal(err)
 	}
+	test.Flags.Shell = "sh"
 	return &test
 }
 
