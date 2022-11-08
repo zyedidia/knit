@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -29,6 +30,9 @@ type Graph struct {
 
 	rsets map[string]*RuleSet
 	dirs  []string
+
+	// timestamp cache
+	tscache map[string]time.Time
 }
 
 // Each node represents a build step. Certain nodes share information (e.g., if
@@ -111,12 +115,12 @@ type file struct {
 	updated bool
 }
 
-func newFile(dir string, target string, updated map[string]bool) *file {
+func newFile(dir string, target string, updated map[string]bool, tscache map[string]time.Time) *file {
 	f := &file{
 		name: pathJoin(dir, target),
 	}
 	f.updated = updated[f.name]
-	f.updateTimestamp()
+	f.updateTimestamp(tscache)
 	return f
 }
 
@@ -131,15 +135,45 @@ func pathJoin(dir, target string) string {
 	return p
 }
 
-func (f *file) updateTimestamp() {
-	info, err := os.Stat(f.name)
-	if err == nil {
-		f.t = info.ModTime()
-		f.exists = true
+func dirTime(dir string, mintime time.Time) time.Time {
+	filepath.WalkDir(dir, func(path string, info fs.DirEntry, err error) error {
+		if !info.IsDir() {
+			finfo, err := os.Stat(path)
+			if err == nil {
+				t := finfo.ModTime()
+				if t.After(mintime) {
+					mintime = t
+				}
+			}
+		}
+		return nil
+	})
+
+	return mintime
+}
+
+func (f *file) updateTimestamp(timestamps map[string]time.Time) {
+	if t, ok := timestamps[f.name]; ok {
+		f.t = t
+		f.exists = t != time.Unix(0, 0)
 		return
 	}
-	f.t = time.Unix(0, 0)
-	f.exists = false
+
+	info, err := os.Stat(f.name)
+	if err == nil {
+		if info.IsDir() {
+			f.t = dirTime(f.name, info.ModTime())
+		} else {
+			f.t = info.ModTime()
+		}
+
+		f.exists = true
+		timestamps[f.name] = f.t
+	} else {
+		f.t = time.Unix(0, 0)
+		f.exists = false
+	}
+	timestamps[f.name] = f.t
 }
 
 func (f *file) remove() error {
@@ -151,7 +185,7 @@ func (g *Graph) newNode(target string, dir string, updated map[string]bool) *nod
 	n := &node{
 		info: &info{
 			outputs: map[string]*file{
-				target: newFile(dir, target, updated),
+				target: newFile(dir, target, updated, g.tscache),
 			},
 			dir:  dir,
 			cond: sync.NewCond(&sync.Mutex{}),
@@ -170,6 +204,7 @@ func NewGraph(rs map[string]*RuleSet, dirs []string, target string, updated map[
 		fullNodes: make(map[string]*node),
 		rsets:     rs,
 		dirs:      dirs,
+		tscache:   make(map[string]time.Time),
 	}
 	visits := make(map[string][]int)
 	for d, r := range rs {
@@ -267,7 +302,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	if n, ok := g.nodes[fulltarget]; ok && len(n.rule.recipe) != 0 {
 		// make sure the node knows that it now builds target too
 		if _, ok := n.outputs[target]; !ok && !n.rule.attrs.Virtual {
-			n.outputs[target] = newFile(dir, target, updated)
+			n.outputs[target] = newFile(dir, target, updated, g.tscache)
 		}
 		return n, nil
 	}
@@ -405,12 +440,12 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	if gn, ok := g.fullNodes[fulltarget]; ok && gn.rule.Equals(&rule) {
 		// make sure the node knows that it builds target too
 		if _, ok := n.outputs[target]; !ok && !rule.attrs.Virtual {
-			n.outputs[target] = newFile(dir, target, updated)
+			n.outputs[target] = newFile(dir, target, updated, g.tscache)
 		}
 		n.info = gn.info
 		n.myTarget = target
 		if !rule.attrs.Virtual {
-			n.myOutput = newFile(dir, target, updated)
+			n.myOutput = newFile(dir, target, updated, g.tscache)
 		}
 		g.nodes[fulltarget] = n
 		return n, nil
@@ -420,14 +455,14 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 
 	for _, t := range n.rule.targets {
 		if !n.rule.attrs.Virtual {
-			n.outputs[t] = newFile(dir, t, updated)
+			n.outputs[t] = newFile(dir, t, updated, g.tscache)
 		}
 		g.fullNodes[pathJoin(dir, t)] = n
 	}
 
 	n.myTarget = target
 	if !n.rule.attrs.Virtual {
-		n.myOutput = newFile(dir, target, updated)
+		n.myOutput = newFile(dir, target, updated, g.tscache)
 	}
 
 	// associate this node with only the requested target

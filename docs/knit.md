@@ -128,6 +128,32 @@ Lua expressions should not mix uses of special build variables and Lua
 global/local variables. This constraint may be relaxed in the future if it
 turns out to be a useful feature.
 
+## Out-of-date calculation
+
+To determine if a rule must be re-run, Knit computes whether its output is
+up-to-date or not. There are two mechanisms for this: a hash-based one and a
+timestamp-based one. By default, Knit uses the hash-based mechanism: if a
+file's hash has changed since the previous build, it is considered out-of-date,
+and all rules that depend on it must be re-run. When depending on a directory,
+its hash is the recursive hash of all files within it. The hash-based method is
+good for small builds, but can become too slow for large builds. In those cases
+you can disable hashing and use the timestamp-based calculation.
+
+When hashing is disabled, Knit uses a similar computation to Make that is based
+on file modification times. If a rule's prerequisites refer to files that have
+been modified more recently (according to the system's file modification
+timestamp) than the output file, then the rule is determined to be out-of-date
+and must be re-run. Other factors may also cause a rule to be re-run, such as
+if its recipe has changed, or if it has a rebuild attribute. If the file refers
+to a directory, the system's timestamp is not used. Instead, the modification
+time of a directory is the timestamp of the most recently modified file in it
+(or in any sub-directory). Depending on a very large directory may hinder
+performance.
+
+Hashing can be disabled on a per-project basis or globally by using the
+`.knit.toml` configuration file, described the "Options" section of this
+documentation.
+
 # Knitfiles
 
 A Knitfile is a Lua 5.1 program with additional support for rule expressions.
@@ -323,6 +349,22 @@ Several options are available as command-line flags. They may also be specified
 in a `.knit.toml` file. Knit will search upwards from the current directory
 for `.knit.toml` files, and use the options set in those files. It will also
 search `~/.config/knit/.knit.toml`.
+
+The default set of flags is:
+
+```toml
+knitfile = "knitfile"
+ncpu = ... # depends on the number of logical cores on your machine
+dryrun = false
+directory = ""
+always = false
+quiet = false
+style = "basic"
+cache = ""
+hash = true
+updated = []
+root = false
+```
 
 ## Sub-tools
 

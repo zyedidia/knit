@@ -20,16 +20,13 @@ import (
 type Flags struct {
 	Knitfile string
 	Ncpu     int
-	Graph    string
 	DryRun   bool
 	RunDir   string
 	Always   bool
 	Quiet    bool
-	Clean    bool
 	Style    string
 	CacheDir string
 	Hash     bool
-	Commands bool
 	Updated  []string
 	Root     bool
 	Tool     string
@@ -40,16 +37,13 @@ type Flags struct {
 type UserFlags struct {
 	Knitfile *string
 	Ncpu     *int
-	Graph    *string
 	DryRun   *bool
-	RunDir   *string
+	RunDir   *string `toml:"directory"`
 	Always   *bool
 	Quiet    *bool
-	Clean    *bool
 	Style    *string
-	CacheDir *string
+	CacheDir *string `toml:"cache"`
 	Hash     *bool
-	Commands *bool
 	Updated  *[]string
 	Root     *bool
 }
@@ -193,7 +187,10 @@ func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
 // path of the executed knitfile is returned, along with a possible error.
 func Run(out io.Writer, args []string, flags Flags) (string, error) {
 	if flags.RunDir != "" {
-		os.Chdir(flags.RunDir)
+		err := os.Chdir(flags.RunDir)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	vm := NewLuaVM()
@@ -223,7 +220,10 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 			flags.Updated[i] = p
 		}
 		if flags.Root {
-			os.Chdir(dir)
+			err := os.Chdir(dir)
+			if err != nil {
+				return knitpath, err
+			}
 		} else {
 			err = goToKnitfile(vm, dir, targets)
 			if err != nil {

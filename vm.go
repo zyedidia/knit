@@ -200,7 +200,10 @@ func NewLuaVM() *LuaVM {
 			vm.Err(err)
 			return lua.LNil
 		}
-		from := vm.EnterDir(filepath.Dir(dbg.Source))
+		from, err := vm.EnterDir(filepath.Dir(dbg.Source))
+		if err != nil {
+			vm.Err(err)
+		}
 		vm.L.Push(fn)
 		for _, a := range args {
 			vm.L.Push(a)
@@ -210,7 +213,10 @@ func NewLuaVM() *LuaVM {
 		return vm.L.Get(-1)
 	}))
 	L.SetGlobal("dcallfrom", luar.New(L, func(dir string, fn *lua.LFunction, args ...lua.LValue) lua.LValue {
-		from := vm.EnterDir(dir)
+		from, err := vm.EnterDir(dir)
+		if err != nil {
+			vm.Err(err)
+		}
 		vm.L.Push(fn)
 		for _, a := range args {
 			vm.L.Push(a)
@@ -233,7 +239,10 @@ func NewLuaVM() *LuaVM {
 
 	// Include
 	L.SetGlobal("include", luar.New(L, func(path string) lua.LValue {
-		from := vm.EnterDir(filepath.Dir(path))
+		from, err := vm.EnterDir(filepath.Dir(path))
+		if err != nil {
+			vm.Err(err)
+		}
 		val, err := vm.DoFile(filepath.Base(path))
 		vm.LeaveDir(from)
 		if err != nil {
@@ -314,22 +323,20 @@ func NewLuaVM() *LuaVM {
 
 // EnterDir changes into 'dir' and returns the path of the directory that was
 // changed out of.
-func (vm *LuaVM) EnterDir(dir string) string {
+func (vm *LuaVM) EnterDir(dir string) (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		vm.Err(err)
-		return "."
 	}
 	vm.wd.Push(dir)
-	os.Chdir(dir)
-	return wd
+	return wd, os.Chdir(dir)
 }
 
 // LeaveDir returns to the directory 'to' (usually the value returned by
 // 'EnterDir').
-func (vm *LuaVM) LeaveDir(to string) {
+func (vm *LuaVM) LeaveDir(to string) error {
 	vm.wd.Pop()
-	os.Chdir(to)
+	return os.Chdir(to)
 }
 
 // Wd returns the current working directory.
