@@ -444,8 +444,9 @@ prerequisites for that target to the previous rule.
 
 If several rules from different buildsets could be used to build a target, the
 rule from the buildset for the target's directory is attempted first. If it
-does not exist, then rules are attempted from all other buildsets and the last
-one to match is used (later rules override earlier rules).
+does not exist, then rules are attempted from all other buildsets and the first
+buildset to have a matching rule is used. If a meta-rule is used, it is
+attmpted in the current buildset before looking in other buildsets.
 
 # Built-in Lua syntax
 

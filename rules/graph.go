@@ -259,8 +259,7 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 		rerr = err
 	}
 
-	for i := len(g.dirs) - 1; i >= 0; i-- {
-		d := g.dirs[i]
+	for _, d := range g.dirs {
 		if d == dir {
 			continue
 		}
@@ -300,7 +299,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	// do we have a node that builds target already
 	// if the node has an empty recipe, we don't use it because it could be a
 	// candidate so we should check if we can build it in a better way
-	if n, ok := g.nodes[fulltarget]; ok && len(n.rule.recipe) != 0 {
+	if n, ok := g.nodes[fulltarget]; ok && len(n.rule.recipe) != 0 && n.dir == dir {
 		// make sure the node knows that it now builds target too
 		if _, ok := n.outputs[target]; !ok && !n.rule.attrs.Virtual {
 			n.outputs[target] = newFile(dir, target, updated, g.tscache)
@@ -482,6 +481,16 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 				delete(g.fullNodes, pathJoin(dir, t))
 			}
 			return nil, err
+		}
+		// If we got a meta-rule out that comes from a different ruleset, try
+		// resolving using the current ruleset. If that doesn't work, just use
+		// the other one, but for meta-rules we should always try to resolve
+		// using the current ruleset over a different ruleset.
+		if pn.meta && pn.dir != dir {
+			internaln, err := g.resolveTargetForRuleSet(rs, dir, p, visits, updated)
+			if err == nil {
+				pn = internaln
+			}
 		}
 		n.prereqs = append(n.prereqs, pn)
 	}

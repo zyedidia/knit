@@ -1,0 +1,17 @@
+name = "Check meta-rule resolution across buildsets"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = ["foo/bar/foo.o"]
+output = "echo \"bar\" > foo/bar/foo.o"
+
+[[builds]]
+
+args = ["foo/all"]
+output = "[foo] echo \"foo\" > bar/foo.o"

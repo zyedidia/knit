@@ -1,0 +1,5 @@
+return b{
+    $ %.o:
+        echo "foo" > $output
+    $ all:V: bar/foo.o
+}

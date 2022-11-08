@@ -1,0 +1,6 @@
+return b{
+    $ all:V: foo/bar/foo.o
+    $ %.o:
+        echo "bar" > $output
+    include("foo/build.knit"),
+}

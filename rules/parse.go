@@ -313,13 +313,24 @@ func parseRecipe(p *parser, t token) parserStateFun {
 }
 
 func parseCommands(recipe string) []string {
-	parts := strings.Split(recipe, "\n")
-	commands := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if len(strings.TrimSpace(p)) == 0 {
+	commands := make([]string, 0)
+	rd := strings.NewReader(recipe)
+	wr := &bytes.Buffer{}
+	var escape bool
+
+	for rd.Len() > 0 {
+		r, _, _ := rd.ReadRune()
+		if !escape && r == '\n' {
+			commands = append(commands, wr.String())
+			wr.Reset()
+			escape = false
 			continue
 		}
-		commands = append(commands, p)
+		escape = r == '\\'
+		wr.WriteRune(r)
+	}
+	if wr.Len() > 0 {
+		commands = append(commands, wr.String())
 	}
 	return commands
 }
