@@ -370,26 +370,30 @@ func (t *CommandsTool) commands(n *node, visited map[*info]bool, cmds BuildRules
 		return cmds
 	}
 
-	inputs := n.inputs()
-	for i, p := range inputs {
-		inputs[i] = filepath.Join(n.dir, p)
+	// don't write special rules
+	if !strings.HasPrefix(n.myTarget, ":") {
+		inputs := n.inputs()
+		for i, p := range inputs {
+			inputs[i] = filepath.Join(n.dir, p)
+		}
+		prs := n.myPrereqs
+		for i, p := range prs {
+			prs[i] = filepath.Join(n.dir, p)
+		}
+		outputs := []string{}
+		for _, o := range n.outputs {
+			outputs = append(outputs, filepath.Clean(o.name))
+		}
+
+		cmds = append(cmds, BuildCommand{
+			Directory: n.dir,
+			Prereqs:   prs,
+			Inputs:    inputs,
+			Outputs:   outputs,
+			Name:      filepath.Join(n.dir, n.myTarget),
+			Commands:  n.recipe,
+		})
 	}
-	prs := n.myPrereqs
-	for i, p := range prs {
-		prs[i] = filepath.Join(n.dir, p)
-	}
-	outputs := []string{}
-	for _, o := range n.outputs {
-		outputs = append(outputs, filepath.Clean(o.name))
-	}
-	cmds = append(cmds, BuildCommand{
-		Directory: n.dir,
-		Prereqs:   prs,
-		Inputs:    inputs,
-		Outputs:   outputs,
-		Name:      filepath.Join(n.dir, n.myTarget),
-		Commands:  n.recipe,
-	})
 
 	visited[n.info] = true
 

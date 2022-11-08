@@ -389,7 +389,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	if len(rule.targets) == 0 && !rule.attrs.Virtual {
 		for o, f := range n.outputs {
 			if !f.exists {
-				return nil, fmt.Errorf("%sno rule to make target '%s'", sub(dir), o)
+				return nil, fmt.Errorf("%sno rule to knit target '%s'", sub(dir), o)
 			}
 		}
 		// If this rule had no targets, the target is the requested one. For

@@ -373,7 +373,20 @@ knit target -t compdb
 knit target -t graph pdf > graph.pdf
 ```
 
-# Build-in Lua syntax
+# Special rules
+
+Knit automatically defines two special rules: `:all` and `:build`.
+
+The `:all` rule depends on all possible targets in the build (except those
+attainable only from meta-rules). For example `knit :all -t targets` will list
+all possible targets, and `knit :all -t clean` will clean all possible outputs.
+
+The `:build` rule is the root rule of the build and depends on all requested
+targets. For example `knit a b c` will generate a `:build` rule that depends on
+`a`, `b`, and `c`. In general, you should never refer to the `:build` rule
+since doing so will usually create a build cycle.
+
+# Built-in Lua syntax
 
 * `$ ...`: creates a rule. The rule is formatted using string interpolation.
 

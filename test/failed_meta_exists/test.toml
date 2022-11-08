@@ -10,4 +10,4 @@ dryrun = true
 
 args = ["x.bin", "x.list"]
 output = ""
-error = "no rule to make target 'x.list'"
+error = "no rule to knit target 'x.list'"
