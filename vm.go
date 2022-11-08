@@ -271,13 +271,8 @@ func NewLuaVM() *LuaVM {
 		// anything else is true
 		return lua.LTrue
 	}))
+
 	// TODO: should we override the default tostring and print?
-	// L.SetGlobal("tostring", luar.New(L, func(v lua.LValue) string {
-	// 	return ""
-	// }))
-	// L.SetGlobal("print", luar.New(L, func(v ...lua.LValue) {
-	//
-	// }))
 
 	// Lua string formatting
 	format := func(s string) string {
