@@ -259,7 +259,8 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 		rerr = err
 	}
 
-	for _, d := range g.dirs {
+	for i := len(g.dirs) - 1; i >= 0; i-- {
+		d := g.dirs[i]
 		if d == dir {
 			continue
 		}

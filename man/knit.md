@@ -515,6 +515,23 @@ targets. For example `knit a b c` will generate a `:build` rule that depends on
 `a`, `b`, and `c`. In general, you should never refer to the `:build` rule
 since doing so will usually create a build cycle.
 
+## Default rule
+
+If you run `knit` without a target, Knit will build the first non-meta rule.
+
+## Rule priority
+
+If several rules with recipes that could be used to build a file, Knit uses the
+last one. In other words, defining a rule later will override previous
+definitions of a rule. However, if a later rule does not have a recipe, it will
+not override the rule for the target, but instead just add the new
+prerequisites for that target to the previous rule.
+
+If several rules from different buildsets could be used to build a target, the
+rule from the buildset for the target's directory is attempted first. If it
+does not exist, then rules are attempted from all other buildsets and the last
+one to match is used (later rules override earlier rules).
+
 ## Built-in Lua syntax
 
 * `$ ...`: creates a rule. The rule is formatted using string interpolation.

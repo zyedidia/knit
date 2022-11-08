@@ -35,24 +35,26 @@ version 1.0 is released.
   expressive builds.
 * Knit has built-in syntax for a rules language inspired by Make and Plan9 Mk.
   This makes it very familiar to anyone who has used Make/Mk.
-* Knit has direct support for sub-builds (compared to Make, which requires you
-  to spawn a make sub-process to perform a sub-build).
-* Knit can automatically convert your build to a Ninja file, a Makefile, or a
-  Shell script.
+* Knit has direct support for sub-builds (compared to Make, which usually
+  involves spawning a separate make sub-process to perform a sub-build).
 * Knit can hash files to determine if they are out-of-date, rather than just
   relying on file modification times.
 * Knit tracks recipe changes, so if you update a variable (in the Knitfile or
   at the command-line), any dependent rules will be automatically rebuilt.
-* Knit can automatically clean all files generated during a build.
-* Knit can export a compile commands database for use with a language server.
 * Knit supports `%` meta-rules and regular expression meta-rules.
 * Knit uses rule attributes instead of using targets such as `.SECONDARY` to
   indicate special processing.
-* Knit supports virtual attributes that are independent of the file system.
+* Knit supports virtual rules that are independent of the file system.
 * Knit uses sane variable names like `$input`, `$output`, and `$match` instead
   of Make's `$^`, `$@`, and `$*`.
-* Knit builds using all cores by default.
-* Knit can generate a build graph visualization using graphviz (dot).
+* Knit supports parallel builds and uses all cores by default.
+* Knit supports sub-tools that implement various build utilities including:
+    * Generating a graph visualization using graphviz (dot).
+    * Showing build status information (whether targets are out-of-date and
+      why).
+    * Exporting a compile commands database for use with a language server.
+    * Automatically cleaning all build outputs.
+    * Converting your build into a shell script, Makefile, or Ninja file.
 
 # In-progress features
 
@@ -169,6 +171,18 @@ Options:
   -t, --tool string        subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool
   -u, --updated strings    treat files as updated
   -v, --version            show version information
+```
+
+Available sub-tools (`knit -t list`):
+
+```
+list - list all available tools
+graph - print build graph in specified format: text, tree, dot, pdf
+clean - remove all files produced by the build
+targets - list all targets (pass 'virtual' for just virtual targets)
+compdb - output a compile commands database
+commands - output the build commands (formats: knit, json, make, ninja, shell)
+status - output dependency status information
 ```
 
 # Contributing
