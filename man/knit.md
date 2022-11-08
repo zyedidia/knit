@@ -459,6 +459,8 @@ cache = ""
 hash = true
 updated = []
 root = false
+keepgoing = false
+shell = "sh"
 ```
 
 ## Sub-tools
