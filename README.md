@@ -10,10 +10,15 @@ Make-like syntax within a Lua program. Rules can be passed around as Lua
 objects, and you can use the Lua module system to make reusable modules for
 building any kind of source code.
 
-Knit also tracks more of your build to give you better incremental builds. For
-example, Knit automatically tracks recipes that are executed across builds, so
-changing a variable (even at the command-line) can cause a rule to be rebuilt
-because Knit can see that the recipe depends on the variable.
+Knit tracks more of your build to give you better incremental builds. For
+example, Knit automatically adds an implicit dependency on a rule's recipe, so
+if you change a recipe (either directly or through a variable change), Knit
+will automatically re-run all rules that were affected.
+
+Knit has support for namespaced sub-builds that execute relative to their
+directory, but avoids the build fragmentation caused by forcing you to spawn
+build sub-processes. No more `make -C` to do sub-builds! Everything is tracked
+by the root Knitfile, but you can still make directory-specific rules.
 
 Knit is in-progress -- backwards-incompatible changes will be made until a
 version 1.0 is released.
@@ -45,8 +50,11 @@ version 1.0 is released.
 
 * Ninja to Knit converter (for compatibility with cmake, and for benchmarking).
   See [knitja](https://github.com/zyedidia/knitja) for the converter tool.
-* Input attributes for order-only inputs, C dep files, and possibly more.
-* Performance optimizations (including build graph serialization).
+* Input attributes:
+    * [x] Order only inputs.
+    * [ ] Header dependency files (`.d` files).
+    * [ ] Ptrace enabled automatic dependency discovery.
+* Performance optimizations (build graph serialization).
 
 # Planned possible features
 
@@ -54,8 +62,9 @@ Some major features are planned, but haven't been implemented yet (and may
 never be implemented).
 
 * Automatic dependency tracking using ptrace (Linux-only feature).
-* Global build file cache.
-* Automatic build sandboxing and sealing.
+* Global build file cache (similar to `ccache`, but for every command that is
+  executed).
+* Automatic build sandboxing.
 
 # Installation
 
@@ -109,7 +118,10 @@ return b{
 
 See the [docs](./docs/knit.md) for more information.
 
-See this repository's Knitfile and the tests for more examples.
+See [examples](./examples) for a few examples, and see this repository's
+Knitfile and the tests for even more examples.
+
+# Feedback
 
 # Usage
 
@@ -132,3 +144,11 @@ Options:
   -u, --updated strings    treat files as updated
   -v, --version            show version information
 ```
+
+# Contributing
+
+If you find a bug or have a feature request please open an issue for
+discussion. I am sometimes prone to being unresponsive to pull requests, so I
+apologize in advance. Please ping me if I forget to respond. If you have a
+feature you would like to implement, please double check with me about the
+feature before investing lots of time into implementing it.

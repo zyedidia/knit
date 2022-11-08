@@ -32,7 +32,7 @@ $ %.tar.gz: %/
 
 $ (knit-$version-(.*)-(.*))/:R: knit.1
     mkdir -p $match1
-    GOOS=$match2 GOARCH=$match3 go build $goflags -o $match1/knit ./cmd/knit
+    CGO_ENABLED=0 GOOS=$match2 GOARCH=$match3 go build $goflags -o $match1/knit ./cmd/knit
     cp LICENSE* $match1
     cp README.md $match1
     cp knit.1 $match1
