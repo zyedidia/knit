@@ -8,7 +8,8 @@
 Knit is a build tool inspired by Make and Plan9 Mk. You define rules with a
 Make-like syntax within a Lua program. Rules can be passed around as Lua
 objects, and you can use the Lua module system to make reusable modules for
-building any kind of source code.
+building any kind of source code. If you are familiar with Make, you will learn
+Knit very quickly.
 
 Knit tracks more of your build to give you better incremental builds. For
 example, Knit automatically adds an implicit dependency on a rule's recipe, so
@@ -16,17 +17,18 @@ if you change a recipe (either directly or through a variable change), Knit
 will automatically re-run all rules that were affected.
 
 Knit has support for namespaced sub-builds that execute relative to their
-directory, but avoids the build fragmentation caused by forcing you to spawn
-build sub-processes. No more `make -C` to do sub-builds! Everything is tracked
-by the root Knitfile, but you can still make directory-specific rules.
+directory, but avoids build fragmentation because Knit's sub-builds don't rely
+on spawning build sub-processes. No more `make -C` to do sub-builds! Everything
+is tracked by the root Knitfile, but you can still make directory-specific
+rules.
 
 Knit's rules language is heavily inspired by [Plan9
 Mk](https://9p.io/sys/doc/mk.html). In some ways, Knit can be considered a
 modern re-implementation of Mk (with some differences), and a Lua
 meta-programming system built on top of it.
 
-Knit is in-progress -- backwards-incompatible changes will be made until a
-version 1.0 is released.
+Knit is in-progress. The API should be mostly stable at this point, but
+there will not be a backwards-compability guarantee until version 1.0.
 
 # Features
 
@@ -55,6 +57,8 @@ version 1.0 is released.
     * Exporting a compile commands database for use with a language server.
     * Automatically cleaning all build outputs.
     * Converting your build into a shell script, Makefile, or Ninja file.
+* Knit will search up the directory hierarchy for a Knitfile, allowing you
+  to run your build from anywhere in your project.
 
 # In-progress features
 
