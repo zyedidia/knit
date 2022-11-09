@@ -1,4 +1,5 @@
 todo.txt
+*.d
 *.o
 *.a
 prog

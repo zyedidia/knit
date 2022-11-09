@@ -42,7 +42,9 @@ type node struct {
 	*info
 	myTarget  string
 	myPrereqs []string
-	myOutput  *file
+	// explicit prereqs are substituted for $input
+	myExpPrereqs []string
+	myOutput     *file
 
 	memoized   bool
 	memoUpdate UpdateReason
@@ -308,6 +310,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	}
 	n := g.newNode(target, dir, updated)
 	var rule DirectRule
+	var expprereqs []string
 	// do we have a direct rule available?
 	ris, ok := rs.targets[target]
 	if ok && len(ris) > 0 {
@@ -320,6 +323,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 			if len(r.recipe) != 0 {
 				// recipe exists -- overwrite prereqs
 				prereqs = r.prereqs
+				expprereqs = r.prereqs
 			} else {
 				// recipe is empty -- only add the prereqs
 				prereqs = append(prereqs, r.prereqs...)
@@ -401,6 +405,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 
 				// success -- add the prereqs
 				rule.prereqs = append(rule.prereqs, metarule.prereqs...)
+				expprereqs = metarule.prereqs
 				// overwrite the recipe/attrs/targets if the matched rule has a
 				// recipe, or we don't yet have a recipe
 				if len(mr.recipe) > 0 || len(rule.recipe) == 0 {
@@ -434,6 +439,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	}
 
 	n.myPrereqs = rule.prereqs
+	n.myExpPrereqs = expprereqs
 
 	// if the rule we found is equivalent to an existing rule that also builds
 	// this target, then use that
@@ -531,7 +537,7 @@ func (n *node) expandRecipe(vm VM) error {
 		return nil
 	}
 
-	prs := n.myPrereqs
+	prs := n.myExpPrereqs
 	vm.SetVar("inputs", prs)
 	vm.SetVar("input", strings.Join(prs, " "))
 	vm.SetVar("outputs", n.rule.targets)

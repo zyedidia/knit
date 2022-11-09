@@ -1,0 +1,15 @@
+local ok, dep = pcall(rulefile, "foo.d")
+if not ok then
+    dep = nil
+end
+
+return b{
+    $ %.o: %.c
+        gcc -MMD -c $input -o $output
+    $ all:V: foo.o
+    $ clean:VB:
+        rm -f *.o *.d
+    $ touch:VB:
+        touch foo.h
+    dep
+}

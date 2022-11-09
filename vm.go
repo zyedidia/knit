@@ -136,6 +136,17 @@ func NewLuaVM() *LuaVM {
 		}
 		return mkrule(rule, file, line)
 	}))
+	L.SetGlobal("rulefile", luar.New(L, func(file string) LRule {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			vm.Err(err)
+		}
+		return LRule{
+			Contents: string(data),
+			File:     file,
+			Line:     1,
+		}
+	}))
 
 	// Rule sets
 	rsmt := luar.MT(L, LRuleSet{})
