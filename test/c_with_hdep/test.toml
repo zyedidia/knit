@@ -29,7 +29,10 @@ error = "'foo.o': nothing to be done"
 [[builds]]
 
 args = ["touch"]
-output = "touch foo.h"
+output = """\
+sleep 0.01
+touch foo.h
+"""
 
 [[builds]]
 

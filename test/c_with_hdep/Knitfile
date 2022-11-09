@@ -10,6 +10,7 @@ return b{
     $ clean:VB:
         rm -f *.o *.d
     $ touch:VB:
+        sleep 0.01
         touch foo.h
     dep
 }
