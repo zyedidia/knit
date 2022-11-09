@@ -152,6 +152,9 @@ go install github.com/zyedidia/knit/cmd/knit@latest
     * Ptrace enabled automatic dependency discovery (Linux-only feature).
       See the [xkvt](https://github.com/zyedidia/xkvt) project for some
       experiments on this front.
+* Knit supports Windows (experimentally). If you don't have a shell installed,
+  pass `--shell ""` and Knit will use a built-in command parser, and execute
+  commands directly (in the future Knit may even have a built-in shell?).
 * Global build file cache (similar to `ccache`, but for every command that is
   executed).
 * A restrictive mode for build sandboxing.
