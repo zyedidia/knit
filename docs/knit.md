@@ -1,4 +1,4 @@
-# Rules
+## Rules
 
 A rule consists of four parts:
 
@@ -39,7 +39,7 @@ foo.o: foo.c
 Specifies that the file `foo.o` is built from `foo.c`, using the command `gcc
 -c foo.c -o foo.o`.
 
-## Meta rules
+### Meta rules
 
 A meta rule is a special rule that describes a generic way to create direct
 rules.  The meta rule describes how to match targets and prereqs into a direct
@@ -78,7 +78,7 @@ foo-linux-amd64.tar.gz: linux/amd64/foo
     ...
 ```
 
-## Attributes
+### Attributes
 
 Knit supports the following attributes:
 
@@ -106,7 +106,7 @@ bar:V: foo[Q]
 The `foo` rule will be quiet only when used as a prerequisite to the `bar`
 rule.
 
-## Recipes
+### Recipes
 
 A recipe is a list of commands to execute. They are executed within the `sh`
 shell. Recipes may use variables that will be expanded before the recipe
@@ -128,7 +128,7 @@ Lua expressions should not mix uses of special build variables and Lua
 global/local variables. This constraint may be relaxed in the future if it
 turns out to be a useful feature.
 
-## Out-of-date calculation
+### Out-of-date calculation
 
 To determine if a rule must be re-run, Knit computes whether its output is
 up-to-date or not. There are two mechanisms for this: a hash-based one and a
@@ -154,7 +154,7 @@ Hashing can be disabled on a per-project basis or globally by using the
 `.knit.toml` configuration file, described the "Configuration" section of this
 documentation.
 
-# Knitfiles
+## Knitfiles
 
 A Knitfile is a Lua 5.1 program with additional support for rule expressions.
 The Knitfile ultimately must return a "buildset" -- a list of build rules that
@@ -199,7 +199,7 @@ automatically figure out that you mean to build `foo/foo.o` (relative to `..`),
 since you specified `foo.o` (relative to `foo`). In other words, building
 sub-files just works.
 
-# Rulesets
+## Rulesets
 
 A table of rules can be converted into a "ruleset" by using the special `r`
 function, which converts the table into a Lua "userdata" object representing a
@@ -223,7 +223,7 @@ $ build:V: foo
 }
 ```
 
-# Buildsets
+## Buildsets
 
 A buildset is a set of rules associated with a particular directory. A buildset
 may also contain other buildsets (rules from other directories). All rules in
@@ -261,7 +261,7 @@ directory that it came from. Rules may have cross-buildset dependencies.
 These facilities for making rules relative to directories are for enabling
 sub-builds, discussed in the next section.
 
-## Sub-builds
+### Sub-builds
 
 A build may use several buildsets.
 
@@ -338,7 +338,7 @@ functions for this:
 * `dcallfrom(dir, fn, args)`: calls a Lua function from a specified directory.
 * `rel(files)`: makes all input files relative to the build's root directory.
 
-# Configuration
+## Configuration
 
 Knit will search the current directory for a Knitfile called `knitfile` or
 `Knitfile`. If one is not found, it will use the Knitfile in
@@ -368,7 +368,7 @@ keepgoing = false
 shell = "sh"
 ```
 
-# Sub-tools
+## Sub-tools
 
 Running `knit [TARGET]` will create a build graph for the target. By default,
 knit will then execute that build graph. Using the `-t TOOL` option, you may
@@ -387,37 +387,37 @@ The special target `:all` depends on every target in the build. Thus `knit :all
 
 Some examples are shown below.
 
-## Automatic cleaning
+### Automatic cleaning
 
 ```
 knit target -t clean
 ```
 
-## Output a shell script for the build
+### Output a shell script for the build
 
 ```
 knit target -t commands shell
 ```
 
-## Output a Ninja build file
+### Output a Ninja build file
 
 ```
 knit target -t commands ninja
 ```
 
-## Output a compile commands database
+### Output a compile commands database
 
 ```
 knit target -t compdb
 ```
 
-## Output a PDF build graph
+### Output a PDF build graph
 
 ```
 knit target -t graph pdf > graph.pdf
 ```
 
-# Special rules
+## Special rules
 
 Knit automatically defines two special rules: `:all` and `:build`.
 
@@ -430,11 +430,11 @@ targets. For example `knit a b c` will generate a `:build` rule that depends on
 `a`, `b`, and `c`. In general, you should never refer to the `:build` rule
 since doing so will usually create a build cycle.
 
-# Default rule
+## Default rule
 
 If you run `knit` without a target, Knit will build the first non-meta rule.
 
-# Rule priority
+## Rule priority
 
 If several rules with recipes that could be used to build a file, Knit uses the
 last one. In other words, defining a rule later will override previous
@@ -448,7 +448,7 @@ does not exist, then rules are attempted from all other buildsets and the first
 buildset to have a matching rule is used. If a meta-rule is used, it is
 attmpted in the current buildset before looking in other buildsets.
 
-# Built-in Lua syntax
+## Built-in Lua syntax
 
 * `$ ...`: creates a rule. The rule is formatted using string interpolation.
 
@@ -456,7 +456,7 @@ attmpted in the current buildset before looking in other buildsets.
   the end of the line, and is automatically formatted using string
   interpolation.
 
-# Built-in Lua functions
+## Built-in Lua functions
 
 * `rule(rule)`: define a rule. The `$` syntax is shorthand for this function.
 
@@ -501,7 +501,7 @@ attmpted in the current buildset before looking in other buildsets.
 
 * `{s} + {s}`: string tables returned by knit functions can be added together.
 
-# The `knit` Lua package
+## The `knit` Lua package
 
 The `knit` package can be imported with `require("knit")`, and provides the following functions:
 
@@ -535,7 +535,7 @@ The `knit` package can be imported with `require("knit")`, and provides the foll
 * `knit(flags)`: executes the shell command `knit flags` using the current
   instance of Knit.
 
-# CLI and environment variables
+## CLI and environment variables
 
 Variables may be set at the command-line when invoking Knit with the syntax
 `var=value`. These variables will be available in the Knitfile in the `cli`

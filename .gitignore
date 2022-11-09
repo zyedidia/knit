@@ -18,6 +18,7 @@ test/scratch
 build.ninja
 .ninja*
 
-tools/version/version
+/tools/version/version
+/tools/replace/replace
 
 /examples/cmake/build

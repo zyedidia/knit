@@ -59,6 +59,9 @@ $ cover:VB:
 $ cover-html:VB: cover.out
     go tool cover -html=cover.out
 
-$ knit.1: man/knit.md
-    pandoc $input -s -t man -o $output
+$ tools/replace/replace: tools/replace/replace.go
+    go build -o $output $input
+
+$ knit.1: man/knit.md tools/replace/replace
+    tools/replace/replace $input | pandoc -s -t man -o $output
 }
