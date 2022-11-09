@@ -60,42 +60,6 @@ there will not be a backwards-compability guarantee until version 1.0.
 * Knit will search up the directory hierarchy for a Knitfile, allowing you
   to run your build from anywhere in your project.
 
-# In-progress features
-
-* Ninja to Knit converter (for compatibility with cmake, and for benchmarking).
-  See [knitja](https://github.com/zyedidia/knitja) for the converter tool.
-* Input attributes:
-    * [x] Order only inputs.
-    * [ ] Header dependency files (`.d` files).
-    * [ ] Ptrace enabled automatic dependency discovery.
-* Performance optimizations (build graph serialization).
-
-# Planned possible features
-
-Some major features are planned, but haven't been implemented yet (and may
-never be implemented).
-
-* Automatic dependency tracking using ptrace (Linux-only feature).
-* Global build file cache (similar to `ccache`, but for every command that is
-  executed).
-* Automatic build sandboxing.
-
-# Installation
-
-Prebuilt binaries are available from the [release page](https://github.com/zyedidia/knit/releases).
-
-You can install one automatically using [eget](https://github.com/zyedidia/eget).
-
-```
-eget zyedidia/knit
-```
-
-Build from source (requires Go 1.19):
-
-```
-go install github.com/zyedidia/knit/cmd/knit@latest
-```
-
 # Example Knitfile
 
 Here is an example Knitfile used for building a simple C project.
@@ -146,6 +110,40 @@ See the [docs](./docs/knit.md) for more information.
 
 See [examples](./examples) for a few examples, and see this repository's
 Knitfile and the tests for even more examples.
+
+# Installation
+
+Prebuilt binaries are available from the [release page](https://github.com/zyedidia/knit/releases).
+
+You can install one automatically using [eget](https://github.com/zyedidia/eget).
+
+```
+eget zyedidia/knit
+```
+
+Build from source (requires Go 1.19):
+
+```
+go install github.com/zyedidia/knit/cmd/knit@latest
+```
+
+# In-progress features
+
+* Ninja to Knit converter (for compatibility with cmake, and for benchmarking).
+  See [knitja](https://github.com/zyedidia/knitja) for the converter tool.
+* Input attributes:
+    * [x] Order only inputs.
+    * [ ] Header dependency files (`.d` files).
+    * [ ] Ptrace enabled automatic dependency discovery (Linux-only feature).
+      See the [xkvt](https://github.com/zyedidia/xkvt) project for some
+      experiments on this front.
+* Performance optimizations.
+    * Knit can already be used to build large projects, such as CVC5 (using the
+      knitja converter). For massive builds though, like LLVM, Knit suffers
+      from some performance problems that could be improved.
+* Global build file cache (similar to `ccache`, but for every command that is
+  executed).
+* Automatic build sandboxing.
 
 # Feedback
 
