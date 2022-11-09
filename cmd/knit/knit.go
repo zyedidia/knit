@@ -89,7 +89,7 @@ func main() {
 	hash := optBool(main, "hash", "", true, user.Hash, "hash files to determine if they are out-of-date")
 	updated := optStringSlice(main, "updated", "u", nil, user.Updated, "treat files as updated")
 	root := optBool(main, "root", "r", false, user.Root, "run target relative to the root Knitfile")
-	shell := optString(main, "shell", "", "sh", user.Shell, "shell to use when executing")
+	shell := optString(main, "shell", "", "sh", user.Shell, "shell to use when executing commands")
 	keep := optBool(main, "keep-going", "", false, user.KeepGoing, "keep going even if recipes fail")
 
 	debug := main.BoolP("debug", "D", false, "print debug information")

@@ -17,18 +17,22 @@ if you change a recipe (either directly or through a variable change), Knit
 will automatically re-run all rules that were affected.
 
 Knit has support for namespaced sub-builds that execute relative to their
-directory, but avoids build fragmentation because Knit's sub-builds don't rely
-on spawning build sub-processes. No more `make -C` to do sub-builds! Everything
-is tracked by the root Knitfile, but you can still make directory-specific
-rules.
+directory, but Knit avoids build fragmentation because sub-builds don't rely on
+spawning build sub-processes. No more `make -C` to do sub-builds! Everything is
+tracked by the root Knitfile, but you can still make directory-specific rules.
 
 Knit's rules language is heavily inspired by [Plan9
 Mk](https://9p.io/sys/doc/mk.html). In some ways, Knit can be considered a
-modern re-implementation of Mk (with some differences), and a Lua
-meta-programming system built on top of it.
+modern version of Mk with a Lua meta-programming system built on top of it
+(there are some differences compared to Mk).
 
 Knit is in-progress. The API should be mostly stable at this point, but
 there will not be a backwards-compability guarantee until version 1.0.
+
+Why make yet another build system? Because it's fun and useful to me! Maybe it
+will be useful to you too. Everyone hates something about their build system so
+if you have feedback or a request, let me know! The project is new enough that
+your feedback may be seriously taken into account.
 
 # Features
 
@@ -127,23 +131,28 @@ Build from source (requires Go 1.19):
 go install github.com/zyedidia/knit/cmd/knit@latest
 ```
 
-# In-progress features
+# Experimental or future possible features
 
 * Ninja to Knit converter (for compatibility with cmake, and for benchmarking).
   See [knitja](https://github.com/zyedidia/knitja) for the converter tool.
-* Input attributes:
-    * [x] Order only inputs.
-    * [ ] Header dependency files (`.d` files).
-    * [ ] Ptrace enabled automatic dependency discovery (Linux-only feature).
-      See the [xkvt](https://github.com/zyedidia/xkvt) project for some
-      experiments on this front.
 * Performance optimizations.
     * Knit can already be used to build large projects, such as CVC5 (using the
       knitja converter). For massive builds though, like LLVM, Knit suffers
       from some performance problems that could be improved.
+* Better support for dynamic dependencies. Currently it is possible to handle
+  dynamic dependencies by generating rules, but I would like to explore the
+  possibility of a more clean and cohesive solution.
+    * Header dependency files (`.d` files). Currently these are handled in
+      the Make-like way of including them as rules (with the `rulefile`
+      function). It would probably be cleaner as an input attribute.
+    * Ptrace enabled automatic dependency discovery (Linux-only feature).
+      See the [xkvt](https://github.com/zyedidia/xkvt) project for some
+      experiments on this front.
 * Global build file cache (similar to `ccache`, but for every command that is
   executed).
-* Automatic build sandboxing.
+* A restrictive mode for build sandboxing.
+
+Plan: release version 1.0 sometime between January and March 2023.
 
 # Feedback
 
@@ -172,7 +181,7 @@ Options:
       --keep-going          keep going even if recipes fail
   -q, --quiet               don't print commands
   -r, --root                run target relative to the root Knitfile
-      --shell string        shell to use when executing (default "sh")
+      --shell string        shell to use when executing commands (default "sh")
   -s, --style string        printer style to use (basic, steps, progress) (default "basic")
   -j, --threads int         number of cores to use (default 8)
   -t, --tool string         subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool
