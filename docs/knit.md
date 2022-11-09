@@ -451,10 +451,14 @@ attmpted in the current buildset before looking in other buildsets.
 ## Built-in Lua syntax
 
 * `$ ...`: creates a rule. The rule is formatted using string interpolation.
+  The rule continues until indentation returns to the level of the `$`.
 
 * `x := ...`: creates a string without quotes. The string value continues until
   the end of the line, and is automatically formatted using string
   interpolation.
+
+Both of these expressions are implicitly terminated with a `;`, allowing them
+to be used in tables.
 
 ## Built-in Lua functions
 
@@ -465,7 +469,7 @@ will contain the result, or the error value.
 
 * `rule(rule)`: define a rule. The `$` syntax is shorthand for this function.
 
-* `rulefile(file)`: define a rule by reading it from 'file'. Throws an error if
+* `rulefile(file)`: define a rule by reading it from `file`. Throws an error if
   the file does not exist.
 
 * `include(file)`: run a Knitfile from its directory (changes the
