@@ -458,7 +458,15 @@ attmpted in the current buildset before looking in other buildsets.
 
 ## Built-in Lua functions
 
+Note: several functions throw errors. Use the built-in Lua `pcall` function to
+perform error handling. `local ok, result = pcall(fn, args)` returns whether
+there was an error during the execution of `fn(args)`. The `result` variable
+will contain the result, or the error value.
+
 * `rule(rule)`: define a rule. The `$` syntax is shorthand for this function.
+
+* `rulefile(file)`: define a rule by reading it from 'file'. Throws an error if
+  the file does not exist.
 
 * `include(file)`: run a Knitfile from its directory (changes the
   current working directory while the file is being executed) and return the
