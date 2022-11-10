@@ -66,6 +66,12 @@ your feedback may be seriously taken into account.
 * Knit will search up the directory hierarchy for a Knitfile, allowing you
   to run your build from anywhere in your project.
 * Knit supports parallel builds and uses all cores by default.
+* Cross-platform support, including Windows.
+    * If you don't have a shell installed (Knit looks for a POSIX shell), Knit
+      will use an internal command parser and execute commands directly.
+      However, shell features like redirection won't work. In the future, Knit
+      may provide a default-enabled custom internal shell for cross-platform
+      compability.
 
 # Example Knitfile
 
@@ -152,12 +158,10 @@ go install github.com/zyedidia/knit/cmd/knit@latest
     * Ptrace enabled automatic dependency discovery (Linux-only feature).
       See the [xkvt](https://github.com/zyedidia/xkvt) project for some
       experiments on this front.
-* Knit supports Windows (experimentally). If you don't have a shell installed,
-  pass `--shell ""` and Knit will use a built-in command parser, and execute
-  commands directly (in the future Knit may even have a built-in shell?).
 * Global build file cache (similar to `ccache`, but for every command that is
   executed).
 * A restrictive mode for build sandboxing.
+* Internal shell for cross-platform compatibility.
 
 Plan: release version 1.0 sometime between January and March 2023.
 
