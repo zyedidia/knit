@@ -93,7 +93,7 @@ func UserDefaults() (UserFlags, error) {
 	}
 	dirs := []string{wd}
 	path := wd
-	for path != "/" {
+	for filepath.Dir(path) != path {
 		path = filepath.Dir(path)
 		dirs = append(dirs, path)
 	}
