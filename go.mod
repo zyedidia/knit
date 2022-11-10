@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/adrg/xdg v0.4.0
 	github.com/gobwas/glob v0.2.3
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/pelletier/go-toml/v2 v2.0.5
 	github.com/schollz/progressbar/v3 v3.11.0
 	github.com/segmentio/fasthash v1.0.3

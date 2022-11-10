@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/gobwas/glob"
+	"github.com/kballard/go-shellquote"
 	"github.com/zyedidia/generic/stack"
 	lua "github.com/zyedidia/gopher-lua"
 	luar "github.com/zyedidia/gopher-luar"
@@ -559,7 +560,7 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 		if err != nil {
 			vm.Err(err)
 		}
-		cmd := exec.Command(vm.shell, "-c", path+" "+flags)
+		cmd := exec.Command(vm.shell, "-c", shellquote.Join(path)+" "+flags)
 		b, err := cmd.Output()
 		if err != nil {
 			vm.Err(err)
