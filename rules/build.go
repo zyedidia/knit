@@ -10,8 +10,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-
-	"github.com/kballard/go-shellquote"
 )
 
 type Printer interface {
@@ -231,13 +229,13 @@ func (e *Executor) getCmd(cmd string, dir string) (command, error) {
 			dir:    dir,
 		}, nil
 	}
-	words, err := shellquote.Split(cmd)
-	if err != nil || len(words) == 0 {
+	path, err := os.Executable()
+	if err != nil {
 		return command{}, err
 	}
 	return command{
-		name:   words[0],
-		args:   words[1:],
+		name:   path,
+		args:   []string{"--shrun", cmd},
 		recipe: cmd,
 		dir:    dir,
 	}, nil

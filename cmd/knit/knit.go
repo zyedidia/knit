@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/zyedidia/knit"
 	"github.com/zyedidia/knit/info"
+	"github.com/zyedidia/knit/shell"
 )
 
 func fatal(a ...interface{}) {
@@ -96,13 +97,17 @@ func main() {
 	if err != nil {
 		path = ""
 	}
-	shell := optString(main, "shell", "", path, user.Shell, "shell to use when executing commands")
+	shellf := optString(main, "shell", "", path, user.Shell, "shell to use when executing commands")
 
 	debug := main.BoolP("debug", "D", false, "print debug information")
 	tool := main.StringP("tool", "t", "", "subtool to invoke (use '-t list' to list subtools); further flags are passed to the subtool")
 	version := main.BoolP("version", "v", false, "show version information")
 	cpuprofile := main.String("cpuprofile", "", "write cpu profile to 'file'")
 	help := main.BoolP("help", "h", false, "show this help message")
+
+	// hidden flag for running the internal shell
+	shrun := main.String("shrun", "", "run shell command using internal shell")
+	main.MarkHidden("shrun")
 
 	toolargs, err := parseFlags(main)
 	if err != nil {
@@ -144,6 +149,14 @@ func main() {
 		log.SetOutput(io.Discard)
 	}
 
+	if *shrun != "" {
+		err := shell.Run(*shrun)
+		if err != nil {
+			fatal(err)
+		}
+		os.Exit(0)
+	}
+
 	out := os.Stdout
 	file, err := knit.Run(out, main.Args(), knit.Flags{
 		Knitfile:  *knitfile,
@@ -158,7 +171,7 @@ func main() {
 		Updated:   *updated,
 		Root:      *root,
 		KeepGoing: *keep,
-		Shell:     *shell,
+		Shell:     *shellf,
 		Tool:      *tool,
 		ToolArgs:  toolargs,
 	})

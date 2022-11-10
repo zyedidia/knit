@@ -67,11 +67,9 @@ your feedback may be seriously taken into account.
   to run your build from anywhere in your project.
 * Knit supports parallel builds and uses all cores by default.
 * Cross-platform support, including Windows.
-    * If you don't have a shell installed (Knit looks for a POSIX shell), Knit
-      will use an internal command parser and execute commands directly.
-      However, shell features like redirection won't work. In the future, Knit
-      may provide a default-enabled custom internal shell for cross-platform
-      compability.
+    * Knit uses a shell to execute commands. By default, Knit searches for `sh`
+      on your system and uses that. If it cannot find `sh`, it uses an internal
+      (cross-platform) shell.
 
 # Example Knitfile
 
@@ -161,7 +159,6 @@ go install github.com/zyedidia/knit/cmd/knit@latest
 * Global build file cache (similar to `ccache`, but for every command that is
   executed).
 * A restrictive mode for build sandboxing.
-* Internal shell for cross-platform compatibility.
 
 Plan: release version 1.0 sometime between January and March 2023.
 
