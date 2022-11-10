@@ -95,7 +95,11 @@ func main() {
 
 	path, err := exec.LookPath("sh")
 	if err != nil {
-		path = ""
+		ex, err := os.Executable()
+		if err != nil {
+			fatal(err)
+		}
+		path = ex
 	}
 	shellf := optString(main, "shell", "", path, user.Shell, "shell to use when executing commands")
 
@@ -106,7 +110,7 @@ func main() {
 	help := main.BoolP("help", "h", false, "show this help message")
 
 	// hidden flag for running the internal shell
-	shrun := main.String("shrun", "", "run shell command using internal shell")
+	shrun := main.StringP("shrun", "c", "", "run shell command using internal shell")
 	main.MarkHidden("shrun")
 
 	toolargs, err := parseFlags(main)

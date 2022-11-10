@@ -23,8 +23,9 @@ import (
 // A LuaVM tracks the Lua state and keeps a stack of directories that have been
 // entered.
 type LuaVM struct {
-	L  *lua.LState
-	wd *stack.Stack[string]
+	L     *lua.LState
+	wd    *stack.Stack[string]
+	shell string // shell used to execute commands
 }
 
 // An LRule is an un-parsed Lua representation of a build rule.
@@ -96,12 +97,13 @@ func (bs *LBuildSet) String() string {
 }
 
 // NewLuaVM constructs a new VM, and adds all the default built-ins.
-func NewLuaVM() *LuaVM {
+func NewLuaVM(shell string) *LuaVM {
 	// TODO: make this only enabled in debug mode
 	L := lua.NewState(lua.Options{SkipOpenLibs: true, IncludeGoStackTrace: true})
 	vm := &LuaVM{
-		L:  L,
-		wd: stack.New[string](),
+		L:     L,
+		wd:    stack.New[string](),
+		shell: shell,
 	}
 	vm.wd.Push(".")
 
@@ -530,7 +532,7 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 		return GoStrSliceToTable(vm.L, removed)
 	}))
 	vm.L.SetField(pkg, "shell", luar.New(vm.L, func(shcmd string) string {
-		cmd := exec.Command("sh", "-c", shcmd)
+		cmd := exec.Command(vm.shell, "-c", shcmd)
 		b, err := cmd.Output()
 		if err != nil {
 			vm.Err(err)
@@ -557,7 +559,7 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 		if err != nil {
 			vm.Err(err)
 		}
-		cmd := exec.Command("sh", "-c", path+" "+flags)
+		cmd := exec.Command(vm.shell, "-c", path+" "+flags)
 		b, err := cmd.Output()
 		if err != nil {
 			vm.Err(err)
