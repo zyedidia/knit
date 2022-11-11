@@ -66,7 +66,7 @@ your feedback may be seriously taken into account.
 * Knit will search up the directory hierarchy for a Knitfile, allowing you
   to run your build from anywhere in your project.
 * Knit supports parallel builds and uses all cores by default.
-* Cross-platform support, including Windows.
+* Cross-platform support (Windows support is still experimental).
     * Knit uses a shell to execute commands. By default, Knit searches for `sh`
       on your system and uses that. If it cannot find `sh`, it uses an internal
       (cross-platform) shell.
