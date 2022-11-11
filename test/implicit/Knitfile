@@ -1,0 +1,6 @@
+return b{
+    $ a: foo[I] bar
+        echo $input
+    $ foo:V:
+    $ bar:V:
+}

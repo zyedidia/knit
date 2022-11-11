@@ -323,7 +323,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 			if len(r.recipe) != 0 {
 				// recipe exists -- overwrite prereqs
 				prereqs = r.prereqs
-				expprereqs = r.prereqs
+				expprereqs = explicits(r.prereqs)
 			} else {
 				// recipe is empty -- only add the prereqs
 				prereqs = append(prereqs, r.prereqs...)
@@ -405,7 +405,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 
 				// success -- add the prereqs
 				rule.prereqs = append(rule.prereqs, metarule.prereqs...)
-				expprereqs = metarule.prereqs
+				expprereqs = explicits(metarule.prereqs)
 				// overwrite the recipe/attrs/targets if the matched rule has a
 				// recipe, or we don't yet have a recipe
 				if len(mr.recipe) > 0 || len(rule.recipe) == 0 {
@@ -504,6 +504,17 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 		visits[dir][ri]--
 	}
 	return n, nil
+}
+
+func explicits(prereqs []string) []string {
+	exp := make([]string, 0, len(prereqs))
+	for _, p := range prereqs {
+		parsed, _ := parsePrereq(p)
+		if !parsed.attrs.Implicit {
+			exp = append(exp, parsed.name)
+		}
+	}
+	return exp
 }
 
 func (n *node) inputs() []string {

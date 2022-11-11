@@ -96,14 +96,15 @@ func (r *MetaRule) String() string {
 }
 
 type AttrSet struct {
-	Regex   bool // regular expression meta-rule
-	Virtual bool // targets are not files
-	Quiet   bool // is not displayed as part of the build process
-	NoMeta  bool // cannot be matched by meta rules
-	NonStop bool // does not stop if the recipe fails
-	Rebuild bool // this rule is always out-of-date
-	Linked  bool // only run this rule if a sub-rule that requires it needs to run
-	Order   bool
+	Regex    bool // regular expression meta-rule
+	Virtual  bool // targets are not files
+	Quiet    bool // is not displayed as part of the build process
+	NoMeta   bool // cannot be matched by meta rules
+	NonStop  bool // does not stop if the recipe fails
+	Rebuild  bool // this rule is always out-of-date
+	Linked   bool // only run this rule if a sub-rule that requires it needs to run
+	Implicit bool // not listed in $input
+	Order    bool
 }
 
 func (a *AttrSet) UpdateFrom(other AttrSet) {
@@ -211,6 +212,8 @@ func ParseAttribs(input string) (AttrSet, error) {
 			attrs.Linked = true
 		case 'O':
 			attrs.Order = true
+		case 'I':
+			attrs.Implicit = true
 		default:
 			return attrs, attrError{c}
 		}

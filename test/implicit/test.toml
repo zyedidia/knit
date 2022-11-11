@@ -1,0 +1,12 @@
+name = "Check implicit attributes"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+dryrun = true
+
+[[builds]]
+
+args = []
+output = "echo bar"

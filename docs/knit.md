@@ -106,6 +106,10 @@ bar:V: foo[Q]
 The `foo` rule will be quiet only when used as a prerequisite to the `bar`
 rule.
 
+Some attributes can only be applied in this way:
+
+* `I` (implicit): this prereq does not appear in `$input`.
+
 ### Recipes
 
 A recipe is a list of commands to execute. They are executed within the `sh`
