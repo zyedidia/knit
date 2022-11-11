@@ -1,10 +1,10 @@
 package rules
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 	"strings"
-	"unicode/utf8"
 )
 
 type Rule interface {
@@ -96,14 +96,15 @@ func (r *MetaRule) String() string {
 }
 
 type AttrSet struct {
-	Regex    bool // regular expression meta-rule
-	Virtual  bool // targets are not files
-	Quiet    bool // is not displayed as part of the build process
-	NoMeta   bool // cannot be matched by meta rules
-	NonStop  bool // does not stop if the recipe fails
-	Rebuild  bool // this rule is always out-of-date
-	Linked   bool // only run this rule if a sub-rule that requires it needs to run
-	Implicit bool // not listed in $input
+	Regex    bool   // regular expression meta-rule
+	Virtual  bool   // targets are not files
+	Quiet    bool   // is not displayed as part of the build process
+	NoMeta   bool   // cannot be matched by meta rules
+	NonStop  bool   // does not stop if the recipe fails
+	Rebuild  bool   // this rule is always out-of-date
+	Linked   bool   // only run this rule if a sub-rule that requires it needs to run
+	Implicit bool   // not listed in $input
+	Dep      string // dependency file
 	Order    bool
 }
 
@@ -192,9 +193,9 @@ func (err attrError) Error() string {
 
 func ParseAttribs(input string) (AttrSet, error) {
 	var attrs AttrSet
-	pos := 0
-	for pos < len(input) {
-		c, w := utf8.DecodeRuneInString(input[pos:])
+	r := strings.NewReader(input)
+	for r.Len() > 0 {
+		c, _, _ := r.ReadRune()
 		switch c {
 		case 'Q':
 			attrs.Quiet = true
@@ -214,11 +215,32 @@ func ParseAttribs(input string) (AttrSet, error) {
 			attrs.Order = true
 		case 'I':
 			attrs.Implicit = true
+		case 'D':
+			if r.Len() == 0 {
+				return attrs, fmt.Errorf("attribute: no contents found after D")
+			}
+			c, _, _ = r.ReadRune()
+			dep := &bytes.Buffer{}
+			if c == '[' {
+				found := false
+				for r.Len() > 0 {
+					c, _, _ = r.ReadRune()
+					if c == ']' {
+						found = true
+						break
+					}
+					dep.WriteRune(c)
+				}
+				if !found {
+					return attrs, fmt.Errorf("attribute: no ']' found after D")
+				}
+			} else {
+				return attrs, fmt.Errorf("attribute: no '[' found after D")
+			}
+			attrs.Dep = dep.String()
 		default:
 			return attrs, attrError{c}
 		}
-
-		pos += w
 	}
 
 	return attrs, nil

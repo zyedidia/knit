@@ -500,6 +500,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 		}
 		n.prereqs = append(n.prereqs, pn)
 	}
+
 	if ri != -1 {
 		visits[dir][ri]--
 	}
