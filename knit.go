@@ -62,7 +62,7 @@ func rel(basepath, targpath string) (string, error) {
 	slash := strings.HasSuffix(targpath, "/")
 	rel, err := filepath.Rel(basepath, targpath)
 	if err != nil {
-		return rel, err
+		return filepath.Join(basepath, targpath), nil
 	}
 	if slash {
 		rel += "/"
@@ -217,7 +217,7 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		}
 	} else if dir != "" {
 		for i, u := range flags.Updated {
-			p, err := filepath.Rel(dir, u)
+			p, err := rel(dir, u)
 			if err != nil {
 				return knitpath, err
 			}
