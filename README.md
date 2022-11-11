@@ -158,9 +158,6 @@ go install github.com/zyedidia/knit/cmd/knit@latest
 * Better support for dynamic dependencies. Currently it is possible to handle
   dynamic dependencies by generating rules, but I would like to explore the
   possibility of a more clean and cohesive solution.
-    * Header dependency files (`.d` files). Currently these are handled in
-      the Make-like way of including them as rules (with the `rulefile`
-      function). It would probably be cleaner as an input attribute.
     * Ptrace enabled automatic dependency discovery (Linux-only feature).
       See the [xkvt](https://github.com/zyedidia/xkvt) project for some
       experiments on this front.
