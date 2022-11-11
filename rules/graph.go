@@ -476,10 +476,6 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 		rule.targets = []string{target}
 	}
 
-	if rule.attrs.Dep != "" {
-		rule.targets = append(rule.targets, rule.attrs.Dep)
-	}
-
 	n.myPrereqs = rule.prereqs
 	n.myExpPrereqs = expprereqs
 
