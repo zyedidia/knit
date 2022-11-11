@@ -51,11 +51,12 @@ type node struct {
 }
 
 type info struct {
-	outputs map[string]*file
-	rule    *DirectRule
-	recipe  []string
-	prereqs []*node
-	dir     string
+	outputs  map[string]*file
+	rule     *DirectRule
+	recipe   []string
+	prereqs  []*node
+	dir      string
+	optional map[int]bool
 
 	// for cycle checking
 	visited  int
@@ -189,8 +190,9 @@ func (g *Graph) newNode(target string, dir string, updated map[string]bool) *nod
 			outputs: map[string]*file{
 				target: newFile(dir, target, updated, g.tscache),
 			},
-			dir:  dir,
-			cond: sync.NewCond(&sync.Mutex{}),
+			dir:      dir,
+			cond:     sync.NewCond(&sync.Mutex{}),
+			optional: make(map[int]bool),
 		},
 	}
 	return n
@@ -290,6 +292,35 @@ func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, upda
 	return nil, rerr
 }
 
+func loadDeps(prereqs []string, depfile string, target string, opt map[int]bool) []string {
+	dep, err := os.ReadFile(depfile)
+	if err != nil {
+		return prereqs
+	}
+	rs := NewRuleSet()
+	err = ParseInto(string(dep), rs, depfile, 1)
+	if err != nil {
+		return prereqs
+	}
+	ris, ok := rs.targets[target]
+	if ok && len(ris) > 0 {
+		for _, ri := range ris {
+			r := &rs.directRules[ri]
+			if len(r.recipe) != 0 {
+				// recipe exists -- warn
+				log.Println("warning: cannot have recipe in dep file")
+			} else {
+				// recipe is empty -- only add the prereqs
+				for i := 0; i < len(r.prereqs); i++ {
+					opt[i+len(prereqs)] = true
+				}
+				prereqs = append(prereqs, r.prereqs...)
+			}
+		}
+	}
+	return prereqs
+}
+
 func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, visits map[string][]int, updated map[string]bool) (*node, error) {
 	parsedTarget, err := parsePrereq(target)
 	if err != nil {
@@ -374,6 +405,7 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 						p = strings.ReplaceAll(p, "%", n.match)
 						metarule.prereqs = append(metarule.prereqs, p)
 					}
+					metarule.attrs.Dep = strings.ReplaceAll(metarule.attrs.Dep, "%", n.match)
 				} else {
 					// regex match, accumulate all the matches and expand them in the prereqs
 					for i := 0; i < len(sub); i += 2 {
@@ -383,6 +415,8 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 						expanded := pat.Regex.ExpandString([]byte{}, p, target, sub)
 						metarule.prereqs = append(metarule.prereqs, string(expanded))
 					}
+					expanded := pat.Regex.ExpandString([]byte{}, rule.attrs.Dep, target, sub)
+					metarule.attrs.Dep = string(expanded)
 				}
 
 				// Only use this rule if its prereqs can also be resolved.
@@ -422,6 +456,10 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 
 	rule.attrs.UpdateFrom(parsedTarget.attrs)
 
+	if rule.attrs.Dep != "" {
+		rule.prereqs = loadDeps(rule.prereqs, filepath.Join(dir, rule.attrs.Dep), target, n.optional)
+	}
+
 	if rule.attrs.Virtual {
 		n.outputs = nil
 	}
@@ -436,6 +474,10 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 		// example, maybe we didn't find a rule, and the requested target was
 		// foo.c. If foo.c exists, then this is an empty rule to "build" it.
 		rule.targets = []string{target}
+	}
+
+	if rule.attrs.Dep != "" {
+		rule.targets = append(rule.targets, rule.attrs.Dep)
 	}
 
 	n.myPrereqs = rule.prereqs
@@ -477,9 +519,12 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	if ri != -1 {
 		visits[dir][ri]++
 	}
-	for _, p := range n.rule.prereqs {
+	for i, p := range n.rule.prereqs {
 		pn, err := g.resolveTargetAcross(pathJoin(dir, p), visits, updated)
 		if err != nil {
+			if n.optional[i] {
+				continue
+			}
 			// there was an error with a prereq, so this node is invalid and we
 			// must remove it from the maps
 			delete(g.nodes, fulltarget)

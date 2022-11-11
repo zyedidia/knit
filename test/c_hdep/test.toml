@@ -1,0 +1,42 @@
+name = "Check using the D attribute to include C .d files"
+
+[flags]
+
+knitfile = "Knitfile"
+ncpu = 1
+hash = false
+
+[[builds]]
+
+args = ["clean"]
+output = """\
+rm -f *.o *.d
+"""
+
+[[builds]]
+
+args = ["foo.o"]
+output = """\
+gcc -MMD -c foo.c -o foo.o
+"""
+
+[[builds]]
+
+args = ["foo.o"]
+output = ""
+error = "'foo.o': nothing to be done"
+
+[[builds]]
+
+args = ["touch"]
+output = """\
+sleep 0.01
+touch foo.h
+"""
+
+[[builds]]
+
+args = ["foo.o"]
+output = """\
+gcc -MMD -c foo.c -o foo.o
+"""

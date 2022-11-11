@@ -92,6 +92,21 @@ Knit supports the following attributes:
   a prereq.
 * `O` (order-only): this rule's prereqs are not considered automatically
   up-to-date even if this rule is up-to-date.
+* `D[depfile]` (dependency): include `depfile` as an additional list of
+  dependencies for this rule.
+
+The `D` attribute takes an argument. It is used for including `.d` files for
+C headers. For example, this rule
+
+```
+$ %.o:D[%.d]: %.c
+    gcc -MMD -c $input -o $output
+```
+
+specifies that it should read the file `%.d` as a rule file and include any
+additional rules (without recipes) as dependencies for the current rule. If the
+file does not exist it is ignored, and any rules from the file that can't be
+satisfied are ignored instead of returned as errors.
 
 Attributes can also be applied to particular prerequisites rather than to an
 entire rule, using the syntax `prereq[attributes]`. For example:

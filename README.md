@@ -114,6 +114,14 @@ that builds all targets (i.e., automatically cleaning all build outputs). The
 file on the system), should always be built (out-of-date), and quiet (does not
 print the command it executes).
 
+If you also have header files in your project, they can be automatically
+handled by changing the `%.o` rule to
+
+```
+$ %.o:D[%.d]: %.c
+    $(conf.cc) $cflags -MMD -c $input -o $output
+```
+
 Note that Knitfiles are Lua programs with some modified syntax: special syntax
 using `$` for defining rules, and special syntax using `:=` for defining raw
 strings (no quotes) with interpolation.
