@@ -180,6 +180,8 @@ func NewLuaVM(shell string) *LuaVM {
 		switch u := lv.(type) {
 		case *lua.LUserData:
 			switch u := u.Value.(type) {
+			case LRule:
+				bs.rset = append(bs.rset, u)
 			case LRuleSet:
 				bs.rset = append(bs.rset, u...)
 			case LBuildSet:
