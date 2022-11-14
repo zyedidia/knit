@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 )
 
 type Printer interface {
@@ -76,7 +77,7 @@ func (e *Executor) Exec(g *Graph) (bool, error) {
 	// make sure ctrl-c doesn't kill this process, just the children
 	if !e.opts.NoExec {
 		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt)
+		signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
 	}
 
 	for i := 0; i < e.threads; i++ {
