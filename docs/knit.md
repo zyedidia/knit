@@ -39,6 +39,9 @@ foo.o: foo.c
 Specifies that the file `foo.o` is built from `foo.c`, using the command `gcc
 -c foo.c -o foo.o`.
 
+Within a rule, `#` denotes the start of a comment. Outside of rules, `--` is
+the start of a comment (the standard Lua syntax).
+
 ### Meta rules
 
 A meta rule is a special rule that describes a generic way to create direct
@@ -127,12 +130,22 @@ Some attributes can only be applied in this way:
 
 ### Recipes
 
-A recipe is a list of commands to execute. They are executed within the `sh`
-shell. Recipes may use variables that will be expanded before the recipe
-executes. Variables are written with `$var`, or full Lua expressions can be
-written with `$(expr)`. Variables/expressions are expanded eagerly when the
-rule is created. If expansion causes an error, the expansion is delayed until
-rule evaluation (when special build variables are available).
+A recipe is a list of commands to execute, each separated by a newline. They
+are executed within the `sh` shell. Each command is executed in a separate
+process, spawned with `sh -c <cmd>`. One implication of this is that a `cd`
+command will not persist to future commands. If you wish to run multiple
+commands in the same shell, you should use the shell's features (`&&`, `||`, or
+`;`) for this. For example, `cd foo; cat bar.txt`. Note that you can use `\` to
+escape newlines, so that one command can span multiple lines in the recipe.
+
+Recipes may use variables that will be expanded before the recipe executes.
+Variables are written with `$var`, or full Lua expressions can be written with
+`$(expr)`. Variables/expressions are expanded eagerly when the rule is created.
+If expansion causes an error, the expansion is delayed until rule evaluation
+(when special build variables are available). You can use `$$` to escape a
+dollar sign. For example, the recipe `echo $$PWD` will echo the environment
+variable `PWD`, while `echo $PWD` would attempt to replace `$PWD` with the Lua
+variable `PWD` when the rule is elaborated.
 
 Some special variables are available during recipe expansion:
 
