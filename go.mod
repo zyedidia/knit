@@ -11,7 +11,7 @@ require (
 	github.com/segmentio/fasthash v1.0.3
 	github.com/spf13/pflag v1.0.5
 	github.com/zyedidia/generic v1.2.0
-	github.com/zyedidia/gopher-lua v0.0.0-20221101052530-a3ed186e6218
+	github.com/zyedidia/gopher-lua v0.0.0-20221114000649-a62ab1f868de
 	github.com/zyedidia/gopher-luar v0.0.0-20220811182431-9d2fc6a3867f
 	mvdan.cc/sh v2.6.4+incompatible
 )
