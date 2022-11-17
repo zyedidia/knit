@@ -50,9 +50,8 @@ func FindBuildFile(name string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	dirs := []string{wd}
 	path := wd
-	for path != "/" {
+	for filepath.Dir(path) != path {
 		if existsFile(filepath.Join(path, name)) {
 			p, e := filepath.Rel(wd, path)
 			return name, p, e
@@ -62,7 +61,6 @@ func FindBuildFile(name string) (string, string, error) {
 			return title(name), p, e
 		}
 		path = filepath.Dir(path)
-		dirs = append(dirs, path)
 	}
 	return "", "", nil
 }
