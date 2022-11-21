@@ -470,6 +470,20 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 	vm.L.SetField(pkg, "trim", luar.New(vm.L, strings.TrimSpace))
 	vm.L.SetField(pkg, "os", luar.New(vm.L, runtime.GOOS))
 	vm.L.SetField(pkg, "arch", luar.New(vm.L, runtime.GOARCH))
+	vm.L.SetField(pkg, "join", luar.New(vm.L, func(strs ...[]string) *lua.LTable {
+		if len(strs) == 0 {
+			return nil
+		}
+		size := 0
+		for _, slc := range strs {
+			size += len(slc)
+		}
+		result := make([]string, 0, size)
+		for _, slc := range strs {
+			result = append(result, slc...)
+		}
+		return GoStrSliceToTable(vm.L, result)
+	}))
 	vm.L.SetField(pkg, "glob", luar.New(vm.L, func(pattern string) *lua.LTable {
 		f, err := filepath.Glob(pattern)
 		if err != nil {

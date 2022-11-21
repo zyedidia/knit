@@ -14,7 +14,7 @@ import (
 )
 
 // number of times a meta-rule can be used in one dependency chain.
-const maxVisits = 1
+const maxVisits = 5
 
 func sub(dir string) string {
 	if dir == "." || dir == "" {
@@ -381,11 +381,16 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 		// rules.
 		for mi := len(rs.metaRules) - 1; mi >= 0; mi-- {
 			mr := rs.metaRules[mi]
-			// a meta-rule can only be used maxVisits times (in one dependency path)
-			if visits[dir][mi] >= maxVisits {
-				continue
-			}
 			if sub, pat := mr.Match(target); sub != nil {
+				// a meta-rule can only be used maxVisits times (in one dependency path)
+				// TODO: consider moving this back above the if statement so that we skip
+				// the performance cost of matching if maxVisits is exceeded. In order to
+				// do that, we would also need to detect whether logging is enabled, since
+				// we only want to print a warning when the rule is a match.
+				if visits[dir][mi] >= maxVisits {
+					log.Printf("could not use metarule '%s': exceeded max visits\n", mr.String())
+					continue
+				}
 				// if this rule has a recipe and we already have a recipe, skip it
 				if len(mr.recipe) > 0 && len(rule.recipe) > 0 {
 					continue
