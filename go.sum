@@ -50,6 +50,8 @@ github.com/zyedidia/gopher-lua v0.0.0-20221101052530-a3ed186e6218 h1:oxRC4cs4tzq
 github.com/zyedidia/gopher-lua v0.0.0-20221101052530-a3ed186e6218/go.mod h1:VNzP8GqEgw9ZAdRh7xZPK9DBr39YGjVNhVBMVRQvZbM=
 github.com/zyedidia/gopher-lua v0.0.0-20221114000649-a62ab1f868de h1:yl95I7eCbWE26Oq9tTz/C45fjzqvF1tsmNwRm+3Nez8=
 github.com/zyedidia/gopher-lua v0.0.0-20221114000649-a62ab1f868de/go.mod h1:VNzP8GqEgw9ZAdRh7xZPK9DBr39YGjVNhVBMVRQvZbM=
+github.com/zyedidia/gopher-lua v0.0.0-20221122230559-c02e2ecd2b6e h1:rmCPHKC9+y02xXkpYOnx1c3HXpcWAKsOvdsFAn5ggrc=
+github.com/zyedidia/gopher-lua v0.0.0-20221122230559-c02e2ecd2b6e/go.mod h1:VNzP8GqEgw9ZAdRh7xZPK9DBr39YGjVNhVBMVRQvZbM=
 github.com/zyedidia/gopher-luar v0.0.0-20220811182431-9d2fc6a3867f h1:dbt1mMcOXZHpL/mmxN6WsX9MyRJvdkd2wbZvqLuke5U=
 github.com/zyedidia/gopher-luar v0.0.0-20220811182431-9d2fc6a3867f/go.mod h1:Ug3oboaXLuSfSd/FXaBnAnajEqgNEC4mIvFhqSEKPwI=
 golang.org/x/crypto v0.2.0 h1:BRXPfhNivWL5Yq0BGQ39a2sW6t44aODpfxkWjYdzewE=
