@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
@@ -32,6 +33,7 @@ const (
 	tokenRecipe
 	tokenEnd
 	tokenGt
+	tokenTmp
 )
 
 func (typ tokenType) String() string {
@@ -76,6 +78,7 @@ type lexer struct {
 	errmsg   string     // set to an appropriate error message when necessary
 	indented bool       // true if the only whitespace so far on this line
 	state    lexerStateFun
+	tokens   []token
 }
 
 // A lexerStateFun is simultaneously the the state of the lexer and the next
@@ -138,6 +141,28 @@ func (l *lexer) skip() {
 	l.next()
 	l.start = l.pos
 	l.startcol = l.col
+}
+
+func (l *lexer) pushtmp() {
+	l.tokens = append(l.tokens, token{tokenTmp, l.input[l.start:l.pos], l.line, l.startcol})
+	l.start = l.pos
+	l.startcol = 0
+}
+
+func (l *lexer) emittmp(typ tokenType) {
+	if len(l.tokens) == 0 {
+		return
+	}
+	s := &bytes.Buffer{}
+	for _, t := range l.tokens {
+		s.WriteString(t.val)
+	}
+	line := l.tokens[0].line
+	startcol := l.tokens[0].col
+	l.output <- token{typ, s.String(), line, startcol}
+	l.tokens = make([]token, 0)
+	l.start = l.pos
+	l.startcol = 0
 }
 
 func (l *lexer) emit(typ tokenType) {
@@ -273,6 +298,8 @@ func lexTopLevel(l *lexer) lexerStateFun {
 		return lexSingleQuotedWord
 	case '`':
 		return lexBackQuotedWord
+		// case '[':
+		// 	return lexBracketedWord
 	}
 
 	return lexBareWord
@@ -290,8 +317,27 @@ func lexComment(l *lexer) lexerStateFun {
 	return lexTopLevel
 }
 
+// func lexBracketedWord(l *lexer) lexerStateFun {
+// 	l.skip() // '['
+// 	for l.peek() != ']' && l.peek() != eof {
+// 		l.acceptUntil("\\]")
+// 		if l.accept("\\") {
+// 			l.accept("]")
+// 		}
+// 	}
+//
+// 	if l.peek() == eof {
+// 		l.lexError("end of file encountered while parsing a bracketed string.")
+// 	}
+//
+// 	l.pushtmp()
+//
+// 	l.skip() // ']'
+// 	return lexBareWord
+// }
+
 func lexDoubleQuotedWord(l *lexer) lexerStateFun {
-	l.next() // '"'
+	l.skip() // '"'
 	for l.peek() != '"' && l.peek() != eof {
 		l.acceptUntil("\\\"")
 		if l.accept("\\") {
@@ -303,21 +349,25 @@ func lexDoubleQuotedWord(l *lexer) lexerStateFun {
 		l.lexError("end of file encountered while parsing a quoted string.")
 	}
 
-	l.next() // '"'
+	l.pushtmp()
+
+	l.skip() // '"'
 	return lexBareWord
 }
 
 func lexBackQuotedWord(l *lexer) lexerStateFun {
-	l.next() // '`'
+	l.skip() // '`'
 	l.acceptUntil("`")
-	l.next() // '`'
+	l.pushtmp()
+	l.skip() // '`'
 	return lexBareWord
 }
 
 func lexSingleQuotedWord(l *lexer) lexerStateFun {
-	l.next() // '\''
+	l.skip() // '\''
 	l.acceptUntil("'")
-	l.next() // '\''
+	l.pushtmp()
+	l.skip() // '\''
 	return lexBareWord
 }
 
@@ -349,7 +399,8 @@ func lexBareWord(l *lexer) lexerStateFun {
 		c1 := l.peekN(1)
 		if c1 == '\n' || c1 == '\r' {
 			if l.start < l.pos {
-				l.emit(tokenWord)
+				l.pushtmp()
+				l.emittmp(tokenWord)
 			}
 			l.skip()
 			l.skip()
@@ -371,7 +422,8 @@ func lexBareWord(l *lexer) lexerStateFun {
 	}
 
 	if l.start < l.pos {
-		l.emit(tokenWord)
+		l.pushtmp()
+		l.emittmp(tokenWord)
 	}
 
 	return lexTopLevel
