@@ -282,6 +282,22 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	// prereqs
 	base.prereqs = make([]string, 0)
 	for k := j + 1; k < len(p.tokenbuf); k++ {
+		// pretty hacky method to handle applying attributes to multiple prereqs at once with `prereqs`[attrs] syntax
+		if strings.HasPrefix(p.tokenbuf[k].val, "`") && strings.HasSuffix(p.tokenbuf[k].val, "`") {
+			length := len(p.tokenbuf[k].val)
+			inner := lex(p.tokenbuf[k].val[1:length-1], p.tokenbuf[k].line)
+			attrs := ""
+			if len(p.tokenbuf) > k+1 && strings.HasPrefix(p.tokenbuf[k+1].val, "[") {
+				attrs = p.tokenbuf[k+1].val
+			}
+			for t := inner.nextToken(); t.typ != tokenEnd; t = inner.nextToken() {
+				if t.typ == tokenError {
+					break
+				}
+				base.prereqs = append(base.prereqs, t.val+attrs)
+			}
+			continue
+		}
 		base.prereqs = append(base.prereqs, p.tokenbuf[k].val)
 	}
 

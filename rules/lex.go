@@ -298,8 +298,6 @@ func lexTopLevel(l *lexer) lexerStateFun {
 		return lexSingleQuotedWord
 	case '`':
 		return lexBackQuotedWord
-		// case '[':
-		// 	return lexBracketedWord
 	}
 
 	return lexBareWord
@@ -316,25 +314,6 @@ func lexComment(l *lexer) lexerStateFun {
 	l.skipUntil("\n")
 	return lexTopLevel
 }
-
-// func lexBracketedWord(l *lexer) lexerStateFun {
-// 	l.skip() // '['
-// 	for l.peek() != ']' && l.peek() != eof {
-// 		l.acceptUntil("\\]")
-// 		if l.accept("\\") {
-// 			l.accept("]")
-// 		}
-// 	}
-//
-// 	if l.peek() == eof {
-// 		l.lexError("end of file encountered while parsing a bracketed string.")
-// 	}
-//
-// 	l.pushtmp()
-//
-// 	l.skip() // ']'
-// 	return lexBareWord
-// }
 
 func lexDoubleQuotedWord(l *lexer) lexerStateFun {
 	l.skip() // '"'
@@ -356,11 +335,11 @@ func lexDoubleQuotedWord(l *lexer) lexerStateFun {
 }
 
 func lexBackQuotedWord(l *lexer) lexerStateFun {
-	l.skip() // '`'
+	l.next() // '`'
 	l.acceptUntil("`")
-	l.pushtmp()
-	l.skip() // '`'
-	return lexBareWord
+	l.next() // '`'
+	l.emit(tokenWord)
+	return lexTopLevel
 }
 
 func lexSingleQuotedWord(l *lexer) lexerStateFun {
