@@ -75,7 +75,7 @@ your feedback may be seriously taken into account.
 
 Here is a very basic Knitfile for building a simple C project.
 
-```
+```lua
 return b{
     $ hello: hello.o
         cc -O2 $input -o $output
