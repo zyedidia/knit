@@ -73,7 +73,24 @@ your feedback may be seriously taken into account.
 
 # Example Knitfile
 
-Here is an example Knitfile used for building a simple C project.
+Here is a very basic Knitfile for building a simple C project.
+
+```
+return b{
+    $ hello: hello.o
+        cc -O2 $input -o $output
+    $ %.o: %.c
+        cc -O2 -c $input -o $output
+}
+```
+
+The syntax for rules is nearly the same as Make, and Knit supports `%`
+meta-rules just like Make. However, rather than using a custom language
+to configure the build, Knit uses Lua.
+
+Here is a more complex example Knitfile used for building a simple C project.
+This time the Knitfile supports various configurations (changing `cc` and
+enabling debug flags), and automatically detects the source files.
 
 ```lua
 local knit = require("knit")
