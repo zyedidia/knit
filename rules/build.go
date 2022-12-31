@@ -161,7 +161,7 @@ func (e *Executor) runServer() {
 
 		if e.stopped.Load() {
 			e.lock.Lock()
-			n.setDone(e.db, e.opts.NoExec, e.opts.Hash)
+			n.setDoneOrErr()
 			e.lock.Unlock()
 			continue
 		}
