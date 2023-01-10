@@ -520,6 +520,20 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 		}
 		return p
 	}))
+	vm.L.SetField(pkg, "prefix", luar.New(vm.L, func(prefix string, in []string) *lua.LTable {
+		s := make([]string, 0, len(in))
+		for _, v := range in {
+			s = append(s, prefix+v)
+		}
+		return GoStrSliceToTable(vm.L, s)
+	}))
+	vm.L.SetField(pkg, "suffix", luar.New(vm.L, func(suffix string, in []string) *lua.LTable {
+		s := make([]string, 0, len(in))
+		for _, v := range in {
+			s = append(s, v+suffix)
+		}
+		return GoStrSliceToTable(vm.L, s)
+	}))
 	vm.L.SetField(pkg, "extrepl", luar.New(vm.L, func(in []string, ext, repl string) *lua.LTable {
 		patstr := fmt.Sprintf("%s$", regexp.QuoteMeta(ext))
 		s, err := replace(in, patstr, repl)
