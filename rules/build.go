@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -169,6 +170,13 @@ func (e *Executor) runServer() {
 		step := e.step.Add(1)
 
 		ruleName := strings.Join(n.rule.targets, " ")
+
+		// make parent directories for outputs
+		if !e.opts.NoExec {
+			for _, o := range n.outputs {
+				os.MkdirAll(filepath.Dir(o.name), os.ModePerm)
+			}
+		}
 
 		failed := false
 		var execErr error
