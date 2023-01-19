@@ -26,6 +26,7 @@ var tools = []Tool{
 	&CompileDbTool{},
 	&CommandsTool{},
 	&StatusTool{},
+	&PathTool{},
 }
 
 type Tool interface {
@@ -488,4 +489,18 @@ func (t *StatusTool) Run(g *Graph, args []string) error {
 
 func (t *StatusTool) String() string {
 	return "status - output dependency status information"
+}
+
+type PathTool struct {
+	W    io.Writer
+	Path string
+}
+
+func (t *PathTool) Run(g *Graph, args []string) error {
+	fmt.Fprintln(t.W, t.Path)
+	return nil
+}
+
+func (t *PathTool) String() string {
+	return "path - return the path of the current knitfile"
 }

@@ -413,6 +413,7 @@ specify a sub-tool to run instead of building:
 * `compdb` - output a compile commands database
 * `commands` - output the build commands (formats: knit, json, make, ninja, shell)
 * `status` - lists dependencies and whether they are up-to-date
+* `path` - shows the path of the current knitfile
 
 The special target `:all` depends on every target in the build. Thus `knit :all
 -t targets` will list all targets.
