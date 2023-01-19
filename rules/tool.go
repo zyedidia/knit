@@ -226,18 +226,15 @@ func (t *CompileDbTool) visit(n *node, visited map[*info]bool, cmds []CompComman
 
 	visited[n.info] = true
 
+	for _, p := range n.myExpPrereqs {
+		cmds = append(cmds, CompCommand{
+			Directory: n.dir,
+			File:      p,
+			Command:   strings.Join(n.recipe, "; "),
+		})
+	}
 	for _, p := range n.prereqs {
-		if len(p.prereqs) == 0 {
-			for _, o := range p.outputs {
-				cmds = append(cmds, CompCommand{
-					Directory: p.dir,
-					File:      o.name,
-					Command:   strings.Join(n.recipe, "; "),
-				})
-			}
-		} else {
-			cmds = t.visit(p, visited, cmds)
-		}
+		cmds = t.visit(p, visited, cmds)
 	}
 	return cmds
 }
