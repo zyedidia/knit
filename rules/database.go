@@ -55,6 +55,13 @@ func NewDatabase(dir string) *Database {
 		d = newData()
 	}
 
+	if d.Outputs == nil {
+		d.Outputs = make(map[string]bool)
+	}
+	if d.OutputDirs == nil {
+		d.OutputDirs = make(map[string]bool)
+	}
+
 	return &Database{
 		location: dir,
 		data:     d,

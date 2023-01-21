@@ -176,7 +176,7 @@ func (e *Executor) runServer() {
 		if !e.opts.NoExec {
 			for _, o := range n.outputs {
 				if len(n.recipe) != 0 {
-					dir := filepath.Dir(filepath.Join(n.dir, o.name))
+					dir := filepath.Dir(o.name)
 					if !exists(dir) {
 						topdir := dir
 						for !exists(filepath.Dir(topdir)) {

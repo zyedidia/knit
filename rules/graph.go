@@ -107,7 +107,7 @@ func (n *node) setDone(db *Database, noexec, hash bool) {
 		db.Recipes.insert(n.rule.targets, n.recipe, n.dir)
 		for _, f := range n.outputs {
 			if len(n.recipe) != 0 {
-				db.AddOutput(filepath.Join(n.dir, f.name))
+				db.AddOutput(f.name)
 			}
 		}
 	}
