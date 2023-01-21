@@ -105,6 +105,11 @@ func (n *node) setDone(db *Database, noexec, hash bool) {
 		}
 		// TODO: think about path normalization?
 		db.Recipes.insert(n.rule.targets, n.recipe, n.dir)
+		for _, f := range n.outputs {
+			if len(n.recipe) != 0 {
+				db.AddOutput(filepath.Join(n.dir, f.name))
+			}
+		}
 	}
 	n.setDoneOrErr()
 }
@@ -177,10 +182,6 @@ func (f *file) updateTimestamp(timestamps map[string]time.Time) {
 		f.exists = false
 	}
 	timestamps[f.name] = f.t
-}
-
-func (f *file) remove() error {
-	return os.RemoveAll(f.name)
 }
 
 // Creates a new node that builds 'target'.
@@ -462,7 +463,9 @@ func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, 
 	rule.attrs.UpdateFrom(parsedTarget.attrs)
 
 	if rule.attrs.Dep != "" {
-		rule.prereqs = loadDeps(rule.prereqs, filepath.Join(dir, rule.attrs.Dep), target, n.optional)
+		dep := filepath.Join(dir, rule.attrs.Dep)
+		rule.prereqs = loadDeps(rule.prereqs, dep, target, n.optional)
+		n.outputs[dep] = newFile(dir, rule.attrs.Dep, updated, g.tscache)
 	}
 
 	if rule.attrs.Virtual {

@@ -78,8 +78,10 @@ func (db *Database) Save() error {
 }
 
 type data struct {
-	Recipes Recipes
-	Prereqs Prereqs
+	Recipes    Recipes
+	Prereqs    Prereqs
+	Outputs    map[string]bool
+	OutputDirs map[string]bool
 }
 
 func newData() *data {
@@ -90,7 +92,17 @@ func newData() *data {
 		Prereqs: Prereqs{
 			Hashes: make(map[uint64]*Files),
 		},
+		Outputs:    make(map[string]bool),
+		OutputDirs: make(map[string]bool),
 	}
+}
+
+func (d *data) AddOutput(file string) {
+	d.Outputs[file] = true
+}
+
+func (d *data) AddOutputDir(dir string) {
+	d.OutputDirs[dir] = true
 }
 
 func (d *data) WriteBytesTo(w io.Writer) error {

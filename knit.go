@@ -338,7 +338,7 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		case "graph":
 			t = &rules.GraphTool{W: w}
 		case "clean":
-			t = &rules.CleanTool{W: w, NoExec: flags.DryRun, All: flags.Always}
+			t = &rules.CleanTool{W: w, NoExec: flags.DryRun, Db: db}
 		case "targets":
 			t = &rules.TargetsTool{W: w}
 		case "compdb":
@@ -353,7 +353,12 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 			return knitpath, fmt.Errorf("unknown tool: %s", flags.Tool)
 		}
 
-		return knitpath, t.Run(graph, flags.ToolArgs)
+		err = t.Run(graph, flags.ToolArgs)
+		if err != nil {
+			return knitpath, err
+		}
+
+		return knitpath, db.Save()
 	}
 
 	if flags.Ncpu <= 0 {

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -174,7 +175,22 @@ func (e *Executor) runServer() {
 		// make parent directories for outputs
 		if !e.opts.NoExec {
 			for _, o := range n.outputs {
-				os.MkdirAll(filepath.Dir(o.name), os.ModePerm)
+				if len(n.recipe) != 0 {
+					dir := filepath.Dir(filepath.Join(n.dir, o.name))
+					if !exists(dir) {
+						topdir := dir
+						for !exists(filepath.Dir(topdir)) {
+							topdir = filepath.Dir(topdir)
+						}
+						err := os.MkdirAll(dir, os.ModePerm)
+						if err != nil {
+							log.Println(err)
+						}
+						e.lock.Lock()
+						e.db.AddOutputDir(topdir)
+						e.lock.Unlock()
+					}
+				}
 			}
 		}
 
@@ -280,4 +296,10 @@ func forwardStream(p Printer, stream io.Reader, w io.Writer) {
 		w.Write(buf[:n])
 		p.Update()
 	}
+}
+
+// Returns true if 'path' exists.
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

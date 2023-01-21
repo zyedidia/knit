@@ -125,42 +125,72 @@ func (t *GraphTool) String() string {
 
 type CleanTool struct {
 	NoExec bool
-	All    bool
+	Db     *Database
 	W      io.Writer
 
 	err error
 }
 
-func (t *CleanTool) clean(n *node, done map[*info]bool) {
-	if done[n.info] {
-		return
+// removes empty dirs and dirs containing only empty dirs
+func (t *CleanTool) removeEmpty(dir string) error {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return err
 	}
 
-	for _, p := range n.prereqs {
-		t.clean(p, done)
-	}
-
-	// don't clean virtual rules or rules without a recipe to rebuild the outputs
-	if len(n.rule.recipe) != 0 && !n.rule.attrs.Virtual {
-		for _, o := range n.outputs {
-			if !o.exists && !t.All {
-				continue
-			}
-			if !t.NoExec {
-				err := o.remove()
-				if err != nil {
-					t.err = err
-					continue
-				}
-			}
-			fmt.Fprintln(t.W, "remove", filepath.Join(n.dir, o.name))
+	for _, ent := range ents {
+		if !ent.IsDir() {
+			// cannot remove
+			return nil
+		}
+		err := t.removeEmpty(filepath.Join(dir, ent.Name()))
+		if err != nil {
+			return err
 		}
 	}
-	done[n.info] = true
+
+	ents, err = os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	if len(ents) == 0 {
+		if !t.NoExec {
+			err := os.Remove(dir)
+			if err != nil {
+				return err
+			}
+			delete(t.Db.OutputDirs, dir)
+		}
+		fmt.Fprintln(t.W, "remove", dir)
+		return nil
+	}
+
+	return nil
 }
 
 func (t *CleanTool) Run(g *Graph, args []string) error {
-	t.clean(g.base, make(map[*info]bool))
+	for o := range t.Db.Outputs {
+		if !t.NoExec {
+			err := os.RemoveAll(o)
+			if err != nil {
+				t.err = err
+				continue
+			}
+			delete(t.Db.Outputs, o)
+		}
+		fmt.Fprintln(t.W, "remove", o)
+	}
+	for o := range t.Db.OutputDirs {
+		err := t.removeEmpty(o)
+		if err != nil {
+			t.err = err
+			continue
+		}
+		if t.NoExec {
+			fmt.Fprintln(t.W, "remove if empty", o)
+		}
+	}
 	return t.err
 }
 
