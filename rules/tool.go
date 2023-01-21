@@ -172,12 +172,12 @@ type TargetsTool struct {
 	W io.Writer
 }
 
-func (t *TargetsTool) targets(n *node, virtual bool, visited map[*info]bool) {
+func (t *TargetsTool) targets(n *node, virtual bool, outputs bool, visited map[*info]bool) {
 	if visited[n.info] || len(n.rule.recipe) == 0 && len(n.rule.prereqs) == 0 {
 		return
 	}
 
-	if !virtual || virtual && n.rule.attrs.Virtual {
+	if virtual && n.rule.attrs.Virtual || outputs && !n.rule.attrs.Virtual {
 		for _, targ := range n.rule.targets {
 			fmt.Fprintln(t.W, pathJoin(n.dir, targ))
 		}
@@ -185,7 +185,7 @@ func (t *TargetsTool) targets(n *node, virtual bool, visited map[*info]bool) {
 
 	visited[n.info] = true
 	for _, p := range n.prereqs {
-		t.targets(p, virtual, visited)
+		t.targets(p, virtual, outputs, visited)
 	}
 }
 
@@ -197,9 +197,11 @@ func (t *TargetsTool) Run(g *Graph, args []string) error {
 	visited := make(map[*info]bool)
 	switch choice {
 	case "all":
-		t.targets(g.base, false, visited)
+		t.targets(g.base, true, true, visited)
 	case "virtual":
-		t.targets(g.base, true, visited)
+		t.targets(g.base, true, false, visited)
+	case "outputs":
+		t.targets(g.base, false, true, visited)
 	default:
 		return fmt.Errorf("invalid argument '%s', must be one of: all, virtual", choice)
 	}
@@ -207,7 +209,7 @@ func (t *TargetsTool) Run(g *Graph, args []string) error {
 }
 
 func (t *TargetsTool) String() string {
-	return "targets - list all targets (pass 'virtual' for just virtual targets)"
+	return "targets - list all targets (pass 'virtual' for just virtual targets, pass 'outputs' for just output targets)"
 }
 
 type CompileDbTool struct {
