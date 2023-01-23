@@ -243,7 +243,8 @@ func (t *TargetsTool) String() string {
 }
 
 type CompileDbTool struct {
-	W io.Writer
+	W   io.Writer
+	All bool
 }
 
 type CompCommand struct {
@@ -259,7 +260,11 @@ func (t *CompileDbTool) visit(n *node, visited map[*info]bool, cmds []CompComman
 
 	visited[n.info] = true
 
-	for _, p := range n.myExpPrereqs {
+	prereqs := n.myExpPrereqs
+	if t.All {
+		prereqs = n.myPrereqs
+	}
+	for _, p := range prereqs {
 		cmds = append(cmds, CompCommand{
 			Directory: n.dir,
 			File:      p,
@@ -273,6 +278,10 @@ func (t *CompileDbTool) visit(n *node, visited map[*info]bool, cmds []CompComman
 }
 
 func (t *CompileDbTool) Run(g *Graph, args []string) error {
+	if len(args) > 0 && args[0] == "all" {
+		t.All = true
+	}
+
 	cmds := t.visit(g.base, make(map[*info]bool), []CompCommand{})
 	data, err := json.Marshal(cmds)
 	if err != nil {
