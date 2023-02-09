@@ -50,7 +50,7 @@ func (p *StepPrinter) Print(cmd, dir string, name string, step int) {
 	if dir != "." {
 		fmt.Fprintf(p.w, "[%s] ", dir)
 	}
-	fmt.Fprintln(p.w, cmd)
+	fmt.Fprintln(p.w, name)
 }
 
 type ProgressPrinter struct {
