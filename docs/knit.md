@@ -231,6 +231,10 @@ automatically figure out that you mean to build `foo/foo.o` (relative to `..`),
 since you specified `foo.o` (relative to `foo`). In other words, building
 sub-files just works.
 
+Likewise, if you run `knit all` from the `foo` directory, and the `all` rule
+is only defined for the root directory, Knit will automatically use that rule
+instead of trying to use `foo/all`.
+
 ## Rulesets
 
 A table of rules can be converted into a "ruleset" by using the special `r`

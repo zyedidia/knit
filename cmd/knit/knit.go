@@ -90,7 +90,6 @@ func main() {
 	cache := optString(main, "cache", "", ".", user.CacheDir, "directory for caching internal build information")
 	hash := optBool(main, "hash", "", true, user.Hash, "hash files to determine if they are out-of-date")
 	updated := optStringSlice(main, "updated", "u", nil, user.Updated, "treat files as updated")
-	root := optBool(main, "root", "r", false, user.Root, "run target relative to the root Knitfile")
 	keep := optBool(main, "keep-going", "", false, user.KeepGoing, "keep going even if recipes fail")
 
 	path, err := exec.LookPath("sh")
@@ -173,7 +172,6 @@ func main() {
 		CacheDir:  *cache,
 		Hash:      *hash,
 		Updated:   *updated,
-		Root:      *root,
 		KeepGoing: *keep,
 		Shell:     *shellf,
 		Tool:      *tool,

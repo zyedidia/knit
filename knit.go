@@ -28,7 +28,6 @@ type Flags struct {
 	CacheDir  string
 	Hash      bool
 	Updated   []string
-	Root      bool
 	Shell     string
 	KeepGoing bool
 	Tool      string
@@ -47,7 +46,6 @@ type UserFlags struct {
 	CacheDir  *string `toml:"cache"`
 	Hash      *bool
 	Updated   *[]string
-	Root      *bool
 	Shell     *string
 	KeepGoing *bool
 }
@@ -223,16 +221,9 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 			}
 			flags.Updated[i] = p
 		}
-		if flags.Root {
-			err := os.Chdir(dir)
-			if err != nil {
-				return knitpath, err
-			}
-		} else {
-			err = goToKnitfile(vm, dir, targets)
-			if err != nil {
-				return knitpath, err
-			}
+		err = goToKnitfile(vm, dir, targets)
+		if err != nil {
+			return knitpath, err
 		}
 	}
 
@@ -277,13 +268,24 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 	if len(targets) == 0 {
 		targets = []string{rs.MainTarget()}
 	}
+	rootTargets := make([]string, len(targets))
 	// TODO: don't turn an empty target into '.'
 
 	if len(targets) == 0 {
 		return knitpath, errors.New("no targets")
 	}
 
+	for i, t := range targets {
+		rootTargets[i] = filepath.Base(t)
+	}
+
 	rs.Add(rules.NewDirectRule([]string{":build"}, targets, nil, rules.AttrSet{
+		Virtual: true,
+		NoMeta:  true,
+		Rebuild: true,
+	}))
+
+	rs.Add(rules.NewDirectRule([]string{":build-root"}, rootTargets, nil, rules.AttrSet{
 		Virtual: true,
 		NoMeta:  true,
 		Rebuild: true,
@@ -302,7 +304,11 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 
 	graph, err := rules.NewGraph(rulesets, dirs, ":build", updated)
 	if err != nil {
-		return knitpath, err
+		g, rerr := rules.NewGraph(rulesets, dirs, ":build-root", updated)
+		if rerr != nil {
+			return knitpath, err
+		}
+		graph = g
 	}
 
 	err = graph.ExpandRecipes(vm)

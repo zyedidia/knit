@@ -210,7 +210,6 @@ Options:
   -h, --help                show this help message
       --keep-going          keep going even if recipes fail
   -q, --quiet               don't print commands
-  -r, --root                run target relative to the root Knitfile
       --shell string        shell to use when executing commands (default "sh")
   -s, --style string        printer style to use (basic, steps, progress) (default "basic")
   -j, --threads int         number of cores to use (default 8)
