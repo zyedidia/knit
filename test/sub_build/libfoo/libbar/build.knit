@@ -1,4 +1,4 @@
 return b{
-$ libbar.a:
-    echo "hi" > $output
+    $ libbar.a:
+        echo "hi" > $output
 }

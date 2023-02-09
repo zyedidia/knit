@@ -1,4 +1,4 @@
 return b{
-$ ../foo.txt:
-    echo "foo" > $output
+    $ ../foo.txt:
+        echo "foo" > $output
 }

@@ -1,8 +1,7 @@
-foo = include("foo/build.knit")
-
 return b{
     $ all:V: foo.txt
+    $ foo.txt:Kc[foo/build.knit]:
+        knit
     $ clean:VB:
         rm -f foo.txt
-    foo
 }
