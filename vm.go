@@ -617,7 +617,7 @@ func addLocals(L *lua.LState, locals *lua.LTable) *lua.LTable {
 	if ok {
 		for j := 0; ; j++ {
 			name, val := L.GetLocal(dbg, j)
-			if val == nil || val.Type() == lua.LTNil {
+			if name == "" {
 				break
 			}
 			locals.RawSetString(name, val)
