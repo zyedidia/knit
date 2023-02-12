@@ -168,8 +168,6 @@ func (e *Executor) runServer() {
 			continue
 		}
 
-		step := e.step.Add(1)
-
 		ruleName := strings.Join(n.rule.targets, " ")
 
 		// make parent directories for outputs
@@ -194,9 +192,13 @@ func (e *Executor) runServer() {
 			}
 		}
 
+		// Lock is to ensure steps are printed in order
+		e.lock.Lock()
+		step := e.step.Add(1)
+
 		failed := false
 		var execErr error
-		for _, cmd := range n.recipe {
+		for i, cmd := range n.recipe {
 			c, err := e.getCmd(cmd, n.dir)
 			if err != nil {
 				execErr = fmt.Errorf("'%s': error while evaluating '%s': %w", ruleName, cmd, err)
@@ -207,6 +209,9 @@ func (e *Executor) runServer() {
 			}
 			if !n.rule.attrs.Quiet {
 				e.printer.Print(c.recipe, c.dir, ruleName, int(step))
+			}
+			if i == 0 {
+				e.lock.Unlock()
 			}
 			if !e.opts.NoExec {
 				err := e.execCmd(c)
