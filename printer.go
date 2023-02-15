@@ -33,6 +33,7 @@ type StepPrinter struct {
 	w     io.Writer
 	lock  sync.Mutex
 	steps int
+	last  int
 }
 
 func (p *StepPrinter) SetSteps(steps int) {
@@ -46,11 +47,15 @@ func (p *StepPrinter) NeedsUpdate() bool { return false }
 func (p *StepPrinter) Print(cmd, dir string, name string, step int) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
+	if step <= p.last {
+		return
+	}
 	fmt.Fprintf(p.w, "[%d/%d] ", step, p.steps)
 	if dir != "." {
 		fmt.Fprintf(p.w, "[%s] ", dir)
 	}
 	fmt.Fprintln(p.w, name)
+	p.last = step
 }
 
 type ProgressPrinter struct {
