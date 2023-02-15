@@ -96,18 +96,16 @@ func (r *MetaRule) String() string {
 }
 
 type AttrSet struct {
-	Regex     bool   // regular expression meta-rule
-	Virtual   bool   // targets are not files
-	Quiet     bool   // is not displayed as part of the build process
-	NoMeta    bool   // cannot be matched by meta rules
-	NonStop   bool   // does not stop if the recipe fails
-	Rebuild   bool   // this rule is always out-of-date
-	Linked    bool   // only run this rule if a sub-rule that requires it needs to run
-	Implicit  bool   // not listed in $input
-	Dep       string // dependency file
-	Order     bool
-	Knitfile  string // knitfile for sub-build
-	KnitfileC bool   // change directory for sub-build, only valid if Knitfile != ""
+	Regex    bool   // regular expression meta-rule
+	Virtual  bool   // targets are not files
+	Quiet    bool   // is not displayed as part of the build process
+	NoMeta   bool   // cannot be matched by meta rules
+	NonStop  bool   // does not stop if the recipe fails
+	Rebuild  bool   // this rule is always out-of-date
+	Linked   bool   // only run this rule if a sub-rule that requires it needs to run
+	Implicit bool   // not listed in $input
+	Dep      string // dependency file
+	Order    bool
 }
 
 func (a *AttrSet) UpdateFrom(other AttrSet) {
@@ -217,34 +215,6 @@ func ParseAttribs(input string) (AttrSet, error) {
 			attrs.Order = true
 		case 'I':
 			attrs.Implicit = true
-		case 'K':
-			cd := false
-			c, _, _ = r.ReadRune()
-			if c == 'c' {
-				cd = true
-				c, _, _ = r.ReadRune()
-			}
-			if c != '[' {
-				return attrs, fmt.Errorf("attribute: no '[' after K attribute")
-			}
-			found := false
-			kfile := &bytes.Buffer{}
-			for r.Len() > 0 {
-				c, _, _ = r.ReadRune()
-				if c == ']' {
-					found = true
-					break
-				}
-				kfile.WriteRune(c)
-			}
-			if !found {
-				return attrs, fmt.Errorf("attribute: no ']' found after K")
-			}
-			attrs.Knitfile = kfile.String()
-			if attrs.Knitfile == "" {
-				return attrs, fmt.Errorf("attribute: cannot have empty knitfile for K")
-			}
-			attrs.KnitfileC = cd
 		case 'D':
 			if r.Len() == 0 {
 				return attrs, fmt.Errorf("attribute: no contents found after D")
