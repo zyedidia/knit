@@ -127,8 +127,6 @@ type CleanTool struct {
 	NoExec bool
 	Db     *Database
 	W      io.Writer
-
-	err error
 }
 
 // removes empty dirs and dirs containing only empty dirs
