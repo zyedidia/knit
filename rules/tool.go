@@ -135,6 +135,7 @@ type CleanTool struct {
 func (t *CleanTool) removeEmpty(dir string) error {
 	ents, err := os.ReadDir(dir)
 	if err != nil {
+		delete(t.Db.OutputDirs, dir)
 		return err
 	}
 
@@ -157,10 +158,10 @@ func (t *CleanTool) removeEmpty(dir string) error {
 	if len(ents) == 0 {
 		if !t.NoExec {
 			err := os.Remove(dir)
+			delete(t.Db.OutputDirs, dir)
 			if err != nil {
 				return err
 			}
-			delete(t.Db.OutputDirs, dir)
 		}
 		fmt.Fprintln(t.W, "remove", dir)
 		return nil
@@ -173,25 +174,25 @@ func (t *CleanTool) Run(g *Graph, args []string) error {
 	for o := range t.Db.Outputs {
 		if !t.NoExec {
 			err := os.RemoveAll(o)
+			delete(t.Db.Outputs, o)
 			if err != nil {
-				t.err = err
+				fmt.Fprintln(os.Stderr, err)
 				continue
 			}
-			delete(t.Db.Outputs, o)
 		}
 		fmt.Fprintln(t.W, "remove", o)
 	}
 	for o := range t.Db.OutputDirs {
 		err := t.removeEmpty(o)
 		if err != nil {
-			t.err = err
+			fmt.Fprintln(os.Stderr, err)
 			continue
 		}
 		if t.NoExec {
 			fmt.Fprintln(t.W, "remove if empty", o)
 		}
 	}
-	return t.err
+	return nil
 }
 
 func (t *CleanTool) String() string {
