@@ -268,6 +268,22 @@ func NewLuaVM(shell string) *LuaVM {
 		return val
 	}))
 
+	L.SetGlobal("choose", luar.New(L, func(vals ...lua.LValue) lua.LValue {
+		for _, v := range vals {
+			if v != nil && v.Type() != lua.LTNil {
+				return v
+			}
+		}
+		return lua.LNil
+	}))
+
+	L.SetGlobal("sel", luar.New(L, func(cond bool, a, b lua.LValue) lua.LValue {
+		if cond {
+			return a
+		}
+		return b
+	}))
+
 	L.SetGlobal("tobool", luar.New(L, func(b lua.LValue) lua.LValue {
 		// nil just passes through
 		if b == nil || b.Type() == lua.LTNil {

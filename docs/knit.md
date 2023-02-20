@@ -543,6 +543,11 @@ will contain the result, or the error value.
 * `use(pkg)`: imports all fields of `pkg` into the global namespace. Meant to
   be used with `require`: `use(require("knit"))`.
 
+* `sel(cond, a, b)`: if `cond` is true return `a`, otherwise return `b`.
+
+* `choose(a, b, c...)`: return the first value in the list of arguments that is
+  not nil.
+
 * `r{} + r{}`: you may use the `+` operator to combine rulesets together.
 
 * `b{} + val`: you may use the `+` operator to combine buildsets with
