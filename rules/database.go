@@ -72,6 +72,10 @@ func NewCacheDatabase(dir, wd string) *Database {
 	return NewDatabase(filepath.Join(dir, url.PathEscape(wd)))
 }
 
+func (db *Database) Reload() {
+	*db = *NewDatabase(db.location)
+}
+
 func (db *Database) Save() error {
 	if err := os.MkdirAll(db.location, os.ModePerm); err != nil {
 		return err

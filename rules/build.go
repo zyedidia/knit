@@ -272,6 +272,11 @@ func (e *Executor) getCmd(cmd string, dir string) (command, error) {
 }
 
 func (e *Executor) execCmd(c command) error {
+	// Save and reload DB when running a knit command from within knit
+	if len(c.args) >= 2 && strings.HasPrefix(c.args[1], "knit ") {
+		e.db.Save()
+		defer e.db.Reload()
+	}
 	cmd := exec.Command(c.name, c.args...)
 	cmd.Dir = c.dir
 	cmd.Stdin = os.Stdin
