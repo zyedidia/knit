@@ -55,7 +55,7 @@ type GraphTool struct {
 }
 
 func (t *GraphTool) dot(g *Graph, w io.Writer) {
-	fmt.Fprintln(w, "digraph take {")
+	fmt.Fprintln(w, "strict digraph take {")
 	fmt.Fprintln(w, "rankdir=\"LR\";")
 	t.dotNode(g.base, w, make(map[*node]bool))
 	fmt.Fprintln(w, "}")
