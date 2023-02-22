@@ -210,10 +210,10 @@ More often, rule expressions are gathered together in a Lua table:
 
 ```
 local rules = {
-$ foo.o: foo.c
-    gcc -c $input -o $output
-$ foo: foo.o
-    gcc $input -o $output
+    $ foo.o: foo.c
+        gcc -c $input -o $output
+    $ foo: foo.o
+        gcc $input -o $output
 }
 ```
 
@@ -244,10 +244,10 @@ list of build rules.
 
 ```
 local ruleset = r{
-$ foo.o: foo.c
-    gcc -c $input -o $output
-$ foo: foo.o
-    gcc $input -o $output
+    $ foo.o: foo.c
+        gcc -c $input -o $output
+    $ foo: foo.o
+        gcc $input -o $output
 }
 ```
 
@@ -255,7 +255,7 @@ Note that two rulesets may be combined with the `+` operator.
 
 ```
 ruleset = ruleset + r{
-$ build:V: foo
+    $ build:V: foo
 }
 ```
 
@@ -269,10 +269,10 @@ a table of rules, rulesets, or other buildsets.
 
 ```
 local buildset = b{
-$ foo.o: foo.c
-    gcc -c $input -o $output
-$ foo: foo.o
-    gcc $input -o $output
+    $ foo.o: foo.c
+        gcc -c $input -o $output
+    $ foo: foo.o
+        gcc $input -o $output
 }
 ```
 
@@ -282,10 +282,10 @@ build directory.
 
 ```
 local buildset = b({
-$ foo.o: foo.c
-    gcc -c $input -o $output
-$ foo: foo.o
-    gcc $input -o $output
+    $ foo.o: foo.c
+        gcc -c $input -o $output
+    $ foo: foo.o
+        gcc $input -o $output
 }, "directory")
 ```
 
@@ -306,19 +306,19 @@ For example:
 ```lua
 -- this buildset is relative to the "libfoo" directory
 local foorules = b({
-$ foo.o: foo.c
-    gcc -c $input -o $output
+    $ foo.o: foo.c
+        gcc -c $input -o $output
 }, "libfoo")
 
 return b{
-$ prog.o: prog.c
-    gcc -c $input -o $output
--- libfoo/foo.o is automatically resolved to correspond to the rule in foorules
-$ prog: prog.o libfoo/foo.o
-    gcc $input -o $output
+    $ prog.o: prog.c
+        gcc -c $input -o $output
+    -- libfoo/foo.o is automatically resolved to correspond to the rule in foorules
+    $ prog: prog.o libfoo/foo.o
+        gcc $input -o $output
 
--- include the foorules buildset
-foorules
+    -- include the foorules buildset
+    foorules
 }
 ```
 
@@ -340,8 +340,8 @@ structure:
 ```lua
 -- this buildset's directory will be the current working directory
 return b{
-$ foo.o: foo.c
-    gcc -c $input -o $output
+    $ foo.o: foo.c
+        gcc -c $input -o $output
 }
 ```
 
@@ -349,16 +349,16 @@ $ foo.o: foo.c
 
 ```lua
 return b{
-$ prog.o: prog.c
-    gcc -c $input -o $output
--- libfoo/foo.o is automatically resolved to correspond to the rule in foorules
-$ prog: prog.o libfoo/foo.o
-    gcc $input -o $output
+    $ prog.o: prog.c
+        gcc -c $input -o $output
+    -- libfoo/foo.o is automatically resolved to correspond to the rule in foorules
+    $ prog: prog.o libfoo/foo.o
+        gcc $input -o $output
 
--- include the libfoo rules: this will change directory into libfoo, execute
--- build.knit, and change back to the current directory, thus giving us a buildset
--- for the libfoo directory automatically
-include("libfoo/build.knit")
+    -- include the libfoo rules: this will change directory into libfoo, execute
+    -- build.knit, and change back to the current directory, thus giving us a buildset
+    -- for the libfoo directory automatically
+    include("libfoo/build.knit")
 }
 ```
 
