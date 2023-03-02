@@ -35,6 +35,9 @@ will be useful to you too. Everyone hates something about their build system so
 if you have feedback or a request, let me know! The project is new enough that
 your feedback may be seriously taken into account.
 
+I have written an article with more details about Knit
+[here](https://zyedidia.github.io/blog/posts/3-knit-better-make/).
+
 # Features
 
 * Knit uses Lua for customization. This makes it possible to write reusable
