@@ -7,5 +7,5 @@ return b{
         cc $input -o $output
     $ clean:VB:
         knit :all -t clean
-    foo, bar
+    foo
 }

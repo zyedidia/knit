@@ -1,0 +1,14 @@
+name = "Meta-rules with no recipe just add to prereqs"
+
+[flags]
+
+knitfile = "Knitfile"
+dryrun = true
+ncpu = 1
+
+[[builds]]
+
+args = ["a"]
+output = """\
+echo b c d
+"""

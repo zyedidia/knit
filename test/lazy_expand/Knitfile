@@ -1,0 +1,7 @@
+return b{
+    $ b:
+    $ c:
+    $ d:
+    $ a: b c d
+        echo $(input)
+}

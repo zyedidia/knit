@@ -156,9 +156,14 @@ Some special variables are available during recipe expansion:
 * `match`: the value captured with `%` in a meta rule.
 * `matches`: a list of matches captured by a regular expression meta rule.
 
-Lua expressions should not mix uses of special build variables and Lua
-global/local variables. This constraint may be relaxed in the future if it
-turns out to be a useful feature.
+When a rule is encountered, `$` expressions are immediately expanded. If
+expansion fails, expansion is re-tried when the rule is evaluated (once the
+inputs/outputs are known).
+
+Lua expressions should not mix uses of special build variables and Lua local
+variables. Local variables are only available during immediate expansion, and
+special build variables are only available during lazy expansion. This
+constraint may be relaxed in the future if it turns out to be a useful feature.
 
 ### Out-of-date calculation
 
@@ -234,6 +239,15 @@ sub-files just works.
 Likewise, if you run `knit all` from the `foo` directory, and the `all` rule
 is only defined for the root directory, Knit will automatically use that rule
 instead of trying to use `foo/all`.
+
+### Deviations from Lua 5.1
+
+There are some differences between Knit Lua and Lua 5.1:
+
+* Knit supports `$` for creating rules.
+* Knit supports `:=` for creating raw strings.
+* Knit will give an error message when attempting to access an undeclared
+  variable, whereas Lua 5.1 will just return nil for the value.
 
 ## Rulesets
 
