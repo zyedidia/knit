@@ -128,6 +128,15 @@ Some attributes can only be applied in this way:
 
 * `I` (implicit): this prereq does not appear in `$input`.
 
+The `[...][attributes]` syntax can be used to apply attributes to groups of
+prerequisites. For example, in the following rule all three prerequisites are
+implicit.
+
+```
+foo: [a b c][I]
+    ...
+```
+
 ### Recipes
 
 A recipe is a list of commands to execute, each separated by a newline. They
@@ -592,6 +601,10 @@ The `knit` package can be imported with `require("knit")`, and provides the foll
 * `trim(s)`: trim leading and trailing whitespace from a string.
 
 * `abs(path)`: return the absolute path of a path.
+
+* `dir(path)`: return the directory part of a path.
+
+* `base(path)`: return the basename of a path.
 
 * `os`: a string containing the operating system name.
 

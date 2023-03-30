@@ -99,7 +99,7 @@ func (bs *LBuildSet) String() string {
 
 // NewLuaVM constructs a new VM, and adds all the default built-ins.
 func NewLuaVM(shell string) *LuaVM {
-	// TODO: make this only enabled in debug mode
+	// TODO: make this only enabled in debug mode (the stack trace)
 	L := lua.NewState(lua.Options{SkipOpenLibs: true, IncludeGoStackTrace: true})
 	vm := &LuaVM{
 		L:     L,
@@ -528,6 +528,12 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 			return nil
 		}
 		return GoStrSliceToTable(vm.L, files)
+	}))
+	vm.L.SetField(pkg, "dir", luar.New(vm.L, func(path string) string {
+		return filepath.Dir(path)
+	}))
+	vm.L.SetField(pkg, "base", luar.New(vm.L, func(path string) string {
+		return filepath.Base(path)
 	}))
 	vm.L.SetField(pkg, "abs", luar.New(vm.L, func(path string) string {
 		p, err := filepath.Abs(path)

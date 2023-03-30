@@ -142,8 +142,7 @@ func (e *ErrMessage) Error() string {
 // the buildsets and a list of the directories in order of priority. If the
 // Knitfile requested to return an error (with a string), or quietly (with
 // nil), returns an appropriate error.
-func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
-	dirs := []string{"."}
+func getBuildSets(lval lua.LValue) (map[string]*LBuildSet, error) {
 	bsets := map[string]*LBuildSet{
 		".": {
 			Dir:  ".",
@@ -157,7 +156,6 @@ func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
 			b.rset = append(b.rset, bs.rset...)
 		} else {
 			bsets[bs.Dir] = &bs
-			dirs = append(dirs, bs.Dir)
 		}
 
 		// TODO: can there be a buildset cycle?
@@ -168,20 +166,20 @@ func getBuildSets(lval lua.LValue) ([]string, map[string]*LBuildSet, error) {
 
 	switch v := lval.(type) {
 	case lua.LString:
-		return nil, nil, &ErrMessage{msg: string(v)}
+		return nil, &ErrMessage{msg: string(v)}
 	case *lua.LNilType:
-		return nil, nil, ErrQuiet
+		return nil, ErrQuiet
 	case *lua.LUserData:
 		switch u := v.Value.(type) {
 		case LBuildSet:
 			addBuildSet(u)
 		default:
-			return nil, nil, fmt.Errorf("invalid return value: %v", lval)
+			return nil, fmt.Errorf("invalid return value: %v", lval)
 		}
 	default:
-		return nil, nil, fmt.Errorf("invalid return value: %v", lval)
+		return nil, fmt.Errorf("invalid return value: %v", lval)
 	}
-	return dirs, bsets, nil
+	return bsets, nil
 }
 
 // Run searches for a Knitfile and executes it, according to args (a list of
@@ -236,34 +234,36 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		return knitpath, err
 	}
 
-	dirs, bsets, err := getBuildSets(lval)
+	bsets, err := getBuildSets(lval)
 	if err != nil {
 		return knitpath, err
 	}
 
-	rulesets := make(map[string]*rules.RuleSet)
+	var rulesets []*rules.RuleSet
+	var main *rules.RuleSet
 
 	for k, v := range bsets {
-		rs := rules.NewRuleSet()
+		rs := rules.NewRuleSet(k)
 		for _, lr := range v.rset {
 			err := rules.ParseInto(lr.Contents, rs, lr.File, lr.Line)
 			if err != nil {
 				return knitpath, err
 			}
 		}
-		rulesets[k] = rs
-	}
-
-	rs := rulesets["."]
-
-	var alltargets []string
-
-	for rdir, rset := range rulesets {
-		targets := rset.AllTargets()
-		for _, t := range targets {
-			alltargets = append(alltargets, pathJoin(rdir, t))
+		if k == "." {
+			main = rs
+		} else {
+			rulesets = append(rulesets, rs)
 		}
 	}
+
+	if main == nil {
+		return knitpath, fmt.Errorf("no buildset for the root directory found")
+	}
+
+	rs := rules.MergeRuleSets(main, rulesets)
+
+	alltargets := rs.AllTargets()
 
 	if len(targets) == 0 {
 		targets = []string{rs.MainTarget()}
@@ -279,19 +279,19 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		rootTargets[i] = filepath.Base(t)
 	}
 
-	rs.Add(rules.NewDirectRule([]string{":build"}, targets, nil, rules.AttrSet{
+	rs.Add(rules.NewDirectRuleBase([]string{":build"}, targets, nil, rules.AttrSet{
 		Virtual: true,
 		NoMeta:  true,
 		Rebuild: true,
 	}))
 
-	rs.Add(rules.NewDirectRule([]string{":build-root"}, rootTargets, nil, rules.AttrSet{
+	rs.Add(rules.NewDirectRuleBase([]string{":build-root"}, rootTargets, nil, rules.AttrSet{
 		Virtual: true,
 		NoMeta:  true,
 		Rebuild: true,
 	}))
 
-	rs.Add(rules.NewDirectRule([]string{":all"}, alltargets, nil, rules.AttrSet{
+	rs.Add(rules.NewDirectRuleBase([]string{":all"}, alltargets, nil, rules.AttrSet{
 		Virtual: true,
 		NoMeta:  true,
 		Rebuild: true,
@@ -302,9 +302,9 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		updated[u] = true
 	}
 
-	graph, err := rules.NewGraph(rulesets, dirs, ":build", updated)
+	graph, err := rules.NewGraph(rs, ":build", updated)
 	if err != nil {
-		g, rerr := rules.NewGraph(rulesets, dirs, ":build-root", updated)
+		g, rerr := rules.NewGraph(rs, ":build-root", updated)
 		if rerr != nil {
 			return knitpath, err
 		}

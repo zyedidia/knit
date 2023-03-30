@@ -12,12 +12,24 @@ type Rule interface {
 }
 
 type baseRule struct {
-	prereqs []string
+	prereqs []prereq
 	attrs   AttrSet
 	recipe  []string
+	dir     string
 }
 
 func (b baseRule) isRule() {}
+
+func (b *baseRule) prereqsString() string {
+	buf := &bytes.Buffer{}
+	for i, p := range b.prereqs {
+		buf.WriteString(p.name)
+		if i != len(b.prereqs)-1 {
+			buf.WriteByte(' ')
+		}
+	}
+	return buf.String()
+}
 
 // A DirectRule specifies how to build a fully specified list of targets from a
 // list of prereqs.
@@ -26,7 +38,7 @@ type DirectRule struct {
 	targets []string
 }
 
-func NewDirectRule(targets, prereqs, recipe []string, attrs AttrSet) DirectRule {
+func NewDirectRule(targets []string, prereqs []prereq, recipe []string, attrs AttrSet) DirectRule {
 	return DirectRule{
 		baseRule: baseRule{
 			recipe:  recipe,
@@ -37,7 +49,15 @@ func NewDirectRule(targets, prereqs, recipe []string, attrs AttrSet) DirectRule 
 	}
 }
 
-func equal(a, b []string) bool {
+func NewDirectRuleBase(targets []string, prereqs []string, recipe []string, attrs AttrSet) DirectRule {
+	p := make([]prereq, 0, len(prereqs))
+	for _, s := range prereqs {
+		p = append(p, prereq{name: s})
+	}
+	return NewDirectRule(targets, p, recipe, attrs)
+}
+
+func equal[T comparable](a, b []T) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -56,7 +76,7 @@ func (r *DirectRule) Equals(other *DirectRule) bool {
 }
 
 func (r *DirectRule) String() string {
-	return fmt.Sprintf("%s: %s", strings.Join(r.targets, " "), strings.Join(r.prereqs, " "))
+	return fmt.Sprintf("%s: %s", strings.Join(r.targets, " "), r.prereqsString())
 }
 
 // A MetaRule specifies the targets to build based on a pattern.
@@ -65,7 +85,7 @@ type MetaRule struct {
 	targets []Pattern
 }
 
-func NewMetaRule(targets []Pattern, prereqs, recipe []string, attrs AttrSet) MetaRule {
+func NewMetaRule(targets []Pattern, prereqs []prereq, recipe []string, attrs AttrSet) MetaRule {
 	return MetaRule{
 		baseRule: baseRule{
 			recipe:  recipe,
@@ -92,7 +112,7 @@ func (r *MetaRule) String() string {
 	for i, p := range r.targets {
 		targets[i] = p.Regex.String()
 	}
-	return fmt.Sprintf("%s: %s", strings.Join(targets, " "), strings.Join(r.prereqs, " "))
+	return fmt.Sprintf("%s: %s", strings.Join(targets, " "), r.prereqsString())
 }
 
 type AttrSet struct {
@@ -117,6 +137,7 @@ func (a *AttrSet) UpdateFrom(other AttrSet) {
 	a.Rebuild = a.Rebuild || other.Rebuild
 	a.Linked = a.Linked || other.Linked
 	a.Order = a.Order || other.Order
+	a.Implicit = a.Implicit || other.Implicit
 }
 
 type Pattern struct {
@@ -125,6 +146,7 @@ type Pattern struct {
 }
 
 type RuleSet struct {
+	dir         string
 	metaRules   []MetaRule
 	directRules []DirectRule
 	// maps target names into directRules
@@ -138,20 +160,17 @@ type prereq struct {
 	attrs AttrSet
 }
 
-func parsePrereq(input string) (p prereq, err error) {
-	before, after, found := strings.Cut(input, "[")
-	p.name = before
-	if found && strings.HasSuffix(after, "]") {
-		p.attrs, err = ParseAttribs(after[:len(after)-1])
-	}
-	return
+func (p *prereq) addAttrs(attrs AttrSet) {
+	p.attrs.UpdateFrom(attrs)
+	p.attrs.Dep = attrs.Dep
 }
 
-func NewRuleSet() *RuleSet {
+func NewRuleSet(dir string) *RuleSet {
 	return &RuleSet{
 		metaRules:   make([]MetaRule, 0),
 		directRules: make([]DirectRule, 0),
 		targets:     make(map[string][]int),
+		dir:         dir,
 	}
 }
 
@@ -161,6 +180,7 @@ func (rs *RuleSet) Add(r Rule) {
 		rs.directRules = append(rs.directRules, r)
 		k := len(rs.directRules) - 1
 		for _, t := range r.targets {
+			t = pathJoin(r.dir, t)
 			rs.targets[t] = append(rs.targets[t], k)
 		}
 	case MetaRule:
@@ -244,4 +264,25 @@ func ParseAttribs(input string) (AttrSet, error) {
 	}
 
 	return attrs, nil
+}
+
+func MergeRuleSets(first *RuleSet, rsets []*RuleSet) *RuleSet {
+	rs := NewRuleSet(".")
+
+	add := func(r *RuleSet) {
+		for _, mr := range r.metaRules {
+			rs.Add(mr)
+		}
+		for _, dr := range r.directRules {
+			rs.Add(dr)
+		}
+	}
+
+	add(first)
+
+	for _, r := range rsets {
+		add(r)
+	}
+
+	return rs
 }

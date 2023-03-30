@@ -125,10 +125,6 @@ func (p *ProgressPrinter) desc() string {
 	desc := "Building"
 	for k := range p.tasks {
 		desc += " " + fmt.Sprintf("%-40s", filepath.Base(k))
-		// before, _, found := strings.Cut(cmd, " ")
-		// if found {
-		// 	desc += " [" + before + "]"
-		// }
 		break
 	}
 	return desc

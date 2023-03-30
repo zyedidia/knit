@@ -13,7 +13,7 @@ type tokenType int
 const eof rune = '\000'
 
 // Rune's that cannot be part of a bare (unquoted) string.
-const nonBareRunes = " \t\n\r\\:#'\"$"
+const nonBareRunes = " \t\n\r\\:#'\"$[]"
 
 // Return true if the string contains no whitespace.
 func onlyWhitespace(s string) bool {
@@ -29,10 +29,13 @@ const (
 	tokenError tokenType = iota
 	tokenNewline
 	tokenWord
+	tokenTarget
 	tokenColon
 	tokenRecipe
 	tokenEnd
 	tokenGt
+	tokenLSquare
+	tokenRSquare
 	tokenTmp
 )
 
@@ -52,6 +55,10 @@ func (typ tokenType) String() string {
 		return "[End]"
 	case tokenGt:
 		return "[Gt]"
+	case tokenLSquare:
+		return "[LSquare]"
+	case tokenRSquare:
+		return "[RSquare]"
 	}
 	return "[InvalidToken]"
 }
@@ -258,6 +265,7 @@ func (l *lexer) nextToken() token {
 }
 
 func lexTopLevel(l *lexer) lexerStateFun {
+	l.emittmp(tokenWord)
 	for {
 		l.skipRun(" \t\r")
 		// emit a newline token if we are ending a non-empty line.
@@ -298,6 +306,14 @@ func lexTopLevel(l *lexer) lexerStateFun {
 		return lexSingleQuotedWord
 	case '`':
 		return lexBackQuotedWord
+	case '[':
+		l.next()
+		l.emit(tokenLSquare)
+		return lexTopLevel
+	case ']':
+		l.next()
+		l.emit(tokenRSquare)
+		return lexTopLevel
 	}
 
 	return lexBareWord

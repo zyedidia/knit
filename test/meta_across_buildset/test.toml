@@ -9,7 +9,7 @@ dryrun = true
 [[builds]]
 
 args = ["foo/bar/foo.o"]
-output = "echo \"bar\" > foo/bar/foo.o"
+output = "[foo] echo \"foo\" > bar/foo.o"
 
 [[builds]]
 

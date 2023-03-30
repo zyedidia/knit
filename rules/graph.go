@@ -13,23 +13,15 @@ import (
 	"github.com/zyedidia/knit/expand"
 )
 
-// number of times a meta-rule can be used in one dependency chain.
+// Number of times a meta-rule can be used in one dependency chain.
 const maxVisits = 5
-
-func sub(dir string) string {
-	if dir == "." || dir == "" {
-		return ""
-	}
-	return fmt.Sprintf("%s: ", dir)
-}
 
 type Graph struct {
 	base      *node
 	nodes     map[string]*node // map of targets to nodes
 	fullNodes map[string]*node // map of all targets, including incidental ones, to nodes
 
-	rsets map[string]*RuleSet
-	dirs  []string
+	rules *RuleSet
 
 	// timestamp cache
 	tscache map[string]time.Time
@@ -123,9 +115,9 @@ type file struct {
 	updated bool
 }
 
-func newFile(dir string, target string, updated map[string]bool, tscache map[string]time.Time) *file {
+func newFile(target string, updated map[string]bool, tscache map[string]time.Time) *file {
 	f := &file{
-		name: pathJoin(dir, target),
+		name: target,
 	}
 	f.updated = updated[f.name]
 	f.updateTimestamp(tscache)
@@ -134,12 +126,9 @@ func newFile(dir string, target string, updated map[string]bool, tscache map[str
 
 func pathJoin(dir, target string) string {
 	if filepath.IsAbs(target) {
-		return target
+		return filepath.Clean(target)
 	}
 	p := filepath.Join(dir, target)
-	if strings.HasSuffix(target, "/") {
-		p += "/"
-	}
 	return p
 }
 
@@ -185,13 +174,12 @@ func (f *file) updateTimestamp(timestamps map[string]time.Time) {
 }
 
 // Creates a new node that builds 'target'.
-func (g *Graph) newNode(target string, dir string, updated map[string]bool) *node {
+func (g *Graph) newNode(target string, updated map[string]bool) *node {
 	n := &node{
 		info: &info{
 			outputs: map[string]*file{
-				target: newFile(dir, target, updated, g.tscache),
+				target: newFile(target, updated, g.tscache),
 			},
-			dir:      dir,
 			cond:     sync.NewCond(&sync.Mutex{}),
 			optional: make(map[int]bool),
 		},
@@ -203,19 +191,15 @@ func (g *Graph) Size() int {
 	return len(g.nodes)
 }
 
-func NewGraph(rs map[string]*RuleSet, dirs []string, target string, updated map[string]bool) (g *Graph, err error) {
+func NewGraph(rs *RuleSet, target string, updated map[string]bool) (g *Graph, err error) {
 	g = &Graph{
 		nodes:     make(map[string]*node),
 		fullNodes: make(map[string]*node),
-		rsets:     rs,
-		dirs:      dirs,
+		rules:     rs,
 		tscache:   make(map[string]time.Time),
 	}
-	visits := make(map[string][]int)
-	for d, r := range rs {
-		visits[d] = make([]int, len(r.metaRules))
-	}
-	g.base, err = g.resolveTargetAcross(target, visits, updated)
+	visits := make([]int, len(rs.metaRules))
+	g.base, err = g.resolveTarget(prereq{name: target}, visits, updated)
 	if err != nil {
 		return g, err
 	}
@@ -224,81 +208,266 @@ func NewGraph(rs map[string]*RuleSet, dirs []string, target string, updated map[
 
 func rel(basepath, targpath string) (string, error) {
 	if filepath.IsAbs(targpath) {
-		p, err := filepath.Abs(basepath)
-		if err != nil {
-			return "", err
-		}
-		basepath = p
+		return filepath.Abs(basepath)
 	}
-	ps := string(os.PathSeparator)
-	slash := strings.HasSuffix(targpath, ps)
-	rel, err := filepath.Rel(basepath, targpath)
+	return filepath.Rel(basepath, targpath)
+}
+
+func (g *Graph) resolveTarget(target prereq, visits []int, updated map[string]bool) (*node, error) {
+	fulltarget := target.name
+
+	// do we have a node that builds target already
+	// if the node has an empty recipe, we don't use it because it could be a
+	// candidate so we should check if we can build it in a better way
+	if n, ok := g.nodes[fulltarget]; ok && len(n.rule.recipe) != 0 {
+		// make sure the node knows that it now builds target too
+		reltarget, err := rel(n.dir, fulltarget)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := n.outputs[reltarget]; !ok && !n.rule.attrs.Virtual {
+			n.outputs[reltarget] = newFile(fulltarget, updated, g.tscache)
+		}
+		return n, nil
+	}
+
+	var rule DirectRule
+	var expprereqs []string
+	// do we have a direct rule available?
+	ris, ok := g.rules.targets[fulltarget]
+	if ok && len(ris) > 0 {
+		var prereqs []prereq
+		// Go through all the rules and accumulate all the prereqs. If multiple
+		// rules have targets then we have some ambiguity, but we select the
+		// last one.
+		for _, ri := range ris {
+			r := &g.rules.directRules[ri]
+			if len(r.recipe) != 0 {
+				// recipe exists -- overwrite prereqs
+				prereqs = r.prereqs
+				expprereqs = prereqsStr(r.prereqs, true)
+			} else {
+				// recipe is empty -- only add the prereqs
+				prereqs = append(prereqs, r.prereqs...)
+			}
+			// copy over the attrs/targets/recipe into 'rule' if the currently
+			// matched rule has a recipe (it is a full rule), or the
+			// accumulated rule is empty.
+			if len(r.recipe) != 0 || len(rule.recipe) == 0 {
+				rule = *r
+			}
+		}
+		rule.prereqs = prereqs
+	} else if ok {
+		// should not happen
+		return nil, fmt.Errorf("internal error: target %s exists but has no rules", target.name)
+	}
+	var ri = -1
+
+	n := g.newNode(fulltarget, updated)
+
+	// if we did not find a recipe from the direct rules and this target can
+	// use meta-rules, then search all meta-rules for a match
+	if len(rule.recipe) == 0 && !rule.attrs.NoMeta {
+		// search backwards so that we get the last rule to match first, and
+		// then can skip subsequent full rules (with recipes), and add
+		// subsequent prereq rules (rules without recipes).
+		var curtarg string
+		best := rule
+		for mi := len(g.rules.metaRules) - 1; mi >= 0; mi-- {
+			mr := g.rules.metaRules[mi]
+			reltarget, err := rel(mr.dir, fulltarget)
+			if err != nil {
+				return nil, err
+			}
+			// TODO: match based on a priority mechanism (take most direct and most specific meta-rule)
+			if sub, pat := mr.Match(reltarget); sub != nil {
+				// a meta-rule can only be used maxVisits times (in one dependency path)
+				// TODO: consider moving this back above the if statement so that we skip
+				// the performance cost of matching if maxVisits is exceeded. In order to
+				// do that, we would also need to detect whether logging is enabled, since
+				// we only want to print a warning when the rule is a match.
+				if visits[mi] >= maxVisits {
+					log.Printf("could not use metarule '%s': exceeded max visits\n", mr.String())
+					continue
+				}
+				// if this rule has a recipe and we already have a recipe, skip it
+				if curtarg != "" && len(curtarg) <= len(reltarget) && len(mr.recipe) > 0 && len(best.recipe) > 0 {
+					continue
+				}
+
+				var metarule DirectRule
+				metarule.attrs = mr.attrs
+				metarule.recipe = mr.recipe
+				metarule.dir = mr.dir
+
+				// there should be exactly 1 submatch (2 indices for full
+				// match, 2 for the submatch) for a % match.
+				if pat.Suffix && len(sub) == 4 {
+					// %-metarule -- the match is the submatch and all %s in the
+					// prereqs get expanded to the submatch
+					n.match = string(reltarget[sub[2]:sub[3]])
+					for _, p := range mr.prereqs {
+						p.name = strings.ReplaceAll(p.name, "%", n.match)
+						metarule.prereqs = append(metarule.prereqs, p)
+					}
+					metarule.attrs.Dep = strings.ReplaceAll(metarule.attrs.Dep, "%", n.match)
+				} else {
+					// regex match, accumulate all the matches and expand them in the prereqs
+					for i := 0; i < len(sub); i += 2 {
+						n.matches = append(n.matches, string(reltarget[sub[i]:sub[i+1]]))
+					}
+					for _, p := range mr.prereqs {
+						expanded := pat.Regex.ExpandString([]byte{}, p.name, reltarget, sub)
+						metarule.prereqs = append(metarule.prereqs, prereq{name: string(expanded), attrs: p.attrs})
+					}
+					expanded := pat.Regex.ExpandString([]byte{}, rule.attrs.Dep, reltarget, sub)
+					metarule.attrs.Dep = string(expanded)
+				}
+
+				// Only use this rule if its prereqs can also be resolved.
+				failed := false
+				visits[mi]++
+				// Is there significant performance impact from this?
+				for _, p := range metarule.prereqs {
+					_, err := g.resolveTarget(prereq{attrs: p.attrs, name: pathJoin(metarule.dir, p.name)}, visits, updated)
+					if err != nil {
+						log.Printf("could not use metarule '%s': %s\n", mr.String(), err)
+						failed = true
+						break
+					}
+				}
+				visits[mi]--
+
+				if failed {
+					continue
+				}
+
+				// success -- add the prereqs
+				best.dir = metarule.dir
+				expprereqs = prereqsStr(metarule.prereqs, true)
+				// overwrite the recipe/attrs/targets if the matched rule has a
+				// recipe, or we don't yet have a recipe
+				if len(mr.recipe) > 0 || len(best.recipe) == 0 {
+					best.prereqs = append(rule.prereqs, metarule.prereqs...)
+					best.attrs = metarule.attrs
+					best.recipe = metarule.recipe
+					best.targets = []string{reltarget}
+				} else {
+					best.prereqs = append(best.prereqs, metarule.prereqs...)
+				}
+				curtarg = reltarget
+
+				n.meta = true
+				ri = mi // for visit tracking
+			}
+		}
+		rule = best
+	}
+
+	n.dir = rule.dir
+
+	rule.attrs.UpdateFrom(target.attrs)
+
+	if rule.attrs.Dep != "" {
+		dep := pathJoin(rule.dir, rule.attrs.Dep)
+		rule.prereqs = loadDeps(n.dir, rule.prereqs, dep, fulltarget, n.optional)
+		n.outputs[dep] = newFile(pathJoin(n.dir, rule.attrs.Dep), updated, g.tscache)
+	}
+
+	if rule.attrs.Virtual {
+		n.outputs = nil
+	}
+
+	if len(rule.targets) == 0 && !rule.attrs.Virtual {
+		for o, f := range n.outputs {
+			if !f.exists {
+				return nil, fmt.Errorf("no rule to knit target '%s'", o)
+			}
+		}
+		// If this rule had no targets, the target is the requested one. For
+		// example, maybe we didn't find a rule, and the requested target was
+		// foo.c. If foo.c exists, then this is an empty rule to "build" it.
+		rule.targets = []string{fulltarget}
+	}
+
+	n.myPrereqs = prereqsStr(rule.prereqs, false)
+	n.myExpPrereqs = expprereqs
+
+	// if the rule we found is equivalent to an existing rule that also builds
+	// this target, then use that
+	if gn, ok := g.fullNodes[fulltarget]; ok && gn.rule.Equals(&rule) {
+		// make sure the node knows that it builds target too
+		reltarget, err := rel(gn.dir, fulltarget)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := n.outputs[reltarget]; !ok && !rule.attrs.Virtual {
+			n.outputs[reltarget] = newFile(fulltarget, updated, g.tscache)
+		}
+		n.info = gn.info
+		n.myTarget = reltarget
+		if !rule.attrs.Virtual {
+			n.myOutput = newFile(fulltarget, updated, g.tscache)
+		}
+		g.nodes[fulltarget] = n
+		return n, nil
+	}
+
+	n.rule = &rule
+
+	reltarget, err := rel(n.dir, fulltarget)
 	if err != nil {
-		return rel, err
+		return nil, err
 	}
-	if slash {
-		rel += ps
+
+	for _, t := range n.rule.targets {
+		if !n.rule.attrs.Virtual {
+			n.outputs[t] = newFile(pathJoin(n.dir, t), updated, g.tscache)
+		}
+		g.fullNodes[pathJoin(n.dir, t)] = n
 	}
-	return rel, err
-}
 
-// Resolves 'target' by looking across all rulesets.
-func (g *Graph) resolveTargetAcross(target string, visits map[string][]int, updated map[string]bool) (*node, error) {
-	dir := filepath.Dir(target)
+	n.myTarget = reltarget
+	if !n.rule.attrs.Virtual {
+		n.myOutput = newFile(fulltarget, updated, g.tscache)
+	}
 
-	var candidate *node
+	// associate this node with only the requested target
+	g.nodes[fulltarget] = n
 
-	var rerr error
-	if rs, ok := g.rsets[dir]; ok {
-		rel, err := rel(dir, target)
+	if ri != -1 {
+		visits[ri]++
+	}
+	for i, p := range n.rule.prereqs {
+		pn, err := g.resolveTarget(prereq{attrs: p.attrs, name: pathJoin(n.dir, p.name)}, visits, updated)
 		if err != nil {
+			if n.optional[i] {
+				continue
+			}
+			// there was an error with a prereq, so this node is invalid and we
+			// must remove it from the maps
+			delete(g.nodes, fulltarget)
+			for _, t := range n.rule.targets {
+				delete(g.fullNodes, pathJoin(n.dir, t))
+			}
 			return nil, err
 		}
-		n, err := g.resolveTargetForRuleSet(rs, dir, rel, visits, updated)
-		if err == nil {
-			if len(n.rule.recipe) != 0 {
-				return n, nil
-			}
-			candidate = n
-		}
-		rerr = err
+		n.prereqs = append(n.prereqs, pn)
 	}
 
-	for _, d := range g.dirs {
-		if d == dir {
-			continue
-		}
-		rel, err := rel(d, target)
-		if err != nil {
-			return nil, err
-		}
-		n, err := g.resolveTargetForRuleSet(g.rsets[d], d, rel, visits, updated)
-		if err == nil {
-			if len(n.rule.recipe) != 0 {
-				return n, nil
-			}
-			if candidate == nil {
-				candidate = n
-			}
-		}
-		if rerr == nil {
-			rerr = err
-		}
+	if ri != -1 {
+		visits[ri]--
 	}
-
-	if candidate != nil {
-		return candidate, nil
-	}
-
-	return nil, rerr
+	return n, nil
 }
 
-func loadDeps(prereqs []string, depfile string, target string, opt map[int]bool) []string {
+func loadDeps(dir string, prereqs []prereq, depfile string, target string, opt map[int]bool) []prereq {
 	dep, err := os.ReadFile(depfile)
 	if err != nil {
 		return prereqs
 	}
-	rs := NewRuleSet()
+	rs := NewRuleSet(dir)
 	err = ParseInto(string(dep), rs, depfile, 1)
 	if err != nil {
 		return prereqs
@@ -322,251 +491,15 @@ func loadDeps(prereqs []string, depfile string, target string, opt map[int]bool)
 	return prereqs
 }
 
-func (g *Graph) resolveTargetForRuleSet(rs *RuleSet, dir string, target string, visits map[string][]int, updated map[string]bool) (*node, error) {
-	parsedTarget, err := parsePrereq(target)
-	if err != nil {
-		return nil, err
-	}
-	target = parsedTarget.name
-
-	fulltarget := pathJoin(dir, target)
-	// do we have a node that builds target already
-	// if the node has an empty recipe, we don't use it because it could be a
-	// candidate so we should check if we can build it in a better way
-	if n, ok := g.nodes[fulltarget]; ok && len(n.rule.recipe) != 0 && n.dir == dir {
-		// make sure the node knows that it now builds target too
-		if _, ok := n.outputs[target]; !ok && !n.rule.attrs.Virtual {
-			n.outputs[target] = newFile(dir, target, updated, g.tscache)
-		}
-		return n, nil
-	}
-	n := g.newNode(target, dir, updated)
-	var rule DirectRule
-	var expprereqs []string
-	// do we have a direct rule available?
-	ris, ok := rs.targets[target]
-	if ok && len(ris) > 0 {
-		var prereqs []string
-		// Go through all the rules and accumulate all the prereqs. If multiple
-		// rules have targets then we have some ambiguity, but we select the
-		// last one.
-		for _, ri := range ris {
-			r := &rs.directRules[ri]
-			if len(r.recipe) != 0 {
-				// recipe exists -- overwrite prereqs
-				prereqs = r.prereqs
-				expprereqs = explicits(r.prereqs)
-			} else {
-				// recipe is empty -- only add the prereqs
-				prereqs = append(prereqs, r.prereqs...)
-			}
-			// copy over the attrs/targets/recipe into 'rule' if the currently
-			// matched rule has a recipe (it is a full rule), or the
-			// accumulated rule is empty.
-			if len(r.recipe) != 0 || len(rule.recipe) == 0 {
-				rule = *r
-			}
-		}
-		rule.prereqs = prereqs
-	} else if ok {
-		// should not happen
-		return nil, fmt.Errorf("internal error: target %s exists but has no rules", target)
-	}
-	var ri = -1
-
-	// if we did not find a recipe from the direct rules and this target can
-	// use meta-rules, then search all meta-rules for a match
-	if len(rule.recipe) == 0 && !rule.attrs.NoMeta {
-		// search backwards so that we get the last rule to match first, and
-		// then can skip subsequent full rules, and add subsequent prereq
-		// rules.
-		for mi := len(rs.metaRules) - 1; mi >= 0; mi-- {
-			mr := rs.metaRules[mi]
-			if sub, pat := mr.Match(target); sub != nil {
-				// a meta-rule can only be used maxVisits times (in one dependency path)
-				// TODO: consider moving this back above the if statement so that we skip
-				// the performance cost of matching if maxVisits is exceeded. In order to
-				// do that, we would also need to detect whether logging is enabled, since
-				// we only want to print a warning when the rule is a match.
-				if visits[dir][mi] >= maxVisits {
-					log.Printf("could not use metarule '%s': exceeded max visits\n", mr.String())
-					continue
-				}
-				// if this rule has a recipe and we already have a recipe, skip it
-				if len(mr.recipe) > 0 && len(rule.recipe) > 0 {
-					continue
-				}
-
-				var metarule DirectRule
-				metarule.attrs = mr.attrs
-				metarule.recipe = mr.recipe
-
-				// there should be exactly 1 submatch (2 indices for full
-				// match, 2 for the submatch) for a % match.
-				if pat.Suffix && len(sub) == 4 {
-					// %-metarule -- the match is the submatch and all %s in the
-					// prereqs get expanded to the submatch
-					n.match = string(target[sub[2]:sub[3]])
-					for _, p := range mr.prereqs {
-						p = strings.ReplaceAll(p, "%", n.match)
-						metarule.prereqs = append(metarule.prereqs, p)
-					}
-					metarule.attrs.Dep = strings.ReplaceAll(metarule.attrs.Dep, "%", n.match)
-				} else {
-					// regex match, accumulate all the matches and expand them in the prereqs
-					for i := 0; i < len(sub); i += 2 {
-						n.matches = append(n.matches, string(target[sub[i]:sub[i+1]]))
-					}
-					for _, p := range mr.prereqs {
-						expanded := pat.Regex.ExpandString([]byte{}, p, target, sub)
-						metarule.prereqs = append(metarule.prereqs, string(expanded))
-					}
-					expanded := pat.Regex.ExpandString([]byte{}, rule.attrs.Dep, target, sub)
-					metarule.attrs.Dep = string(expanded)
-				}
-
-				// Only use this rule if its prereqs can also be resolved.
-				failed := false
-				visits[dir][mi]++
-				// Is there significant performance impact from this?
-				for _, p := range metarule.prereqs {
-					_, err := g.resolveTargetAcross(pathJoin(dir, p), visits, updated)
-					if err != nil {
-						log.Printf("could not use metarule '%s': %s\n", mr.String(), err)
-						failed = true
-						break
-					}
-				}
-				visits[dir][mi]--
-
-				if failed {
-					continue
-				}
-
-				// success -- add the prereqs
-				rule.prereqs = append(rule.prereqs, metarule.prereqs...)
-				expprereqs = explicits(metarule.prereqs)
-				// overwrite the recipe/attrs/targets if the matched rule has a
-				// recipe, or we don't yet have a recipe
-				if len(mr.recipe) > 0 || len(rule.recipe) == 0 {
-					rule.attrs = metarule.attrs
-					rule.recipe = metarule.recipe
-					rule.targets = []string{target}
-				}
-
-				n.meta = true
-				ri = mi // for visit tracking
-			}
-		}
-	}
-
-	rule.attrs.UpdateFrom(parsedTarget.attrs)
-
-	if rule.attrs.Dep != "" {
-		dep := filepath.Join(dir, rule.attrs.Dep)
-		rule.prereqs = loadDeps(rule.prereqs, dep, target, n.optional)
-		n.outputs[dep] = newFile(dir, rule.attrs.Dep, updated, g.tscache)
-	}
-
-	if rule.attrs.Virtual {
-		n.outputs = nil
-	}
-
-	if len(rule.targets) == 0 && !rule.attrs.Virtual {
-		for o, f := range n.outputs {
-			if !f.exists {
-				return nil, fmt.Errorf("%sno rule to knit target '%s'", sub(dir), o)
-			}
-		}
-		// If this rule had no targets, the target is the requested one. For
-		// example, maybe we didn't find a rule, and the requested target was
-		// foo.c. If foo.c exists, then this is an empty rule to "build" it.
-		rule.targets = []string{target}
-	}
-
-	n.myPrereqs = rule.prereqs
-	n.myExpPrereqs = expprereqs
-
-	// if the rule we found is equivalent to an existing rule that also builds
-	// this target, then use that
-	if gn, ok := g.fullNodes[fulltarget]; ok && gn.rule.Equals(&rule) {
-		// make sure the node knows that it builds target too
-		if _, ok := n.outputs[target]; !ok && !rule.attrs.Virtual {
-			n.outputs[target] = newFile(dir, target, updated, g.tscache)
-		}
-		n.info = gn.info
-		n.myTarget = target
-		if !rule.attrs.Virtual {
-			n.myOutput = newFile(dir, target, updated, g.tscache)
-		}
-		g.nodes[fulltarget] = n
-		return n, nil
-	}
-
-	n.rule = &rule
-
-	for _, t := range n.rule.targets {
-		if !n.rule.attrs.Virtual {
-			n.outputs[t] = newFile(dir, t, updated, g.tscache)
-		}
-		g.fullNodes[pathJoin(dir, t)] = n
-	}
-
-	n.myTarget = target
-	if !n.rule.attrs.Virtual {
-		n.myOutput = newFile(dir, target, updated, g.tscache)
-	}
-
-	// associate this node with only the requested target
-	g.nodes[fulltarget] = n
-
-	if ri != -1 {
-		visits[dir][ri]++
-	}
-	for i, p := range n.rule.prereqs {
-		pn, err := g.resolveTargetAcross(pathJoin(dir, p), visits, updated)
-		if err != nil {
-			if n.optional[i] {
-				continue
-			}
-			// there was an error with a prereq, so this node is invalid and we
-			// must remove it from the maps
-			delete(g.nodes, fulltarget)
-			for _, t := range n.rule.targets {
-				delete(g.fullNodes, pathJoin(dir, t))
-			}
-			return nil, err
-		}
-		// If we got a meta-rule out that comes from a different ruleset, try
-		// resolving using the current ruleset. If that doesn't work, just use
-		// the other one, but for meta-rules we should always try to resolve
-		// using the current ruleset over a different ruleset.
-		if pn.meta && pn.dir != dir {
-			internaln, err := g.resolveTargetForRuleSet(rs, dir, p, visits, updated)
-			if err == nil {
-				pn = internaln
-			}
-		}
-		n.prereqs = append(n.prereqs, pn)
-	}
-
-	if ri != -1 {
-		visits[dir][ri]--
-	}
-	return n, nil
-}
-
-func explicits(prereqs []string) []string {
+func prereqsStr(prereqs []prereq, onlyexp bool) []string {
 	exp := make([]string, 0, len(prereqs))
 	for _, p := range prereqs {
-		parsed, _ := parsePrereq(p)
-		if !parsed.attrs.Implicit {
-			exp = append(exp, parsed.name)
+		if !onlyexp || !p.attrs.Implicit {
+			exp = append(exp, p.name)
 		}
 	}
 	return exp
 }
-
 func (n *node) inputs() []string {
 	ins := make([]string, 0, len(n.myPrereqs))
 	for i, prereq := range n.myPrereqs {

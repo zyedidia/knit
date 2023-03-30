@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -164,6 +165,8 @@ func parseAttributesOrPrereqs(p *parser, t token) parserStateFun {
 		}
 		t.val = s
 		p.push(t)
+	case tokenLSquare, tokenRSquare:
+		p.push(t)
 	default:
 		p.parseError("reading a rule's attributes or prerequisites",
 			"an attribute, pattern, or filename", t)
@@ -184,6 +187,8 @@ func parsePrereqs(p *parser, t token) parserStateFun {
 		}
 		t.val = s
 		p.push(t)
+	case tokenLSquare, tokenRSquare:
+		p.push(t)
 	default:
 		p.parseError("reading a rule's prerequisites",
 			"filename or pattern", t)
@@ -197,6 +202,8 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	var base baseRule
 	var r Rule
 	var meta bool
+
+	base.dir = p.rules.dir
 
 	// find one or two colons
 	i := 0
@@ -235,7 +242,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 				meta = true
 				break
 			} else {
-				direct = append(direct, str)
+				direct = append(direct, filepath.Clean(str))
 			}
 		}
 	}
@@ -267,7 +274,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 					patstr := fmt.Sprintf("^%s(.*)%s$", left, right)
 					rpat, err := regexp.Compile(patstr)
 					if err != nil {
-						msg := fmt.Sprintf("error compiling suffix rule. This is a bug. Error: %s", err)
+						msg := fmt.Sprintf("error compiling suffix rule - this is a bug - error: %s", err)
 						p.basicErrorAtToken(msg, p.tokenbuf[k])
 					}
 					patterns = append(patterns, Pattern{
@@ -280,26 +287,66 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	}
 
 	// prereqs
-	base.prereqs = make([]string, 0)
-	for k := j + 1; k < len(p.tokenbuf); k++ {
-		// pretty hacky method to handle applying attributes to multiple prereqs at once with `prereqs`[attrs] syntax
-		if strings.HasPrefix(p.tokenbuf[k].val, "`") && strings.HasSuffix(p.tokenbuf[k].val, "`") {
-			length := len(p.tokenbuf[k].val)
-			inner := lex(p.tokenbuf[k].val[1:length-1], p.tokenbuf[k].line)
-			attrs := ""
-			if len(p.tokenbuf) > k+1 && strings.HasPrefix(p.tokenbuf[k+1].val, "[") {
-				attrs = p.tokenbuf[k+1].val
-			}
-			for t := inner.nextToken(); t.typ != tokenEnd; t = inner.nextToken() {
-				if t.typ == tokenError {
-					break
-				}
-				base.prereqs = append(base.prereqs, t.val+attrs)
-			}
-			continue
+	base.prereqs = make([]prereq, 0)
+
+	var getPrereq func(k int) ([]prereq, int)
+	getPrereq = func(k int) ([]prereq, int) {
+		if k >= len(p.tokenbuf) {
+			return nil, k
 		}
-		base.prereqs = append(base.prereqs, p.tokenbuf[k].val)
+		prereqs := make([]prereq, 0)
+		t := p.tokenbuf[k]
+		k++
+		switch t.typ {
+		case tokenLSquare:
+			for k < len(p.tokenbuf) && p.tokenbuf[k].typ != tokenRSquare {
+				p, n := getPrereq(k)
+				prereqs = append(prereqs, p...)
+				k = n
+			}
+			k++
+		case tokenWord:
+			prereqs = append(prereqs, prereq{name: filepath.Clean(t.val)})
+		}
+		if k >= len(p.tokenbuf) {
+			return prereqs, k
+		}
+		t = p.tokenbuf[k]
+		if t.typ != tokenLSquare {
+			return prereqs, k
+		}
+
+		attribs := &bytes.Buffer{}
+		k++
+		start := k
+		// TODO: doesn't handle balanced square brackets
+		for ; k < len(p.tokenbuf); k++ {
+			if p.tokenbuf[k].typ == tokenLSquare {
+				p.basicErrorAtToken("found '[' inside attribute list", p.tokenbuf[k])
+				break
+			} else if p.tokenbuf[k].typ == tokenRSquare {
+				break
+			}
+			attribs.WriteString(p.tokenbuf[k].val)
+		}
+		if k >= len(p.tokenbuf) {
+			p.basicErrorAtToken("no ']' found after attribute list", p.tokenbuf[start-1])
+		}
+		attrs, err := ParseAttribs(attribs.String())
+		if err != nil {
+			p.basicErrorAtToken(fmt.Sprintf("%v", err), p.tokenbuf[start])
+		}
+		for i := range prereqs {
+			prereqs[i].addAttrs(attrs)
+		}
+		return prereqs, k
 	}
+	var preq []prereq
+	var k int
+	for preq, k = getPrereq(j + 1); k < len(p.tokenbuf); preq, k = getPrereq(k) {
+		base.prereqs = append(base.prereqs, preq...)
+	}
+	base.prereqs = append(base.prereqs, preq...)
 
 	if t.typ == tokenRecipe {
 		base.recipe = parseCommands(stripIndentation(t.val, t.col))
