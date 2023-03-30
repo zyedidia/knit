@@ -83,27 +83,21 @@ func (r *DirectRule) String() string {
 type MetaRule struct {
 	baseRule
 	targets []Pattern
-}
-
-func NewMetaRule(targets []Pattern, prereqs []prereq, recipe []string, attrs AttrSet) MetaRule {
-	return MetaRule{
-		baseRule: baseRule{
-			recipe:  recipe,
-			prereqs: prereqs,
-			attrs:   attrs,
-		},
-		targets: targets,
-	}
+	nomatch map[string]bool
 }
 
 // Match returns the submatch and pattern used to perform the match, if there
 // is one.
 func (r *MetaRule) Match(target string) ([]int, *Pattern) {
+	if r.nomatch[target] {
+		return nil, nil
+	}
 	for i, t := range r.targets {
 		if s := t.Regex.FindStringSubmatchIndex(target); s != nil {
 			return s, &r.targets[i]
 		}
 	}
+	r.nomatch[target] = true
 	return nil, nil
 }
 

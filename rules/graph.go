@@ -280,7 +280,6 @@ func (g *Graph) resolveTarget(target prereq, visits []int, updated map[string]bo
 			if err != nil {
 				return nil, err
 			}
-			// TODO: match based on a priority mechanism (take most direct and most specific meta-rule)
 			if sub, pat := mr.Match(reltarget); sub != nil {
 				// a meta-rule can only be used maxVisits times (in one dependency path)
 				// TODO: consider moving this back above the if statement so that we skip

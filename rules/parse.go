@@ -356,6 +356,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 		r = MetaRule{
 			baseRule: base,
 			targets:  patterns,
+			nomatch:  make(map[string]bool),
 		}
 	} else {
 		r = DirectRule{
