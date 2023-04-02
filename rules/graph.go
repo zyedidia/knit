@@ -679,6 +679,7 @@ func (n *node) outOfDateNoMemo(db *Database, hash bool) UpdateReason {
 				}
 			}
 		} else if !p.rule.attrs.Virtual && p.time().After(n.time()) {
+			log.Println(p.myTarget, "is newer than", n.myTarget)
 			return TimeModified
 		}
 	}
