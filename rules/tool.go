@@ -264,8 +264,12 @@ func (t *CompileDbTool) visit(n *node, visited map[*info]bool, cmds []CompComman
 		prereqs = n.myPrereqs
 	}
 	for _, p := range prereqs {
+		dir, err := filepath.Abs(n.dir)
+		if err != nil {
+			continue
+		}
 		cmds = append(cmds, CompCommand{
-			Directory: n.dir,
+			Directory: dir,
 			File:      p,
 			Command:   strings.Join(n.recipe, "; "),
 		})
