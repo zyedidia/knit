@@ -27,9 +27,6 @@ Mk](https://9p.io/sys/doc/mk.html). In some ways, Knit can be considered a
 modern version of Mk with a Lua meta-programming system built on top of it
 (there are some differences compared to Mk).
 
-Knit is in-progress. The API should be mostly stable at this point, but
-there will not be a backwards-compability guarantee until version 1.0.
-
 Why make yet another build system? Because it's fun and useful to me! Maybe it
 will be useful to you too. Everyone hates something about their build system so
 if you have feedback or a request, let me know! The project is new enough that
@@ -188,11 +185,10 @@ Plan: release version 1.0 sometime between January and March 2023.
 
 # Feedback
 
-Knit is at an early stage in development and at a point where it would be
-useful to get feedback from others to improve it. If you have feedback, or
-questions about how to use it, please open a discussion. It would be great to
-discuss the good and bad parts of the current design, and how it can be
-improved.
+It is always useful useful to get feedback from others to improve Knit. If you
+have feedback, or questions about how to use it, please open a discussion. It
+would be great to discuss the good and bad parts of the current design, and how
+it can be improved.
 
 # Usage
 
