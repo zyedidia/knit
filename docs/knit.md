@@ -346,9 +346,11 @@ return b{
 ```
 
 This Knitfile assumes the build consists of `prog.c` and `libfoo/foo.c`. It
-builds `libfoo/foo.o` using a sub-build and automatically determines that
-the `foorules` buildset contains the rule for building `libfoo/foo.o`. Note
-that the recipe for `foo.o` is run in the `libfoo` directory.
+builds `libfoo/foo.o` using a sub-build and automatically determines that the
+`foorules` buildset contains the rule for building `libfoo/foo.o`. Note that
+the recipe for `foo.o` is run in the `libfoo` directory. Including a buildset
+inside another will automatically including all of its rules namespaced into
+the directory that the buildset came from.
 
 It is also useful to combine sub-builds with the `include(x)` function, which
 runs the knit program `x` from the directory where it exists, and returns the
