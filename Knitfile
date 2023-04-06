@@ -27,10 +27,10 @@ $ all:V: knit-$version-linux-amd64.tar.gz \
          knit-$version-freebsd-amd64.tar.gz \
          knit-$version-windows-amd64.tar.gz
 
-$ %.tar.gz: %/
+$ %.tar.gz: %
     tar czf $output $input
 
-$ (knit-$version-(.*)-(.*))/:R: knit.1
+$ '(knit-$version-(.*)-([^\.]*))':R: knit.1
     mkdir -p $match1
     CGO_ENABLED=0 GOOS=$match2 GOARCH=$match3 go build $goflags -o $match1/knit ./cmd/knit
     cp LICENSE* $match1
