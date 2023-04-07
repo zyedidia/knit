@@ -614,11 +614,14 @@ The `knit` package can be imported with `require("knit")`, and provides the foll
 
 * `arch`: a string containing the machine architecture name.
 
+* `flags`: a struct containing the values of the flags when Knit was invoked.
+  See https://pkg.go.dev/github.com/zyedidia/knit#Flags.
+
 * `addpath(p)`: adds the path `p` to the global require path. Files with ending
   with `.lua` or `.knit` are added.
 
-* `knit(flags)`: executes the shell command `knit flags` using the current
-  instance of Knit.
+* `knit(flags)`: executes the shell command `knit flags` (where `flags` is a
+  string of CLI arguments) using the current instance of Knit.
 
 ## CLI and environment variables
 
