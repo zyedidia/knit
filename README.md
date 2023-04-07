@@ -141,6 +141,9 @@ $ %.o:D[.dep/%.dep]: %.c
     $(conf.cc) $cflags -MMD -MF $dep -c $input -o $output
 ```
 
+(Note: explicitly naming with the builtin `$dep` variable will be available in
+v1.1).
+
 Note that Knitfiles are Lua programs with some modified syntax: special syntax
 using `$` for defining rules, and special syntax using `:=` for defining raw
 strings (no quotes) with interpolation.
@@ -183,8 +186,6 @@ go install github.com/zyedidia/knit/cmd/knit@latest
 * Global build file cache (similar to `ccache`, but for every command that is
   executed).
 * A restrictive mode for build sandboxing.
-
-Plan: release version 1.0 sometime between January and March 2023.
 
 # Feedback
 
