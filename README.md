@@ -117,8 +117,8 @@ return b{
 
     $ $prog: $obj
         $(conf.cc) $cflags $input -o $output
-    $ %.o: %.c
-        $(conf.cc) $cflags -c $input -o $output
+    $ %.o:D[%.d]: %.c
+        $(conf.cc) $cflags -MMD -c $input -o $output
 }
 ```
 
@@ -127,15 +127,18 @@ them together. Running `knit hello debug=1` would change the flags and re-run
 the affected rules. Running `knit build` will build `hello` (effectively an
 alias for `knit hello`).  The `VB` attributes on the build rule means that it
 is virtual (not referring to a file on the system), and should always be built
-(out-of-date).  Running `knit -t clean` will run a sub-tool that automatically
-removes all generated files.
+(out-of-date).
 
-If you also have header files in your project, they can be automatically
-handled by changing the `%.o` rule to
+Running `knit -t clean` will run a sub-tool that automatically removes all
+generated files.
+
+Header dependencies are automatically handled by using the `-MMD` compiler flag
+with the `D[%.d]` attribute. To explicitly name the dependency file (e.g., to
+put it in a `.dep` folder), you could instead use:
 
 ```
-$ %.o:D[%.d]: %.c
-    $(conf.cc) $cflags -MMD -c $input -o $output
+$ %.o:D[.dep/%.dep]: %.c
+    $(conf.cc) $cflags -MMD -MF $dep -c $input -o $output
 ```
 
 Note that Knitfiles are Lua programs with some modified syntax: special syntax

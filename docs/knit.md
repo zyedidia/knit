@@ -164,6 +164,8 @@ Some special variables are available during recipe expansion:
 * `outputs`: an array of this rule's targets.
 * `match`: the value captured with `%` in a meta rule.
 * `matches`: a list of matches captured by a regular expression meta rule.
+* `dep`: the name of the dependency file (if it exists) for the rule, defined
+  by the `D[...]` attribute.
 
 When a rule is encountered, `$` expressions are immediately expanded. If
 expansion fails, expansion is re-tried when the rule is evaluated (once the

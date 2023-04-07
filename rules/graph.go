@@ -542,6 +542,9 @@ func (n *node) expandRecipe(vm VM) error {
 		}
 		vm.SetVar("matches", n.matches)
 	}
+	if n.rule.attrs.Dep != "" {
+		vm.SetVar("dep", n.rule.attrs.Dep)
+	}
 	n.recipe = make([]string, 0, len(n.rule.recipe))
 	for _, c := range n.rule.recipe {
 		rvar, rexpr := vm.ExpandFuncs()
