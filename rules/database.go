@@ -207,8 +207,15 @@ type Files struct {
 }
 
 func (f *Files) insert(path string) {
-	file := NewFile(path)
-	f.Data[path] = file
+	if file, ok := f.Data[path]; ok {
+		// Check if file in database needs to be updated (rehashed): it
+		// doesn't if it hasn't been modified.
+		info, err := os.Stat(path)
+		if err == nil && !info.IsDir() && info.ModTime() == file.ModTime {
+			return
+		}
+	}
+	f.Data[path] = NewFile(path)
 }
 
 func (f *Files) matches(path string) bool {
