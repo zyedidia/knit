@@ -146,9 +146,6 @@ $ %.o:D[.dep/%.dep]: %.c
     $(conf.cc) $cflags -MMD -MF $dep -c $input -o $output
 ```
 
-(Note: explicitly naming with the builtin `$dep` variable will be available in
-v1.1).
-
 Note that Knitfiles are Lua programs with some modified syntax: special syntax
 using `$` for defining rules, and special syntax using `:=` for defining raw
 strings (no quotes) with interpolation.
