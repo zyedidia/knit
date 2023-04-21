@@ -46,6 +46,11 @@ I have written an article with more details about Knit
   involves spawning a separate make sub-process to perform a sub-build).
 * Knit can hash files to determine if they are out-of-date, rather than just
   relying on file modification times.
+    * Knit additionally uses hashes for "dynamic task elision": if Knit can
+      dynamically determine that a prerequisite that was rebuilt actually
+      changed nothing, it won't re-run the dependent build step, allowing for
+      even better incremental builds compared to timestamp-based approaches
+      (Make, Ninja, etc.).
 * Knit tracks recipe changes, so if you update a variable (in the Knitfile or
   at the command-line), any dependent rules will be automatically rebuilt.
 * Knit supports `%` meta-rules and regular expression meta-rules.
