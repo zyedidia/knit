@@ -511,7 +511,7 @@ type StatusTool struct {
 }
 
 func (t *StatusTool) visit(prev UpdateReason, indent string, n *node, visited map[*node]bool) {
-	status := n.outOfDate(t.Db, t.Hash)
+	status := n.outOfDate(t.Db, t.Hash, false)
 	if n.rule.attrs.Linked && status == UpToDate && prev != UpToDate {
 		status = LinkedUpdate
 	}

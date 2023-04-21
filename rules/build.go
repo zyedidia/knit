@@ -104,13 +104,15 @@ func (e *Executor) execNode(n *node) {
 		e.lock.Unlock()
 		return
 	}
-	ood := n.outOfDate(e.db, e.opts.Hash)
+
+	ood := n.outOfDate(e.db, e.opts.Hash, false)
 	if !e.opts.BuildAll && !n.rule.attrs.Linked && ood == UpToDate {
 		n.setDone(e.db, e.opts.NoExec, e.opts.Hash)
 		e.lock.Unlock()
 		return
 	}
 	e.lock.Unlock()
+	// fmt.Println("exec", n.rule.targets)
 
 	for _, p := range n.prereqs {
 		e.execNode(p)
@@ -123,6 +125,20 @@ func (e *Executor) execNode(n *node) {
 		for _, p := range n.prereqs {
 			p.wait()
 		}
+
+		e.lock.Lock()
+		// Cannot do dynamic step elision if hashing is disabled.
+		ood := n.outOfDate(e.db, e.opts.Hash, e.opts.Hash)
+		if !e.opts.BuildAll && !n.rule.attrs.Linked && (ood == UpToDate || ood == UpToDateDynamic) {
+			n.setDone(e.db, e.opts.NoExec, e.opts.Hash)
+			if ood == UpToDateDynamic && len(n.rule.recipe) != 0 {
+				log.Println(n.rule.targets, "elided")
+				e.step.Add(1)
+			}
+			e.lock.Unlock()
+			return
+		}
+		e.lock.Unlock()
 
 		if ood == OnlyPrereqs {
 			e.lock.Lock()

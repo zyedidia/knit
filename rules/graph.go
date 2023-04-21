@@ -38,8 +38,8 @@ type node struct {
 	myExpPrereqs []string
 	myOutput     *file
 
-	memoized   bool
-	memoUpdate UpdateReason
+	memoized   [2]bool
+	memoUpdate [2]UpdateReason
 }
 
 type info struct {
@@ -609,6 +609,7 @@ const (
 	Untracked
 	Prereq
 	LinkedUpdate
+	UpToDateDynamic
 )
 
 func (u UpdateReason) String() string {
@@ -639,16 +640,22 @@ func (u UpdateReason) String() string {
 	panic("unreachable")
 }
 
-func (n *node) outOfDate(db *Database, hash bool) UpdateReason {
-	if !n.memoized {
-		n.memoUpdate = n.outOfDateNoMemo(db, hash)
-		n.memoized = true
+func (n *node) outOfDate(db *Database, hash, dynamic bool) UpdateReason {
+	var i int
+	if dynamic {
+		i = 0
+	} else {
+		i = 1
 	}
-	return n.memoUpdate
+	if !n.memoized[i] {
+		n.memoUpdate[i] = n.outOfDateNoMemo(db, hash, dynamic)
+		n.memoized[i] = true
+	}
+	return n.memoUpdate[i]
 }
 
 // returns true if this node should be rebuilt during the build
-func (n *node) outOfDateNoMemo(db *Database, hash bool) UpdateReason {
+func (n *node) outOfDateNoMemo(db *Database, hash bool, dynamic bool) UpdateReason {
 	// rebuild rules are always out of date
 	if n.rule.attrs.Rebuild {
 		return Rebuild
@@ -700,10 +707,13 @@ func (n *node) outOfDateNoMemo(db *Database, hash bool) UpdateReason {
 	// if a prereq is out of date, this rule is out of date
 	order := false
 	for _, p := range n.prereqs {
-		ood := p.outOfDate(db, hash)
+		ood := p.outOfDate(db, hash, false)
 		// if the only prereqs out of date are order-only, then we just run
 		// them but this rule does not need to rebuild
 		if !p.rule.attrs.Order && ood != UpToDate && ood != OnlyPrereqs {
+			if dynamic {
+				return UpToDateDynamic
+			}
 			return Prereq
 		}
 		if ood != UpToDate {
@@ -718,8 +728,8 @@ func (n *node) outOfDateNoMemo(db *Database, hash bool) UpdateReason {
 
 func (n *node) count(db *Database, full, hash bool, counted map[*info]bool) int {
 	s := 0
-	ood := n.outOfDate(db, hash)
-	if !full && n.outOfDate(db, hash) == UpToDate {
+	ood := n.outOfDate(db, hash, false)
+	if !full && ood == UpToDate {
 		return 0
 	}
 	if ood != OnlyPrereqs && len(n.rule.recipe) != 0 {
