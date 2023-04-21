@@ -27,6 +27,7 @@ type LuaVM struct {
 	L     *lua.LState
 	wd    *stack.Stack[string]
 	shell string // shell used to execute commands
+	flags Flags  // flags are accessible to Lua programs
 }
 
 // An LRule is an un-parsed Lua representation of a build rule.
@@ -98,13 +99,14 @@ func (bs *LBuildSet) String() string {
 }
 
 // NewLuaVM constructs a new VM, and adds all the default built-ins.
-func NewLuaVM(shell string) *LuaVM {
+func NewLuaVM(shell string, flags Flags) *LuaVM {
 	// TODO: make this only enabled in debug mode (the stack trace)
 	L := lua.NewState(lua.Options{SkipOpenLibs: true, IncludeGoStackTrace: true})
 	vm := &LuaVM{
 		L:     L,
 		wd:    stack.New[string](),
 		shell: shell,
+		flags: flags,
 	}
 	vm.wd.Push(".")
 
@@ -484,6 +486,7 @@ func (vm *LuaVM) pkgknit() *lua.LTable {
 	vm.L.SetField(pkg, "trim", luar.New(vm.L, strings.TrimSpace))
 	vm.L.SetField(pkg, "os", luar.New(vm.L, runtime.GOOS))
 	vm.L.SetField(pkg, "arch", luar.New(vm.L, runtime.GOARCH))
+	vm.L.SetField(pkg, "flags", luar.New(vm.L, vm.flags))
 	vm.L.SetField(pkg, "join", luar.New(vm.L, func(strs ...[]string) *lua.LTable {
 		if len(strs) == 0 {
 			return nil

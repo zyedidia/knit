@@ -193,7 +193,7 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 		}
 	}
 
-	vm := NewLuaVM(flags.Shell)
+	vm := NewLuaVM(flags.Shell, flags)
 
 	cliAssigns, targets := makeAssigns(args)
 	envAssigns, _ := makeAssigns(os.Environ())
