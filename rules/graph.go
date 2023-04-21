@@ -208,13 +208,33 @@ func NewGraph(rs *RuleSet, target string, updated map[string]bool) (g *Graph, er
 
 func rel(basepath, targpath string) (string, error) {
 	if filepath.IsAbs(targpath) {
-		return filepath.Abs(basepath)
+		var err error
+		targpath, err = relify(targpath)
+		if err != nil {
+			return "", err
+		}
 	}
 	return filepath.Rel(basepath, targpath)
 }
 
+// make an absolute path relative to the cwd
+func relify(path string) (string, error) {
+	if filepath.IsAbs(path) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Rel(cwd, path)
+	}
+	// already relative
+	return path, nil
+}
+
 func (g *Graph) resolveTarget(target prereq, visits []int, updated map[string]bool) (*node, error) {
-	fulltarget := target.name
+	fulltarget, err := relify(target.name)
+	if err != nil {
+		return nil, err
+	}
 
 	// do we have a node that builds target already
 	// if the node has an empty recipe, we don't use it because it could be a
