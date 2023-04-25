@@ -299,12 +299,24 @@ func parseRecipe(p *parser, t token) parserStateFun {
 		k++
 		switch t.typ {
 		case tokenLSquare:
-			for k < len(p.tokenbuf) && p.tokenbuf[k].typ != tokenRSquare {
-				p, n := getPrereq(k)
-				prereqs = append(prereqs, p...)
-				k = n
+			// second [
+			if k < len(p.tokenbuf) && p.tokenbuf[k].typ == tokenLSquare {
+				k++
+				for k < len(p.tokenbuf) && p.tokenbuf[k].typ != tokenRSquare {
+					p, n := getPrereq(k)
+					prereqs = append(prereqs, p...)
+					k = n
+				}
+				k++
+				if !(k < len(p.tokenbuf) && p.tokenbuf[k].typ == tokenRSquare) {
+					if k >= len(p.tokenbuf) {
+						k = len(p.tokenbuf) - 1
+					}
+					p.basicErrorAtToken("did not find second ']' to close '[[' list", p.tokenbuf[k])
+					return prereqs, k
+				}
+				k++
 			}
-			k++
 		case tokenWord:
 			prereqs = append(prereqs, prereq{name: filepath.Clean(t.val)})
 		}
@@ -313,6 +325,9 @@ func parseRecipe(p *parser, t token) parserStateFun {
 		}
 		t = p.tokenbuf[k]
 		if t.typ != tokenLSquare {
+			return prereqs, k
+		}
+		if k+1 >= len(p.tokenbuf) || p.tokenbuf[k+1].typ == tokenLSquare {
 			return prereqs, k
 		}
 
@@ -339,7 +354,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 		for i := range prereqs {
 			prereqs[i].addAttrs(attrs)
 		}
-		return prereqs, k
+		return prereqs, k + 1
 	}
 	var preq []prereq
 	var k int
