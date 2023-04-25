@@ -94,6 +94,16 @@ func (n *node) setDone(db *Database, noexec, hash bool) {
 					db.Prereqs.insert(n.rule.targets, f.name, n.dir)
 				}
 			}
+			if n.rule.attrs.Dep != "" {
+				prereqs := loadDeps(n.dir, nil, n.rule.attrs.Dep, n.myTarget, n.optional)
+				for _, p := range prereqs {
+					path, err := relify(p.name)
+					if err != nil {
+						panic(err)
+					}
+					db.Prereqs.insert(n.rule.targets, path, n.dir)
+				}
+			}
 		}
 		// TODO: think about path normalization?
 		db.Recipes.insert(n.rule.targets, n.recipe, n.dir)
