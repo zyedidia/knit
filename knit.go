@@ -355,6 +355,8 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 			t = &rules.StatusTool{W: w, Db: db, Hash: flags.Hash}
 		case "path":
 			t = &rules.PathTool{W: w, Path: knitpath}
+		case "db":
+			t = &rules.DbTool{W: w, Db: db}
 		default:
 			return knitpath, fmt.Errorf("unknown tool: %s", flags.Tool)
 		}

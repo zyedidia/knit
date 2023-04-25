@@ -27,6 +27,7 @@ var tools = []Tool{
 	&CommandsTool{},
 	&StatusTool{},
 	&PathTool{},
+	&DbTool{},
 }
 
 type Tool interface {
@@ -533,6 +534,24 @@ func (t *StatusTool) Run(g *Graph, args []string) error {
 
 func (t *StatusTool) String() string {
 	return "status - output dependency status information"
+}
+
+type DbTool struct {
+	Db *Database
+	W  io.Writer
+}
+
+func (t *DbTool) Run(g *Graph, args []string) error {
+	for hash, files := range t.Db.Prereqs.Hashes {
+		for fname, file := range files.Data {
+			fmt.Fprintf(t.W, "%016x: %s: hash=%x, time=%v, size=%d, exists=%v\n", hash, fname, file.Full, file.ModTime, file.Size, file.Exists)
+		}
+	}
+	return nil
+}
+
+func (t *DbTool) String() string {
+	return "db - show database information"
 }
 
 type PathTool struct {
