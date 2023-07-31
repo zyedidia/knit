@@ -587,14 +587,20 @@ will contain the result, or the error value.
 The `knit` package can be imported with `require("knit")`, and provides the following functions:
 
 * `repl(in, patstr, repl)`: replace all occurrences of the Go regular
-  expression `patstr` with `repl` within `in`. Throws an error if there
-  is an error with `patstr`.
+  expression `patstr` with `repl` within the array `in`. Throws an error if
+  there is an error with `patstr`.
 
-* `extrepl(in, ext, repl)`: replace all occurrences of the
-  literal string `ext` as a suffix with `repl` within `in`.
+* `extrepl(in, ext, repl)`: replace all occurrences of the literal string `ext`
+  as a suffix with `repl` within the array `in`.
 
 * `glob(pat)`: return all files in the current working directory that match the
   glob `pat`.
+
+* `suffix(in, suffix)`: add the string `suffix` to the end of every string in
+  the array `in`, and return the new array.
+
+* `prefix(in, prefix)`: add the string `prefix` to the beginning of every
+  string in the array `in`, and return the new array.
 
 * `filterout(in, exclude)`: returns a new table containing all the elements of
   `in`, except those in `exclude`.
