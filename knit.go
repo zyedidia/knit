@@ -268,15 +268,16 @@ func Run(out io.Writer, args []string, flags Flags) (string, error) {
 	if len(targets) == 0 {
 		targets = []string{rs.MainTarget()}
 	}
-	rootTargets := make([]string, len(targets))
-	// TODO: don't turn an empty target into '.'
+	rootTargets := make([]string, 0, len(targets))
 
 	if len(targets) == 0 {
 		return knitpath, errors.New("no targets")
 	}
 
-	for i, t := range targets {
-		rootTargets[i] = filepath.Base(t)
+	for _, t := range targets {
+		if t != "" {
+			rootTargets = append(rootTargets, filepath.Base(t))
+		}
 	}
 
 	rs.Add(rules.NewDirectRuleBase([]string{":build"}, targets, nil, rules.AttrSet{
