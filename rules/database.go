@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"io"
 	"io/fs"
+	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -14,6 +15,13 @@ import (
 	"github.com/segmentio/fasthash/fnv1a"
 )
 
+type memoizedHash struct {
+	hash  uint64
+	mtime time.Time
+}
+
+var hashCache = make(map[string]memoizedHash)
+
 func hashSlice(s []string) uint64 {
 	return fnv1a.HashString64(strings.Join(s, ""))
 }
@@ -22,7 +30,31 @@ func hashSliceAndString(s []string, str string) uint64 {
 	return fnv1a.HashString64(strings.Join(s, "") + str)
 }
 
+func modifiedTime(path string) time.Time {
+	var mtime time.Time
+	filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
+		if !info.IsDir() {
+			info, _ := info.Info()
+			ftime := info.ModTime()
+			if ftime.After(mtime) {
+				mtime = ftime
+			}
+		}
+		return nil
+	})
+	return mtime
+}
+
 func hashFile(path string) uint64 {
+	mtime := modifiedTime(path)
+	cached, hit := hashCache[path]
+	if hit {
+		if mtime == cached.mtime {
+			log.Println("using cached hash for", path)
+			return cached.hash
+		}
+	}
+	log.Println("computing hash for", path)
 	var hash uint64
 	filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
 		if !info.IsDir() {
@@ -32,6 +64,10 @@ func hashFile(path string) uint64 {
 		}
 		return nil
 	})
+	hashCache[path] = memoizedHash{
+		hash,
+		mtime,
+	}
 	return hash
 }
 
