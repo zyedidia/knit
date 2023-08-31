@@ -77,15 +77,17 @@ func (n *node) wait() {
 // Set this node's status to done, and signal all threads waiting on the
 // condition variable. This function runs when a node completes execution,
 // either by finishing normally or with an error.
-func (n *node) setDoneOrErr() {
+func (n *node) setDoneOrErr() bool {
 	n.cond.L.Lock()
+	ret := n.done
 	n.done = true
 	n.cond.Broadcast()
 	n.cond.L.Unlock()
+	return ret
 }
 
 // This function is run when the node completes execution without error.
-func (n *node) setDone(db *Database, noexec, hash bool) {
+func (n *node) setDone(db *Database, noexec, hash bool) bool {
 	if !noexec {
 		if hash {
 			for _, p := range n.prereqs {
@@ -113,7 +115,7 @@ func (n *node) setDone(db *Database, noexec, hash bool) {
 			}
 		}
 	}
-	n.setDoneOrErr()
+	return n.setDoneOrErr()
 }
 
 // A file on the system. The updated field indicates that the file should be

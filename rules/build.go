@@ -130,8 +130,8 @@ func (e *Executor) execNode(n *node) {
 		// Cannot do dynamic step elision if hashing is disabled.
 		ood := n.outOfDate(e.db, e.opts.Hash, e.opts.Hash)
 		if !e.opts.BuildAll && !n.rule.attrs.Linked && (ood == UpToDate || ood == UpToDateDynamic) {
-			n.setDone(e.db, e.opts.NoExec, e.opts.Hash)
-			if ood == UpToDateDynamic && len(n.rule.recipe) != 0 {
+			done := n.setDone(e.db, e.opts.NoExec, e.opts.Hash)
+			if !done && ood == UpToDateDynamic && len(n.rule.recipe) != 0 {
 				log.Println(n.rule.targets, "elided")
 				e.step.Add(1)
 			}
