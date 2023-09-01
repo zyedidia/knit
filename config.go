@@ -46,6 +46,14 @@ func DefaultBuildFile() (string, bool) {
 }
 
 func FindBuildFile(name string) (string, string, error) {
+	if filepath.IsAbs(name) {
+		if existsFile(name) {
+			return name, filepath.Dir(name), nil
+		} else {
+			return "", "", errors.New("does not exist")
+		}
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", "", err

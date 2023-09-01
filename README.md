@@ -15,7 +15,9 @@ Lua. If you are familiar with Make, you can learn Knit very quickly.
 Knit tracks more of your build to give you better incremental builds. For
 example, Knit automatically adds an implicit dependency on a rule's recipe, so
 if you change a recipe (either directly or through a variable change), Knit
-will automatically re-run all rules that were affected.
+will automatically re-run all rules that were affected. Knit will also skip
+build steps dynamically if it can determine that they will be unchanged from
+the previous run (even if earlier dependencies were changed).
 
 Knit has support for namespaced sub-builds that execute relative to their
 directory, but Knit avoids build fragmentation because sub-builds don't rely on
@@ -32,8 +34,11 @@ will be useful to you too. Everyone hates something about their build system so
 if you have feedback or a request, let me know! The project is new enough that
 your feedback may be seriously taken into account.
 
-I have written an article with more details about Knit
-[here](https://zyedidia.github.io/blog/posts/3-knit-better-make/).
+**Articles**: I have written two articles with more details about Knit
+[here](https://zyedidia.github.io/blog/posts/3-knit-better-make/) and
+[here](https://zyedidia.github.io/blog/posts/4-incremental-d-knit/) (this
+article is specifically about D, but the optimization Knit applies is general
+and not tied to D specifically).
 
 # Features
 
