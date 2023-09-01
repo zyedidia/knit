@@ -99,10 +99,7 @@ func (n *node) setDone(db *Database, noexec, hash bool) bool {
 			if n.rule.attrs.Dep != "" {
 				prereqs := loadDeps(n.dir, nil, n.rule.attrs.Dep, n.myTarget, n.optional)
 				for _, p := range prereqs {
-					path, err := relify(p.name)
-					if err != nil {
-						panic(err)
-					}
+					path := relify(p.name)
 					db.Prereqs.insert(n.rule.targets, path, n.dir)
 				}
 			}
@@ -220,33 +217,22 @@ func NewGraph(rs *RuleSet, target string, updated map[string]bool) (g *Graph, er
 
 func rel(basepath, targpath string) (string, error) {
 	if filepath.IsAbs(targpath) {
-		var err error
-		targpath, err = relify(targpath)
-		if err != nil {
-			return "", err
-		}
+		return targpath, nil
 	}
 	return filepath.Rel(basepath, targpath)
 }
 
 // make an absolute path relative to the cwd
-func relify(path string) (string, error) {
+func relify(path string) string {
 	if filepath.IsAbs(path) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return "", err
-		}
-		return filepath.Rel(cwd, path)
+		return path
 	}
 	// already relative
-	return path, nil
+	return path
 }
 
 func (g *Graph) resolveTarget(target prereq, visits []int, updated map[string]bool) (*node, error) {
-	fulltarget, err := relify(target.name)
-	if err != nil {
-		return nil, err
-	}
+	fulltarget := relify(target.name)
 
 	// do we have a node that builds target already
 	// if the node has an empty recipe, we don't use it because it could be a
